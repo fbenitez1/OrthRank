@@ -1,0 +1,7 @@
+name = "BandQR"
+uuid = "dfbf0458-7849-40ee-94f2-028a3873279e"
+authors = ["mas "]
+version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
