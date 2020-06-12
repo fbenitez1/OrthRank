@@ -20,7 +20,7 @@ function printSV(A,l,k)
     k1 = 1 + (k - 1)*b
     B=A[ j1:j1+b2-1, k1:k1+b2-1 ]
     s = svdvals(B)
-    print(s[1:min(length(s),15)], "\n")
+    println(s[1:min(length(s),15)])
 end
     
 

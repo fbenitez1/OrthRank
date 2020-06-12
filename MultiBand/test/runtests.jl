@@ -8,22 +8,22 @@ A0 = makeMultiBand(n,1, Double64)
 A = applyLevelTrans(copy(A0),1)
 
 #printRanks(A, 1e-14)
-print("Computing QR factorization\n")
+println("Computing QR factorization.")
 @time qrA = qr(A)
-print("Computing Inverse\n")
+println("Computing Inverse")
 @time Ai = inv(A)
-print("Normalizing Inverse\n")
+println("Normalizing Inverse")
 @time Ai = Ai/norm(Ai, Inf)
 # printRanks(qrA.R', 1e-14)
 # printRanks(Ai, 1e-14)
 
-print("Assembling Qa\n")
+println("Assembling Qa")
 @time qa = Matrix(qrA.Q)
-print("\n")
+println
 
-print("Assembling Rat\n")
+println("Assembling Rat.")
 @time rat = qrA.R'
-print("\n")
+println
 
 #printRanks(qa, 1e-14)
 
@@ -33,16 +33,15 @@ print("\n")
 # printSV(Ai,7,2)
 # @time printSV(rat,5,10)
 # @time printSV(rat,4,3)
-print("\n")
+println
 
 printSV(qa',5,5)
 
-# print("Computing backward error.")
-# @time print(norm(qa*qrA.R - A, Inf))
-# print("\n")
+# println("Computing backward error.")
+# @time println(norm(qa*qrA.R - A, Inf))
 
-print("Computing Inf condition\n")
-@time print(norm(A,Inf)*norm(Ai,Inf))
-print("\n")
+println("Computing Inf condition.")
+@time println(norm(A,Inf)*norm(Ai,Inf))
+println
 
 GC.gc()

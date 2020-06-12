@@ -34,26 +34,26 @@ function get_A( xs :: AbstractArray{T,2},
 end
 
 rmax=50
-print("getting A:  ")
+println("getting A:")
 @time A=get_A(xs,ys)
 A=A/norm(A,Inf)
-println()
+println
 
-print("Computing rand_svd: ")
+println("Computing rand_svd:")
 @time (U,S,V)=rand_svd(A,rmax)
 println("Error:  ", norm(U*Diagonal(S)*V' - A, Inf))
 (_,r)=size(U)
 println("Rank: ", r)
 println()
 
-print("Computing rand_rank:  ")
+println("Computing rand_rank:")
 @time r=rand_rank(A,rmax,rel=false)
 println("Rank:  ", r)
 println()
 
-print("Computing rand_QB: ")
+println("Computing rand_QB:")
 @time (Q,B)=rand_QB(A,rmax)
 println("Error:  ", norm(Q*B - A, Inf))
 (_,r)=size(Q)
 println("Rank: ", r)
-println()
+println
