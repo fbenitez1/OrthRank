@@ -1,7 +1,7 @@
 module Factorization
 using LinearAlgebra
 
-using BandQR.Rots
+using Rotations
 
 export bandQR
 
@@ -18,7 +18,7 @@ function bandQR( a :: Array{X,2},
             r=lgivens(a[j,k], a[j+1,k], j, j+1)
             # view(a,jj,kk) is similar to a[jj,kk], except that the
             # latter copies, so we would not actually modify a.
-            r ⊛ view(a, :, k:min(na,k+lbw+ubw))
+            r ⊘ view(a, :, k:min(na,k+lbw+ubw))
         end
     end
     nothing :: Nothing

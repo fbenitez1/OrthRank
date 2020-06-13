@@ -1,9 +1,6 @@
 module BandQR
 
-export ⊛, bandQR, Rot, lgivens
-
-include("Rots.jl")
-using BandQR.Rots
+export  bandQR
 
 include("Factorization.jl")
 using BandQR.Factorization

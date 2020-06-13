@@ -1,4 +1,3 @@
-using BandQR.Rots
 using BandQR.Factorization
 
 # Generate a random banded type containing floats.
@@ -17,7 +16,7 @@ function makeA( n :: Integer,
 end
 
 # Test problem size and lower and upper bandwidths.
-n=1000
+n=10000
 lbw=5
 ubw=5
 
@@ -37,7 +36,7 @@ precompile(bandQR,(Array{Float64,2}, Int, Int))
 # 0.003723 seconds (4 allocations: 160 bytes)
 # 0.009409 seconds (4 allocations: 160 bytes)
 
-# A similar C benchmark on the same machine run in about 0.004
+# A similar C benchmark on the same machine ran in about 0.004
 # seconds.
 
 GC.gc()
