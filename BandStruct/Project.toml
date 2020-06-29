@@ -2,3 +2,8 @@ name = "BandStruct"
 uuid = "839fd882-bd41-41b1-9826-d7cfd97ab335"
 authors = ["mas "]
 version = "0.1.0"
+
+[deps]
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+MLStyle = "d8e11817-5142-5d16-987a-aa16d5891078"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
