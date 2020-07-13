@@ -1,8 +1,8 @@
 module BandQR
 
-export  bandQR
+export bandQR
 
 include("Factorization.jl")
-using BandQR.Factorization
+using .Factorization
 
 end # module

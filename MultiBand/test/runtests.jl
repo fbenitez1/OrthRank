@@ -1,11 +1,13 @@
 using MultiBand
+using LinearAlgebra
 using DoubleFloats
 using GenericSVD
 
-n=256
-A0 = makeMultiBand(n,1, Double64)
 
-A = applyLevelTrans(copy(A0),1)
+n = 256
+A0 = makeMultiBand(n, 1, Double64)
+
+A = applyLevelTrans(copy(A0), 1)
 
 #printRanks(A, 1e-14)
 println("Computing QR factorization.")
@@ -13,7 +15,7 @@ println("Computing QR factorization.")
 println("Computing Inverse")
 @time Ai = inv(A)
 println("Normalizing Inverse")
-@time Ai = Ai/norm(Ai, Inf)
+@time Ai = Ai / norm(Ai, Inf)
 # printRanks(qrA.R', 1e-14)
 # printRanks(Ai, 1e-14)
 
@@ -35,13 +37,13 @@ println
 # @time printSV(rat,4,3)
 println
 
-printSV(qa',5,5)
+printSV(qa', 5, 5)
 
 # println("Computing backward error.")
 # @time println(norm(qa*qrA.R - A, Inf))
 
 println("Computing Inf condition.")
-@time println(norm(A,Inf)*norm(Ai,Inf))
+@time println(norm(A, Inf) * norm(Ai, Inf))
 println
 
 GC.gc()

@@ -13,129 +13,131 @@ using LinearAlgebra
 #   -s, c       ]
 
 struct Rot{R,T}
-    c :: R
-    s :: T
-    j1 :: Int64
-    j2 :: Int64
+  c::R
+  s::T
+  j1::Int64
+  j2::Int64
 end
 
 # Compute a rotation r to introduce a zero from the left into the
 # column vector r ⊘ [x;y].
-@inline function lgivens( x :: T,
-                          y :: T,
-                          j1 :: Integer,
-                          j2 :: Integer ) where { R <: AbstractFloat,
-                                                  T <: Union{R, Complex{R}} }
-    xmag = abs(x)
-    ymag = abs(y)
-    if (xmag == 0)
-        Rot(zero(R),one(T),j1,j2)
-    else
-        scale = 1/(xmag+ymag) # scale to avoid possible overflow.
-        xr = real(x)*scale
-        xi = imag(x)*scale
-        yr = real(y)*scale
-        yi = imag(y)*scale
-        normxy = sqrt(xr*xr + xi * xi + yr * yr + yi * yi)/scale
-        signx = x / xmag
-        c = xmag/normxy
-        s = -y / (signx * normxy)
-        Rot(c,s,j1,j2)
-    end :: Rot{R,T}
+@inline function lgivens(
+  x::T,
+  y::T,
+  j1::Integer,
+  j2::Integer,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  xmag = abs(x)
+  ymag = abs(y)
+  if (xmag == 0)
+    Rot(zero(R), one(T), j1, j2)
+  else
+    scale = 1 / (xmag + ymag) # scale to avoid possible overflow.
+    xr = real(x) * scale
+    xi = imag(x) * scale
+    yr = real(y) * scale
+    yi = imag(y) * scale
+    normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
+    signx = x / xmag
+    c = xmag / normxy
+    s = -y / (signx * normxy)
+    Rot(c, s, j1, j2)
+  end::Rot{R,T}
 end
 
 # Compute a rotation r to introduce a zero from the right into the row
 # vector [x,y] ⊛ r.
-@inline function rgivens( x :: T,
-                          y :: T,
-                          j1 :: Integer,
-                          j2 :: Integer ) where { R <: AbstractFloat,
-                                                  T <: Union{R, Complex{R}} }
-    xmag = abs(x)
-    ymag = abs(y)
-    if (xmag == 0)
-        Rot(zero(R),one(T),j1,j2)
-    else
-        scale = 1/(xmag+ymag) # scale to avoid possible overflow.
-        xr = real(x)*scale
-        xi = imag(x)*scale
-        yr = real(y)*scale
-        yi = imag(y)*scale
-        normxy = sqrt(xr*xr + xi * xi + yr * yr + yi * yi)/scale
-        signx = x / xmag
-        c = xmag/normxy
-        s = -conj(y / (signx * normxy))
-        Rot(c,s,j1,j2)
-    end :: Rot{R,T}
+@inline function rgivens(
+  x::T,
+  y::T,
+  j1::Integer,
+  j2::Integer,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  xmag = abs(x)
+  ymag = abs(y)
+  if (xmag == 0)
+    Rot(zero(R), one(T), j1, j2)
+  else
+    scale = 1 / (xmag + ymag) # scale to avoid possible overflow.
+    xr = real(x) * scale
+    xi = imag(x) * scale
+    yr = real(y) * scale
+    yi = imag(y) * scale
+    normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
+    signx = x / xmag
+    c = xmag / normxy
+    s = -conj(y / (signx * normxy))
+    Rot(c, s, j1, j2)
+  end::Rot{R,T}
 end
 
 # Apply a rotation from the left.  This acts in-place, modifying a.
-@inbounds @inline function
-    ⊛( r :: Rot{R,T},
-        a :: AbstractArray{T,2} ) where { R <: AbstractFloat,
-                                          T <: Union{R, Complex{R}} }
-    c = r.c
-    s = r.s
-    (_,n)=size(a)
-    j1 = r.j1
-    j2 = r.j2
-    for k=1:n
-        tmp=a[j1,k]
-        a[j1,k]=c*tmp + conj(s)*a[j2,k]
-        a[j2,k]=-s*tmp + c*a[j2,k]
-    end
-    nothing
+@inbounds @inline function ⊛(
+  r::Rot{R,T},
+  a::AbstractArray{T,2},
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  c = r.c
+  s = r.s
+  (_, n) = size(a)
+  j1 = r.j1
+  j2 = r.j2
+  for k = 1:n
+    tmp = a[j1, k]
+    a[j1, k] = c * tmp + conj(s) * a[j2, k]
+    a[j2, k] = -s * tmp + c * a[j2, k]
+  end
+  nothing
 end
 
-@inbounds @inline function
-    ⊛( a :: AbstractArray{T,2},
-        r :: Rot{R,T} ) where { R <: AbstractFloat,
-                                T <: Union{R, Complex{R}} }
-    c = r.c
-    s = r.s
-    (m,_)=size(a)
-    k1 = r.j1
-    k2 = r.j2
-    for j=1:m
-        tmp=a[j,k1]
-        a[j,k1]=c*tmp - s*a[j,k2]
-        a[j,k2]=conj(s)*tmp + c*a[j,k2]
-    end
-    nothing
+@inbounds @inline function ⊛(
+  a::AbstractArray{T,2},
+  r::Rot{R,T},
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  c = r.c
+  s = r.s
+  (m, _) = size(a)
+  k1 = r.j1
+  k2 = r.j2
+  for j = 1:m
+    tmp = a[j, k1]
+    a[j, k1] = c * tmp - s * a[j, k2]
+    a[j, k2] = conj(s) * tmp + c * a[j, k2]
+  end
+  nothing
 end
 
-@inbounds @inline function
-    ⊘( r :: Rot{R,T},
-       a :: AbstractArray{T,2} ) where { R <: AbstractFloat,
-                                         T <: Union{R, Complex{R}} }
-    c = r.c
-    s = r.s
-    (_,n)=size(a)
-    j1 = r.j1
-    j2 = r.j2
-    for k=1:n
-        tmp=a[j1,k]
-        a[j1,k]=c*tmp - conj(s)*a[j2,k]
-        a[j2,k]=+s*tmp + c*a[j2,k]
-    end
-    nothing
+@inbounds @inline function ⊘(
+  r::Rot{R,T},
+  a::AbstractArray{T,2},
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  c = r.c
+  s = r.s
+  (_, n) = size(a)
+  j1 = r.j1
+  j2 = r.j2
+  for k = 1:n
+    tmp = a[j1, k]
+    a[j1, k] = c * tmp - conj(s) * a[j2, k]
+    a[j2, k] = +s * tmp + c * a[j2, k]
+  end
+  nothing
 end
 
-@inbounds @inline function
-    ⊘( a :: AbstractArray{T,2},
-        r :: Rot{R,T} ) where { R <: AbstractFloat,
-                                T <: Union{R, Complex{R}} }
-    c = r.c
-    s = r.s
-    (m,_)=size(a)
-    k1 = r.j1
-    k2 = r.j2
-    for j=1:m
-        tmp=a[j,k1]
-        a[j,k1]=c*tmp + s*a[j,k2]
-        a[j,k2]=-conj(s)*tmp + c*a[j,k2]
-    end
-    nothing
+@inbounds @inline function ⊘(
+  a::AbstractArray{T,2},
+  r::Rot{R,T},
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  c = r.c
+  s = r.s
+  (m, _) = size(a)
+  k1 = r.j1
+  k2 = r.j2
+  for j = 1:m
+    tmp = a[j, k1]
+    a[j, k1] = c * tmp + s * a[j, k2]
+    a[j, k2] = -conj(s) * tmp + c * a[j, k2]
+  end
+  nothing
 end
 
 
