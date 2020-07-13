@@ -3,16 +3,48 @@ module BandColumnMatrices
 using MLStyle
 using ConstructionBase
 using Printf
+import LinearAlgebra.Matrix
 
-import Base: size, getindex, setindex!, showerror, show, print, @propagate_inbounds
+import Base:
+  size,
+  getindex,
+  setindex!,
+  showerror,
+  show,
+  print,
+  @propagate_inbounds,
+  copy,
+  view,
+  eachindex
 
-export BandColumn, AbstractBandColumn, MatchError,
-    first_storage_el, last_storage_el, NoStorageForIndex,
-    get_offset, bc_index_stored, check_bc_storage_bounds,
-    get_m_els, get_offset_all, get_upper_bw_max, get_upper_bw, get_middle_bw,
-    get_lower_bw, get_first_super, get_band_element, set_band_element!,
-    extend_lower_band, extend_upper_band
-
+export BandColumn,
+  AbstractBandColumn,
+  MatchError,
+  first_storage_el,
+  last_storage_el,
+  first_column_el,
+  storage_els_range,
+  column_els_range,
+  last_column_el,
+  NoStorageForIndex,
+  get_offset,
+  bc_index_stored,
+  check_bc_storage_bounds,
+  get_m_els,
+  get_m,
+  get_n,
+  get_offset_all,
+  get_upper_bw_max,
+  get_upper_bw,
+  get_middle_bw,
+  get_lower_bw,
+  get_first_super,
+  get_band_element,
+  set_band_element!,
+  extend_lower_band,
+  extend_upper_band,
+  get_elements,
+  viewbc
 
 "MatchError: An exception for pattern match errors in MLStyle."
 struct MatchError <: Exception end
@@ -24,15 +56,21 @@ storage available to represent a particular element of a BandColumn.
 
 """
 struct NoStorageForIndex <: Exception
-    arr
-    ix
+  arr::Any
+  ix::Any
 end
 
-showerror(io :: IO, e :: NoStorageForIndex) =
-    print(io, "Attempt to access ", typeof(e.arr), " at index ", e.ix,
-          " for which there is no storage.")
+showerror(io::IO, e::NoStorageForIndex) = print(
+  io,
+  "Attempt to access ",
+  typeof(e.arr),
+  " at index ",
+  e.ix,
+  " for which there is no storage.",
+)
 
 abstract type AbstractBandColumn{E,AE,AI} <: AbstractArray{E,2} end
+# abstract type AbstractBandColumn{E,AE,AI} end
 
 """
 
@@ -48,19 +86,17 @@ are outside the current bandwidth but not outside the maximum
 bandwidth.
 
 """
-struct BandColumn{E <: Number,
-                         AE <: AbstractArray{E,2},
-                         AI <: AbstractArray{Int,2}} <:
-                             AbstractBandColumn{E,AE,AI}
-    m :: Int # Matrix number of rows.
-    n :: Int # Matrix and elements number of columns.
-    m_els :: Int # Elements number of rows.
-    offset_all :: Int # uniform offset.
-    upper_bw_max :: Int # maximum upper bandwidth.
-    middle_bw_max :: Int # maximum middle bandwidth.
-    lower_bw_max :: Int # maximum lower bandwidth.
-    bws :: AI # Bandwidths and first superdiagonal in each column.
-    band_elements :: AE
+struct BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
+       AbstractBandColumn{E,AE,AI}
+  m::Int # Matrix number of rows.
+  n::Int # Matrix and elements number of columns.
+  m_els::Int # Elements number of rows.
+  offset_all::Int # uniform offset.
+  upper_bw_max::Int # maximum upper bandwidth.
+  middle_bw_max::Int # maximum middle bandwidth.
+  lower_bw_max::Int # maximum lower bandwidth.
+  bws::AI # Bandwidths and first superdiagonal in each column.
+  band_elements::AE
 end
 
 @as_record BandColumn
@@ -71,182 +107,349 @@ end
 ## AbstractBandColumn interface.
 ##
 
-@inline get_m_els(bc :: BandColumn) = bc.m_els
-@inline get_offset_all(bc :: BandColumn) = bc.offset_all
-@inline get_upper_bw_max(bc :: BandColumn) = bc.upper_bw_max
-@inline get_upper_bw(bc :: BandColumn, k :: Int) = bc.bws[1,k]
-@inline get_middle_bw(bc :: BandColumn, k :: Int) = bc.bws[2,k]
-@inline get_lower_bw(bc :: BandColumn, k :: Int) = bc.bws[3,k]
-@inline get_first_super(bc :: BandColumn, k :: Int) = bc.bws[4,k]
+@inline get_m_els(bc::BandColumn) = bc.m_els
+@inline get_m(bc::BandColumn) = bc.m
+@inline get_n(bc::BandColumn) = bc.n
+@inline get_offset_all(bc::BandColumn) = bc.offset_all
+@inline get_upper_bw_max(bc::BandColumn) = bc.upper_bw_max
+@inline get_upper_bw(bc::BandColumn, k::Int) = bc.bws[1, k]
+@inline get_middle_bw(bc::BandColumn, k::Int) = bc.bws[2, k]
+@inline get_lower_bw(bc::BandColumn, k::Int) = bc.bws[3, k]
+@inline get_first_super(bc::BandColumn, k::Int) = bc.bws[4, k]
 
-@inline function extend_upper_band(bc :: BandColumn, j :: Int, k :: Int)
-    bc.bws[1,k]=max(bc.bws[1,k], bc.bws[4,k]-j+1)
+@inline function extend_upper_band(bc::BandColumn, j::Int, k::Int)
+  bc.bws[1, k] = max(bc.bws[1, k], bc.bws[4, k] - j + 1)
 end
 
-@inline function extend_lower_band(bc :: BandColumn, j :: Int, k :: Int)
-    bc.bws[3,k]=max(bc.bws[3,k], j - bc.bws[4,k] - bc.bws[2,k])
+@inline function extend_lower_band(bc::BandColumn, j::Int, k::Int)
+  bc.bws[3, k] = max(bc.bws[3, k], j - bc.bws[4, k] - bc.bws[2, k])
 end
 
-@propagate_inbounds @inline get_band_element(bc :: BandColumn,
-                                             j :: Int, k :: Int) =
-    bc.band_elements[j,k]
+@propagate_inbounds @inline get_band_element(bc::BandColumn, j::Int, k::Int) =
+  bc.band_elements[j, k]
 
-@propagate_inbounds @inline function set_band_element!(bc :: BandColumn{E,AE,AI}, x :: E,
-                      j :: Int, k :: Int) where {E,AE,AI}
-    bc.band_elements[j,k] = x
+@propagate_inbounds @inline function set_band_element!(
+  bc::BandColumn{E,AE,AI},
+  x::E,
+  j::Int,
+  k::Int,
+) where {E,AE,AI}
+  bc.band_elements[j, k] = x
 end
 
-@inline size(bc :: BandColumn) = (bc.m, bc.n)
+@inline size(bc::BandColumn) = (bc.m, bc.n)
 
 ##
 ## Generic functions defined for AbstractBandColumn
 ##
 
-@inline get_offset(bc :: AbstractBandColumn, k :: Int) =
-    get_offset_all(bc) + get_first_super(bc,k) - get_upper_bw_max(bc)
+@inline get_offset(bc::AbstractBandColumn, k::Int) =
+  get_offset_all(bc) + get_first_super(bc, k) - get_upper_bw_max(bc)
 
-@inline function check_bc_storage_bounds( ::Type{Bool},
-                                           bc :: AbstractBandColumn,
-                                           j :: Int,
-                                           k :: Int )
-    j1 = j - get_offset(bc, k)
-    j1 >= 1 && j1 <= get_m_els(bc)
+@inline function check_bc_storage_bounds(
+  ::Type{Bool},
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  j1 = j - get_offset(bc, k)
+  j1 >= 1 && j1 <= get_m_els(bc)
 end
 
-@inline check_bc_storage_bounds( bc :: AbstractBandColumn, j :: Int,
-                                  k :: Int ) =
-    check_bc_storage_bounds(Bool, bc, j, k) || throw(NoStorageForIndex(bc, (j,k)))
+@inline check_bc_storage_bounds(bc::AbstractBandColumn, j::Int, k::Int) =
+  check_bc_storage_bounds(Bool, bc, j, k) ||
+  throw(NoStorageForIndex(bc, (j, k)))
 
-@inline first_storage_el(bc :: AbstractBandColumn, k) =
-    get_upper_bw_max(bc) - get_upper_bw(bc,k) + 1
+@inline first_storage_el(bc::AbstractBandColumn, k) =
+  get_upper_bw_max(bc) - get_upper_bw(bc, k) + 1
 
-@inline last_storage_el(bc :: AbstractBandColumn, k) =
-    get_upper_bw_max(bc) + get_middle_bw(bc,k) + get_lower_bw(bc,k)
+@inline last_storage_el(bc::AbstractBandColumn, k) =
+  get_upper_bw_max(bc) + get_middle_bw(bc, k) + get_lower_bw(bc, k)
 
-@inline function bc_index_stored( bc :: AbstractBandColumn,
-                                   j :: Int,
-                                   k :: Int )
-    j1 = j - get_offset(bc, k)
-    j1 >= first_storage_el(bc,k) && j1 <= last_storage_el(bc,k)
+@inline first_column_el(bc::AbstractBandColumn, k) =
+  first_storage_el(bc,k) + get_offset(bc,k)
+
+@inline last_column_el(bc::AbstractBandColumn, k) =
+  last_storage_el(bc,k) + get_offset(bc,k)
+
+@inline function column_els_range(bc::AbstractBandColumn, k)
+  (m,_) = size(bc)
+  intersect(1:m, first_column_el(bc,k):last_column_el(bc,k))
 end
 
-##
-## Print and show.
-##
-
-function show(io::IO,
-              bc :: BandColumn)
-    print(io, typeof(bc),"(", bc.m, ", ", bc.n, ", ", bc.m_els, ", ",
-          bc.offset_all, ", ", bc.upper_bw_max, ", ", bc.middle_bw_max,
-          ", ", bc.lower_bw_max, ", ", bc.bws, "): ")
-    for j=1:bc.m
-        println()
-        for k=1:bc.n
-            if check_bc_storage_bounds(Bool, bc, j, k)
-                if bc_index_stored(bc,j,k)
-                    @printf("%10.2e", bc[j,k])
-                else
-                    print("         O")
-                end
-            else
-                print("         N")
-            end
-        end
-    end
+@inline function storage_els_range(bc::AbstractBandColumn, k)
+  intersect(1:get_m_els(bc), first_storage_el(bc,k):last_storage_el(bc,k))
 end
 
-show(io :: IO, ::MIME"text/plain",
-     bc :: BandColumn) = show(io, bc)
 
-print(io::IO,
-      bc :: BandColumn) =
-          print(io, typeof(bc),"(", bc.m, ", ", bc.n, ", ", bc.m_els, ", ",
-                bc.offset_all, ", ", bc.upper_bw_max, ", ", bc.middle_bw_max,
-                ", ", bc.lower_bw_max, ", ", bc.bws, ", ", bc.band_elements,")")
-
-print(io :: IO, ::MIME"text/plain",
-      bc :: BandColumn) = print(io, bc)
+@inline function bc_index_stored(bc::AbstractBandColumn, j::Int, k::Int)
+  j1 = j - get_offset(bc, k)
+  j1 >= first_storage_el(bc, k) && j1 <= last_storage_el(bc, k)
+end
 
 ##
 ## Index operations
 ##
 
 # (BandColumn{Float64, Array{Float64,2}, Array{Int}}, Int, Int))
-@inline function getindex( bc :: AbstractBandColumn{E,AE,AI}, j :: Int,
-                           k :: Int) where {E,AE,AI}
+@inline function getindex(
+  bc::AbstractBandColumn{E,AE,AI},
+  j::Int,
+  k::Int,
+) where {E,AE,AI}
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+    bc_index_stored(bc, j, k) || return zero(E)
+  end
+  j1 = j - get_offset(bc, k)
+  @inbounds get_band_element(bc, j1, k)
+end
+
+@inline function setindex!(
+  bc::AbstractBandColumn{E,AE,AI},
+  x::E,
+  j::Int,
+  k::Int,
+) where {E,AE,AI}
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+  end
+  extend_upper_band(bc, j, k)
+  extend_lower_band(bc, j, k)
+  j1 = j - get_offset(bc, k)
+  @inbounds set_band_element!(bc, x, j1, k)
+end
+
+@inline function view(bc::AbstractBandColumn, I::Vararg{Any,N}) where {N}
+  viewbc(bc, I)
+end
+
+@inline function viewbc(
+  bc::BandColumn,
+  i::Tuple{UnitRange{Int},UnitRange{Int}},
+)
+  (rows, cols) = i
+  @when let BandColumn(;
+      m,
+      n,
+      m_els,
+      offset_all = oall,
+      upper_bw_max = ubw_max,
+      middle_bw_max = mbw_max,
+      lower_bw_max = lbw_max,
+      bws,
+      band_elements = els,
+    ) = bc,
+    UnitRange(j0, j1) = rows,
+    UnitRange(k0, k1) = cols
+
     @boundscheck begin
-        checkbounds(bc, j, k)
-        check_bc_storage_bounds(bc, j, k)
-        bc_index_stored(bc,j,k) || return zero(E)
+      checkbounds(bc, j0, k0)
+      checkbounds(bc, j1, k1)
     end
-    j1 = j - get_offset(bc,k)
-    @inbounds get_band_element(bc,j1, k)
+    BandColumn(
+      max(j1 - j0 + 1, 0),
+      max(k1 - k0 + 1, 0),
+      m_els,
+      oall - j0 + 1,
+      ubw_max,
+      mbw_max,
+      lbw_max,
+      view(bws, :, cols),
+      view(els, :, cols),
+    )
+    @otherwise
+    throw(MatchError)
+  end
 end
 
-@inline function setindex!( bc :: AbstractBandColumn{E,AE,AI}, x :: E,
-                            j :: Int, k :: Int) where {E,AE,AI}
+@inline function getindex(
+  bc::BandColumn,
+  rows::UnitRange{Int},
+  cols::UnitRange{Int},
+)
+
+  @when let BandColumn(;
+      m,
+      n,
+      m_els,
+      offset_all = oall,
+      upper_bw_max = ubw_max,
+      middle_bw_max = mbw_max,
+      lower_bw_max = lbw_max,
+      bws,
+      band_elements = els,
+    ) = bc,
+    UnitRange(j0, j1) = rows,
+    UnitRange(k0, k1) = cols
+
     @boundscheck begin
-        checkbounds(bc, j, k)
-        check_bc_storage_bounds(bc, j, k)
+      checkbounds(bc, j0, k0)
+      checkbounds(bc, j1, k1)
     end
-    extend_upper_band(bc,j,k)
-    extend_lower_band(bc,j,k)
-    j1 = j - get_offset(bc,k)
-    @inbounds set_band_element!(bc,x,j1, k)
+    BandColumn(
+      max(j1 - j0 + 1, 0),
+      max(k1 - k0 + 1, 0),
+      m_els,
+      oall - j0 + 1,
+      ubw_max,
+      mbw_max,
+      lbw_max,
+      bws[:, cols],
+      els[:, cols],
+    )
+    @otherwise
+    throw(MatchError)
+  end
 end
 
-@inline function view(bc :: BandColumn, rows :: UnitRange{Int},
-                      cols :: UnitRange{Int})
-    @when let BandColumn(;m, n, m_els, offset_all=oall, upper_bw_max=ubw_max,
-                         middle_bw_max=mbw_max, lower_bw_max=lbw_max, 
-                         bws, band_elements=els) = bc,
-              UnitRange(j0,j1) = rows,
-              UnitRange(k0,k1) = cols
-        @boundscheck begin
-            checkbounds(bc,j0,k0)
-            checkbounds(bc,j1,k1)
-        end
-        BandColumn(max(j1-j0+1,0), max(k1-k0+1,0), m_els, oall-j0+1,
-                          ubw_max, mbw_max, lbw_max, view(bws,:,cols),
-                          view(els,:,cols))
-        @otherwise
-        throw(MatchError)
-    end
-end    
-                        
-@inline function getindex(bc :: BandColumn, rows :: UnitRange{Int},
-                          cols :: UnitRange{Int})
+@inline getindex(bc::AbstractBandColumn, ::Colon, cols::UnitRange{Int}) =
+  getindex(bc, 1:get_m(bc), cols)
 
-    @when let BandColumn(;m, n, m_els, offset_all=oall, upper_bw_max=ubw_max,
-                                middle_bw_max=mbw_max, lower_bw_max=lbw_max, 
-                                bws, band_elements=els) = bc,
-              UnitRange(j0,j1) = rows,
-              UnitRange(k0,k1) = cols
-        @boundscheck begin
-            checkbounds(bc,j0,k0)
-            checkbounds(bc,j1,k1)
-        end
-        BandColumn(max(j1-j0+1,0), max(k1-k0+1,0), m_els, oall-j0+1,
-                          ubw_max, mbw_max, lbw_max, bws[:,cols], els[:,cols])
-        @otherwise
-        throw(MatchError)
-    end
+@inline getindex(bc::AbstractBandColumn, rows::UnitRange{Int}, ::Colon) =
+  getindex(bc, rows, 1:get_n(bc))
+
+@inline getindex(bc::AbstractBandColumn, ::Colon, ::Colon) = bc
+
+@inline function viewbc(
+  bc::AbstractBandColumn,
+  i::Tuple{Colon,UnitRange{Int}}
+)
+  (_, cols) = i
+  viewbc(bc, (1:get_m(bc), cols))
 end
 
-@inline getindex(bc :: AbstractBandColumn, ::Colon, cols :: UnitRange{Int}) =
-    getindex(bc,1:bc.m, cols)
+@inline function viewbc(bc::AbstractBandColumn, i::Tuple{UnitRange{Int},Colon})
+  (rows, _) = i
+  viewbc(bc, (rows, 1:get_n(bc)))
+end
 
-@inline getindex(bc :: AbstractBandColumn, rows :: UnitRange{Int}, ::Colon) =
-    getindex(bc,rows,1:bc.n)
+@inline function viewbc(bc::AbstractBandColumn, ::Tuple{Colon,Colon})
+  viewbc(bc, (1:get_m(bc), 1:get_n(bc)))
+end
 
-@inline getindex(bc :: AbstractBandColumn, ::Colon, ::Colon) = bc
+function Matrix(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+  (m, n) = size(bc)
+  a = zeros(E, m, n)
+  for k = 1:n
+    for j = column_els_range(bc,k)
+      a[j, k] = bc[j, k]
+    end
+  end
+  a
+end
 
-@inline view(bc :: AbstractBandColumn, ::Colon, cols :: UnitRange{Int}) =
-    view(bc,1:bc.m, cols)
+# TODO: This should probably return CartesianIndices.
+function eachindex(bc::AbstractBandColumn)
+  (_, n) = size(bc)
+  (CartesianIndex(j, k) for k = 1:n for j ∈ column_els_range(bc, k))
+end
 
-@inline view(bc :: AbstractBandColumn, rows :: UnitRange{Int}, ::Colon) =
-    view(bc,rows,1:bc.n)
+function get_elements(bc::AbstractBandColumn)
+  (_, n) = size(bc)
+  (bc[j, k] for k = 1:n for j ∈ column_els_range(bc, k))
+end
 
-@inline view(bc :: AbstractBandColumn, ::Colon, ::Colon) = bc
+# Copying
+
+function copy(bc::BandColumn)
+  @when let BandColumn(
+      m,
+      n,
+      m_els,
+      oall,
+      ubw_max,
+      mbw_max,
+      lbw_max,
+      bws,
+      bels,
+    ) = bc
+    BandColumn(
+      m,
+      n,
+      m_els,
+      oall,
+      ubw_max,
+      mbw_max,
+      lbw_max,
+      copy(bws),
+      copy(bels),
+    )
+    @otherwise
+    throw(MatchError)
+  end
+end
+
+##
+## Print and show.
+##
+
+function show(io::IO, bc::BandColumn{E,AE,AI}) where {E,AE,AI}
+  print(
+    io,
+    typeof(bc),
+    "(",
+    bc.m,
+    ", ",
+    bc.n,
+    ", ",
+    bc.m_els,
+    ", ",
+    bc.offset_all,
+    ", ",
+    bc.upper_bw_max,
+    ", ",
+    bc.middle_bw_max,
+    ", ",
+    bc.lower_bw_max,
+    ", ",
+    bc.bws,
+    "): ",
+  )
+  for j ∈ 1:(bc.m)
+    println()
+    for k ∈ 1:(bc.n)
+      if check_bc_storage_bounds(Bool, bc, j, k)
+        if bc_index_stored(bc, j, k)
+          @printf("%10.2e", bc[j, k])
+        else
+          print("         O")
+        end
+      else
+        print("         N")
+      end
+    end
+  end
+end
+
+show(io::IO, ::MIME"text/plain", bc::BandColumn) = show(io, bc)
+
+print(io::IO, bc::BandColumn) = print(
+    io,
+    typeof(bc),
+    "(",
+    bc.m,
+    ", ",
+    bc.n,
+    ", ",
+    bc.m_els,
+    ", ",
+    bc.offset_all,
+    ", ",
+    bc.upper_bw_max,
+    ", ",
+    bc.middle_bw_max,
+    ", ",
+    bc.lower_bw_max,
+    ", ",
+    bc.bws,
+    ", ",
+    bc.band_elements,
+    ")",
+)
+
+print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
 
 end # module

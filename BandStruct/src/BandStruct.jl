@@ -1,10 +1,10 @@
 module BandStruct
 
 include("BandColumnMatrices.jl")
-using BandStruct.BandColumnMatrices
+using .BandColumnMatrices
 
 include("LeadingBandColumnMatrices.jl")
-using BandStruct.LeadingBandColumnMatrices
+using .LeadingBandColumnMatrices
 
 
 end # module
