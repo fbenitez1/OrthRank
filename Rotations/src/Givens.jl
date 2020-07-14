@@ -235,7 +235,7 @@ end
 Apply a rotation, acting in-place to modify a.
 
 """
-@inbounds @inline function ⊛(
+@inline function ⊛(
   r::Rot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -244,7 +244,7 @@ Apply a rotation, acting in-place to modify a.
   (_, n) = size(a)
   j1 = r.j1
   j2 = r.j2
-  for k = 1:n
+  @inbounds for k = 1:n
     tmp = a[j1, k]
     a[j1, k] = c * tmp + conj(s) * a[j2, k]
     a[j2, k] = -s * tmp + c * a[j2, k]
@@ -252,7 +252,7 @@ Apply a rotation, acting in-place to modify a.
   nothing
 end
 
-@inbounds @inline function ⊛(
+@inline function ⊛(
   a::AbstractArray{T,2},
   r::Rot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -261,7 +261,7 @@ end
   (m, _) = size(a)
   k1 = r.j1
   k2 = r.j2
-  for j = 1:m
+  @inbounds for j = 1:m
     tmp = a[j, k1]
     a[j, k1] = c * tmp - s * a[j, k2]
     a[j, k2] = conj(s) * tmp + c * a[j, k2]
@@ -269,7 +269,7 @@ end
   nothing
 end
 
-@inbounds @inline function ⊛(
+@inline function ⊛(
   r::AdjRot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -277,7 +277,7 @@ end
   s = r.s
   (_, n) = size(a)
   j = r.j
-  for k = 1:n
+  @inbounds for k = 1:n
     tmp = a[j, k]
     a[j, k] = c * tmp + conj(s) * a[j + 1, k]
     a[j + 1, k] = -s * tmp + c * a[j + 1, k]
@@ -285,7 +285,7 @@ end
   nothing
 end
 
-@inbounds @inline function ⊛(
+@inline function ⊛(
   a::AbstractArray{T,2},
   r::AdjRot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -306,7 +306,7 @@ end
 Apply an inverse rotation, acting in-place to modify a.
 
 """
-@inbounds @inline function ⊘(
+@inline function ⊘(
   r::Rot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -315,7 +315,7 @@ Apply an inverse rotation, acting in-place to modify a.
   (_, n) = size(a)
   j1 = r.j1
   j2 = r.j2
-  for k = 1:n
+  @inbounds for k = 1:n
     tmp = a[j1, k]
     a[j1, k] = c * tmp - conj(s) * a[j2, k]
     a[j2, k] = s * tmp + c * a[j2, k]
@@ -323,7 +323,7 @@ Apply an inverse rotation, acting in-place to modify a.
   nothing
 end
 
-@inbounds @inline function ⊘(
+@inline function ⊘(
   a::AbstractArray{T,2},
   r::Rot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -332,7 +332,7 @@ end
   (m, _) = size(a)
   k1 = r.j1
   k2 = r.j2
-  for j = 1:m
+  @inbounds for j = 1:m
     tmp = a[j, k1]
     a[j, k1] = c * tmp + s * a[j, k2]
     a[j, k2] = -conj(s) * tmp + c * a[j, k2]
@@ -340,7 +340,7 @@ end
   nothing
 end
 
-@inbounds @inline function ⊘(
+@inline function ⊘(
   r::AdjRot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -348,7 +348,7 @@ end
   s = r.s
   (_, n) = size(a)
   j = r.j
-  for k = 1:n
+  @inbounds for k = 1:n
     tmp = a[j, k]
     a[j, k] = c * tmp - conj(s) * a[j + 1, k]
     a[j + 1, k] = s * tmp + c * a[j + 1, k]
@@ -356,7 +356,7 @@ end
   nothing
 end
 
-@inbounds @inline function ⊘(
+@inline function ⊘(
   a::AbstractArray{T,2},
   r::AdjRot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -364,7 +364,7 @@ end
   s = r.s
   (m, _) = size(a)
   k = r.j
-  for j = 1:m
+  @inbounds for j = 1:m
     tmp = a[j, k]
     a[j, k] = c * tmp + s * a[j, k + 1]
     a[j, k + 1] = -conj(s) * tmp + c * a[j, k + 1]
