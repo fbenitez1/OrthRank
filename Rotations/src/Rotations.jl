@@ -1,6 +1,6 @@
 module Rotations
 
-export ⊛, Rot, lgivens, ⊘
+export ⊛, Rot, lgivens, lgivens1, rgivens, rgivens1, ⊘
 
 include("Givens.jl")
 using .Givens
