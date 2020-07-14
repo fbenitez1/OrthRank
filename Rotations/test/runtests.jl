@@ -19,6 +19,11 @@ function show_result(testname, err, tol)
 end
 
 tol = 1e-15
+
+println()
+println("Nonadjacent rotations.")
+println()
+
 A_rlz = randn(Float64, 3, 3)
 r_rlz = lgivens(A_rlz[1, 1], A_rlz[3, 1], 1, 3)
 A1_rlz = copy(A_rlz)
@@ -101,3 +106,96 @@ show_result("Complex right zero test (first element)", A1_crz1[1, 1], tol)
 A1_crz1 ⊘ r_crz1
 err_crz1 = norm(A1_crz1 - A_crz1, Inf) / norm(A_crz1, Inf)
 show_result("Complex right inverse (first element)", err_crz1, tol)
+
+####
+## Adjacent Rotations
+####
+
+println()
+println("Adjacent rotations.")
+println()
+
+
+tol = 1e-15
+A_ralz = randn(Float64, 3, 3)
+r_ralz = lgivens(A_ralz[1, 1], A_ralz[2, 1], 1)
+A1_ralz = copy(A_ralz)
+r_ralz ⊘ A1_ralz
+show_result("Real left zero test", A1_ralz[2, 1], tol)
+
+r_ralz ⊛ A1_ralz
+err_ralz = norm(A1_ralz - A_ralz, Inf) / norm(A_ralz, Inf)
+show_result("Real left inverse", err_ralz, tol)
+
+A_rarz = randn(Float64, 3, 3)
+r_rarz = rgivens(A_rarz[1, 1], A_rarz[1, 2], 1)
+A1_rarz = copy(A_rarz)
+A1_rarz ⊛ r_rarz
+show_result("Real right zero test", A1_rarz[1, 2], tol)
+
+A1_rarz ⊘ r_rarz
+err_rarz = norm(A1_rarz - A_rarz, Inf) / norm(A_rarz, Inf)
+show_result("Real right inverse", err_rarz, tol)
+
+A_ralz1 = randn(Float64, 3, 3)
+r_ralz1 = lgivens1(A_ralz1[1, 1], A_ralz1[2, 1], 1)
+A1_ralz1 = copy(A_ralz1)
+r_ralz1 ⊘ A1_ralz1
+show_result("Real left zero test (first element)", A1_ralz1[1, 1], tol)
+
+r_ralz1 ⊛ A1_ralz1
+err_ralz1 = norm(A1_ralz1 - A_ralz1, Inf) / norm(A_ralz1, Inf)
+show_result("Real left inverse (first element)", err_ralz1, tol)
+
+A_rarz1 = randn(Float64, 3, 3)
+r_rarz1 = rgivens1(A_rarz1[1, 1], A_rarz1[1, 2], 1)
+A1_rarz1 = copy(A_rarz1)
+A1_rarz1 ⊛ r_rarz1
+show_result("Real right zero test (first element)", A1_rarz1[1, 1], tol)
+
+A1_rarz1 ⊘ r_rarz1
+err_rarz1 = norm(A1_rarz1 - A_rarz1, Inf) / norm(A_rarz1, Inf)
+show_result("Real right inverse (first element)", err_rarz1, tol)
+
+
+# Complex tests 
+
+A_calz = randn(Complex{Float64}, 3, 3)
+r_calz = lgivens(A_calz[1, 1], A_calz[2, 1], 1)
+A1_calz = copy(A_calz)
+r_calz ⊘ A1_calz
+show_result("Complex left zero test", A1_calz[2, 1], tol)
+
+r_calz ⊛ A1_calz
+err_calz = norm(A1_calz - A_calz, Inf) / norm(A_calz, Inf)
+show_result("Complex left inverse", err_calz, tol)
+
+A_carz = randn(Complex{Float64}, 3, 3)
+r_carz = rgivens(A_carz[1, 1], A_carz[1, 2], 1)
+A1_carz = copy(A_carz)
+A1_carz ⊛ r_carz
+show_result("Complex right zero test", A1_carz[1, 2], tol)
+
+A1_carz ⊘ r_carz
+err_carz = norm(A1_carz - A_carz, Inf) / norm(A_carz, Inf)
+show_result("Complex right inverse", err_carz, tol)
+
+A_calz1 = randn(Complex{Float64}, 3, 3)
+r_calz1 = lgivens1(A_calz1[1, 1], A_calz1[2, 1], 1)
+A1_calz1 = copy(A_calz1)
+r_calz1 ⊘ A1_calz1
+show_result("Complex left zero test (first element)", A1_calz1[1, 1], tol)
+
+r_calz1 ⊛ A1_calz1
+err_calz1 = norm(A1_calz1 - A_calz1, Inf) / norm(A_calz1, Inf)
+show_result("Complex left inverse (first element)", err_calz1, tol)
+
+A_carz1 = randn(Complex{Float64}, 3, 3)
+r_carz1 = rgivens1(A_carz1[1, 1], A_carz1[1, 2], 1)
+A1_carz1 = copy(A_carz1)
+A1_carz1 ⊛ r_carz1
+show_result("Complex right zero test (first element)", A1_carz1[1, 1], tol)
+
+A1_carz1 ⊘ r_carz1
+err_carz1 = norm(A1_carz1 - A_carz1, Inf) / norm(A_carz1, Inf)
+show_result("Complex right inverse (first element)", err_carz1, tol)
