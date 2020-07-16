@@ -1,10 +1,12 @@
 module BandStruct
 
+export BandColumnMatrices, LeadingBandColumnMatrices
+
 include("BandColumnMatrices.jl")
-using .BandColumnMatrices
+using BandStruct.BandColumnMatrices
 
 include("LeadingBandColumnMatrices.jl")
-using .LeadingBandColumnMatrices
+using BandStruct.LeadingBandColumnMatrices
 
 
 end # module

@@ -4,4 +4,5 @@ authors = ["mas "]
 version = "0.1.0"
 
 [deps]
+BandStruct = "839fd882-bd41-41b1-9826-d7cfd97ab335"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
