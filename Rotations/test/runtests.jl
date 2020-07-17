@@ -96,4 +96,3 @@ catch e
   end
 end
 show_bool_result("NoStorageForIndex rotation test", res)
-

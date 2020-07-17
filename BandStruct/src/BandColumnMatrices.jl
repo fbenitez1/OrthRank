@@ -49,10 +49,12 @@ export BandColumn,
   set_band_element!,
   extend_lower_band,
   extend_upper_band,
+  extend_band,
   get_elements,
   viewbc,
   hull,
-  zero_to
+  zero_to,
+  setindex_noext!
 
 "MatchError: An exception for pattern match errors in MLStyle."
 struct MatchError <: Exception end
@@ -127,7 +129,11 @@ end
 @propagate_inbounds @inline get_first_super(bc::BandColumn, k::Int) =
   bc.bws[4, k]
 
-@propagate_inbounds @inline function extend_upper_band(bc::BandColumn, j::Int, k::Int)
+@propagate_inbounds @inline function extend_upper_band(
+  bc::BandColumn,
+  j::Int,
+  k::Int,
+)
   bc.bws[1, k] = max(bc.bws[1, k], bc.bws[4, k] - j + 1)
 end
 
@@ -138,6 +144,23 @@ end
 )
   bc.bws[3, k] = max(bc.bws[3, k], j - bc.bws[4, k] - bc.bws[2, k])
 end
+
+@propagate_inbounds @inline function extend_band(bc::BandColumn, j::Int, k::Int)
+  extend_upper_band(bc, j, k)
+  extend_lower_band(bc, j, k)
+end
+
+@propagate_inbounds @inline function extend_band(
+  bc::BandColumn,
+  jrange::UnitRange{Int},
+  k::Int,
+)
+  if !isempty(jrange)
+    extend_upper_band(bc, jrange.start, k)
+    extend_lower_band(bc, jrange.stop, k)
+  end
+end
+
 
 @propagate_inbounds @inline get_band_element(bc::BandColumn, j::Int, k::Int) =
   bc.band_elements[j, k]
@@ -289,6 +312,26 @@ end
   end
   extend_upper_band(bc, j, k)
   extend_lower_band(bc, j, k)
+  j1 = j - get_offset(bc, k)
+  @inbounds set_band_element!(bc, x, j1, k)
+end
+
+"""
+
+Setindex without extending bandwidth.  This is useful in loops
+where the bandwidth can be extended outside the loop.
+
+"""
+@propagate_inbounds @inline function setindex_noext!(
+  bc::AbstractBandColumn{E,AE,AI},
+  x::E,
+  j::Int,
+  k::Int,
+) where {E,AE,AI}
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+  end
   j1 = j - get_offset(bc, k)
   @inbounds set_band_element!(bc, x, j1, k)
 end
