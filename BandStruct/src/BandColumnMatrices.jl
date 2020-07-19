@@ -22,39 +22,49 @@ export BandColumn,
   MatchError,
   first_storage_el,
   last_storage_el,
-  first_column_el,
   storage_els_range,
-  els_range,
-  upper_els_range,
-  middle_els_range,
-  lower_els_range,
   upper_storage_els_range,
   middle_storage_els_range,
   lower_storage_els_range,
-  last_column_el,
+  first_el,
+  last_el,
+  els_range,
+  storable_els_range,
+  upper_els_range,
+  middle_els_range,
+  lower_els_range,
   NoStorageForIndex,
-  get_offset,
+  storage_offset,
   bc_index_stored,
   check_bc_storage_bounds,
   get_m_els,
   get_m,
   get_n,
-  get_offset_all,
+  get_roffset,
+  get_coffset,
+  get_rbws,
+  get_cbws,
   get_upper_bw_max,
-  get_upper_bw,
-  get_middle_bw,
-  get_lower_bw,
-  get_first_super,
+  upper_bw,
+  middle_bw,
+  lower_bw,
+  first_super,
+  first_sub,
   get_band_element,
   set_band_element!,
-  extend_lower_band,
-  extend_upper_band,
-  extend_band,
+  extend_lower_band!,
+  extend_upper_band!,
+  extend_band!,
   get_elements,
   viewbc,
   hull,
   zero_to,
-  setindex_noext!
+  setindex_noext!,
+  compute_rbws!,
+  compute_rbws,
+  validate_rbws,
+  wilk,
+  Wilk
 
 "MatchError: An exception for pattern match errors in MLStyle."
 struct MatchError <: Exception end
@@ -84,16 +94,12 @@ abstract type AbstractBandColumn{E,AE,AI} <: AbstractArray{E,2} end
 
 """
 
-A simplified band structure that does not include leading blocks but
-does include a uniform offset that can be changed to give different
-submatrices.  This can be used to represent submatrices of leading and
-trailing band structures.
+    BandColumn
 
-The method show for this structure represents elements for which there
-is no storage with `N`.  Elements that have available storage but are
-not actually stored are represented by `O`.  These are elements that
-are outside the current bandwidth but not outside the maximum
-bandwidth.
+A simplified band column structure that does not include leading
+blocks but does include uniform offsets that can be changed to give
+different submatrices.  This can be used to represent submatrices of a
+LeadingBandColumn matrix.
 
 """
 struct BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
@@ -101,11 +107,13 @@ struct BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
   m::Int # Matrix number of rows.
   n::Int # Matrix and elements number of columns.
   m_els::Int # Elements number of rows.
-  offset_all::Int # uniform offset.
+  roffset::Int # uniform column offset.
+  coffset::Int # uniform row offset.
   upper_bw_max::Int # maximum upper bandwidth.
   middle_bw_max::Int # maximum middle bandwidth.
   lower_bw_max::Int # maximum lower bandwidth.
-  bws::AI # Bandwidths and first superdiagonal in each column.
+  rbws::AI # Row bandwidths and first subdiagonal in each row.
+  cbws::AI # Column bandwidths and first superdiagonal in each column.
   band_elements::AE
 end
 
@@ -118,48 +126,148 @@ end
 ##
 
 @inline get_m_els(bc::BandColumn) = bc.m_els
+
 @inline get_m(bc::BandColumn) = bc.m
 @inline get_n(bc::BandColumn) = bc.n
-@inline get_offset_all(bc::BandColumn) = bc.offset_all
+
+@inline get_roffset(bc::BandColumn) = bc.roffset
+@inline get_coffset(bc::BandColumn) = bc.coffset
+
 @inline get_upper_bw_max(bc::BandColumn) = bc.upper_bw_max
-@propagate_inbounds @inline get_upper_bw(bc::BandColumn, k::Int) =
-  bc.bws[1, k]
-@propagate_inbounds @inline get_middle_bw(bc::BandColumn, k::Int) = bc.bws[2, k]
-@propagate_inbounds @inline get_lower_bw(bc::BandColumn, k::Int) = bc.bws[3, k]
-@propagate_inbounds @inline get_first_super(bc::BandColumn, k::Int) =
-  bc.bws[4, k]
+@inline get_rbws(bc::BandColumn) = bc.rbws
+@inline get_cbws(bc::BandColumn) = bc.cbws
 
-@propagate_inbounds @inline function extend_upper_band(
-  bc::BandColumn,
+@propagate_inbounds @inline upper_bw(bc::BandColumn, ::Colon, k::Int) =
+  bc.cbws[1, k]
+@propagate_inbounds @inline middle_bw(bc::BandColumn, ::Colon, k::Int) =
+  bc.cbws[2, k]
+@propagate_inbounds @inline lower_bw(bc::BandColumn, ::Colon, k::Int) =
+  bc.cbws[3, k]
+@propagate_inbounds @inline upper_bw(bc::BandColumn, j::Int, ::Colon) =
+  bc.rbws[j, 3]
+@propagate_inbounds @inline middle_bw(bc::BandColumn, j::Int, ::Colon) =
+  bc.rbws[j, 2]
+@propagate_inbounds @inline lower_bw(bc::BandColumn, j::Int, ::Colon) =
+  bc.rbws[j, 1]
+
+"""
+
+    first_super(bc, js, ks)
+
+* If js::Colon and ks::Int, give the first superdiagonal in columns ks.
+
+* If js::Int and ks::Colon, give the first superdiagonal in row js.
+
+Superdiagonals are numbered starting from the middle of the band
+structure.
+
+"""
+@propagate_inbounds @inline first_super(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = get_cbws(bc)[4, k] - get_roffset(bc)
+
+@propagate_inbounds @inline first_super(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+) = first_sub(bc, j, :) + middle_bw(bc, j, :) + 1
+
+"""
+
+  first_sub(bc, js, ks)
+
+* If js::Colon and ks::Int, give the first subdiagonal in columns ks.
+
+* If js::Int and ks::Colon, give the first subdiagonal in row js.
+
+Sudiagonals are numbered starting from the middle of the band
+structure.
+
+"""
+@propagate_inbounds @inline first_sub(bc::AbstractBandColumn, j::Int, ::Colon) =
+  get_rbws(bc)[j, 4] - get_coffset(bc)
+
+@propagate_inbounds @inline first_sub(bc::AbstractBandColumn, ::Colon, k::Int) =
+  first_super(bc, :, k) + middle_bw(bc, :, k) + 1
+
+@propagate_inbounds @inline function extend_upper_band!(
+  bc::AbstractBandColumn,
   j::Int,
   k::Int,
 )
-  bc.bws[1, k] = max(bc.bws[1, k], bc.bws[4, k] - j + 1)
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+  end
+  cbws = get_cbws(bc)
+  rbws = get_rbws(bc)
+  j1 = first_el(bc, :, k) - 1
+  k0 = last_el(bc, j, :) + 1
+  for l = j:j1
+    rbws[l, 3] = max(rbws[l, 3], k - first_super(bc, l, :) + 1)
+  end
+  for l = k0:k
+    cbws[1, l] = max(cbws[1, l], first_super(bc, :, l) - j + 1)
+  end
+  nothing
 end
 
-@propagate_inbounds @inline function extend_lower_band(
-  bc::BandColumn,
+@propagate_inbounds @inline function extend_lower_band!(
+  bc::AbstractBandColumn,
   j::Int,
   k::Int,
 )
-  bc.bws[3, k] = max(bc.bws[3, k], j - bc.bws[4, k] - bc.bws[2, k])
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+  end
+  cbws = get_cbws(bc)
+  rbws = get_rbws(bc)
+  j0 = last_el(bc, :, k) + 1
+  k1 = first_el(bc,j,:) - 1
+  for l ∈ k:k1
+    cbws[3, l] = max(cbws[3, l], j - first_sub(bc, :, l) + 1)
+  end
+  for l ∈ j0:j
+    println(l)
+    rbws[l, 1] = max(rbws[l, 1], first_sub(bc, l, :) - k + 1)
+  end
+  nothing
 end
 
-@propagate_inbounds @inline function extend_band(bc::BandColumn, j::Int, k::Int)
-  extend_upper_band(bc, j, k)
-  extend_lower_band(bc, j, k)
+@propagate_inbounds @inline function extend_band!(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  extend_upper_band!(bc, j, k)
+  extend_lower_band!(bc, j, k)
 end
 
-@propagate_inbounds @inline function extend_band(
-  bc::BandColumn,
+@propagate_inbounds @inline function extend_band!(
+  bc::AbstractBandColumn,
   jrange::UnitRange{Int},
   k::Int,
 )
   if !isempty(jrange)
-    extend_upper_band(bc, jrange.start, k)
-    extend_lower_band(bc, jrange.stop, k)
+    extend_upper_band!(bc, jrange.start, k)
+    extend_lower_band!(bc, jrange.stop, k)
   end
 end
+
+@propagate_inbounds @inline function extend_band!(
+  bc::AbstractBandColumn,
+  j::Int,
+  krange::UnitRange{Int},
+)
+  if !isempty(krange)
+    extend_upper_band!(bc, j, krange.start)
+    extend_lower_band!(bc, j, krange.stop)
+  end
+end
+
 
 
 @propagate_inbounds @inline get_band_element(bc::BandColumn, j::Int, k::Int) =
@@ -180,8 +288,58 @@ end
 ## Generic functions defined for AbstractBandColumn
 ##
 
-@propagate_inbounds @inline get_offset(bc::AbstractBandColumn, k::Int) =
-  get_offset_all(bc) + get_first_super(bc, k) - get_upper_bw_max(bc)
+"""
+
+Compute row bandwidths from column bandwidths.  Note that this
+does not fill in rbws[j,4], which is the first subdiagonal
+in row j.  That information should be obtained from leading block
+sizes in a LeadingBandColumn matrix.
+
+"""
+function compute_rbws!(
+  bc::AbstractBandColumn{E,AE,AI},
+  rbws::Array{Int,2},
+) where {E,AE,AI} 
+  (m, n) = size(bc)
+  rbws[:, 1:3] .= zero(Int)
+  roffs = get_roffset(bc)
+  for k ∈ n:-1:1
+    jrange = intersect(lower_els_range(bc, :, k) .+ roffs, 1:m)
+    rbws[jrange, 1] .+= 1
+    jrange = intersect(middle_els_range(bc, :, k) .+ roffs, 1:m)
+    rbws[jrange, 2] .+= 1
+    jrange = intersect(upper_els_range(bc, :, k) .+ roffs, 1:m)
+    rbws[jrange, 3] .+= 1
+  end
+end
+
+
+function compute_rbws!(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+  compute_rbws!(bc, bc.rbws)
+end
+
+function compute_rbws(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+  (m, n) = size(bc)
+  rbws1 = zeros(Int,m,3)
+  compute_rbws!(bc, rbws1)
+  rbws1
+end
+
+
+function validate_rbws(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+  (m, n) = size(bc)
+  rbws1 = zeros(Int,m,3)
+  compute_rbws!(bc, rbws1)
+  rbws1 == bc.rbws[:,1:3]
+end
+
+"""
+
+Compute a row offset to look into storage.
+
+"""
+@propagate_inbounds @inline storage_offset(bc::AbstractBandColumn, k::Int) =
+  first_super(bc, :, k) - get_upper_bw_max(bc)
 
 @inline function check_bc_storage_bounds(
   ::Type{Bool},
@@ -189,7 +347,7 @@ end
   j::Int,
   k::Int,
 )
-  j1 = j - get_offset(bc, k)
+  j1 = j - storage_offset(bc, k)
   j1 >= 1 && j1 <= get_m_els(bc)
 end
 
@@ -197,72 +355,141 @@ end
   check_bc_storage_bounds(Bool, bc, j, k) ||
   throw(NoStorageForIndex(bc, (j, k)))
 
-@propagate_inbounds @inline first_storage_el(bc::AbstractBandColumn, k) =
-  get_upper_bw_max(bc) - get_upper_bw(bc, k) + 1
+@propagate_inbounds @inline first_storage_el(bc::AbstractBandColumn, k::Int) =
+  get_upper_bw_max(bc) - upper_bw(bc, :, k) + 1
 
-@propagate_inbounds @inline last_storage_el(bc::AbstractBandColumn, k) =
-  get_upper_bw_max(bc) + get_middle_bw(bc, k) + get_lower_bw(bc, k)
+@propagate_inbounds @inline last_storage_el(bc::AbstractBandColumn, k::Int) =
+  get_upper_bw_max(bc) + middle_bw(bc, :, k) + lower_bw(bc, :, k)
 
-@propagate_inbounds @inline first_column_el(bc::AbstractBandColumn, k) =
-  first_storage_el(bc,k) + get_offset(bc,k)
+@propagate_inbounds @inline first_el(bc::AbstractBandColumn, ::Colon, k::Int) =
+  first_super(bc, :, k) - upper_bw(bc, :, k) + 1
 
-@propagate_inbounds @inline last_column_el(bc::AbstractBandColumn, k) =
-  last_storage_el(bc,k) + get_offset(bc,k)
+@propagate_inbounds @inline first_el(bc::AbstractBandColumn, j::Int, ::Colon) =
+  first_sub(bc, j, :) - lower_bw(bc, j, :) + 1
 
-@propagate_inbounds @inline function els_range(bc::AbstractBandColumn, k)
+@propagate_inbounds @inline last_el(bc::AbstractBandColumn, ::Colon, k::Int) =
+  first_super(bc, :, k) + middle_bw(bc, :, k) + lower_bw(bc, :, k)
+
+@propagate_inbounds @inline last_el(bc::AbstractBandColumn, j::Int, ::Colon) =
+  first_sub(bc, j, :) + middle_bw(bc, j, :) + upper_bw(bc, j, :)
+
+@propagate_inbounds @inline function els_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
   (m, _) = size(bc)
-  intersect(1:m, first_column_el(bc, k):last_column_el(bc, k))
+  intersect(1:m, first_el(bc, :, k):last_el(bc, :, k))
 end
 
-@propagate_inbounds @inline function upper_els_range(bc::AbstractBandColumn, k)
-  (m, _) = size(bc)
-  intersect(1:m, first_column_el(bc,k):get_first_super(bc,k))
+@propagate_inbounds @inline function els_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  (_, n) = size(bc)
+  intersect(1:n, first_el(bc, j, :):last_el(bc, j, :))
 end
 
-@propagate_inbounds @inline function middle_els_range(bc::AbstractBandColumn, k)
+@propagate_inbounds @inline function storable_els_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
   (m, _) = size(bc)
-  j = get_first_super(bc,k)
-  intersect(1:m, j+1:j+get_middle_bw(bc,k))
+  d = first_super(bc,:,k) - get_upper_bw_max(bc)
+  intersect(1:m, (d + 1):(d + get_m_els(bc)))
 end
 
-@propagate_inbounds @inline function lower_els_range(bc::AbstractBandColumn, k)
+@propagate_inbounds @inline function upper_els_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
   (m, _) = size(bc)
-  j=get_first_super(bc,k) + get_middle_bw(bc,k)
-  intersect(1:m, j+1:j+get_lower_bw(bc,k))
+  intersect(1:m, first_el(bc, :, k):first_super(bc, :, k))
+end
+
+@propagate_inbounds @inline function upper_els_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  (_, n) = size(bc)
+  intersect(1:n, first_super(bc, j, :):last_el(bc, j, :))
+end
+
+@propagate_inbounds @inline function middle_els_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  (m, _) = size(bc)
+  j = first_super(bc, :, k)
+  intersect(1:m, (j + 1):(j + middle_bw(bc, :, k)))
+end
+
+@propagate_inbounds @inline function middle_els_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  (_, n) = size(bc)
+  k = first_sub(bc, j, :)
+  intersect(1:n, (k + 1):(k + middle_bw(bc, j, :)))
+end
+
+@propagate_inbounds @inline function lower_els_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  (m, _) = size(bc)
+  j = first_super(bc, :, k) + middle_bw(bc, :, k)
+  intersect(1:m, (j + 1):(j + lower_bw(bc, :, k)))
+end
+
+@propagate_inbounds @inline function lower_els_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  (_, n) = size(bc)
+  intersect(1:n, first_el(bc, j, :):first_sub(bc,j,:))
 end
 
 @propagate_inbounds @inline function storage_els_range(
   bc::AbstractBandColumn,
-  k,
+  k::Int,
 )
   intersect(1:get_m_els(bc), first_storage_el(bc, k):last_storage_el(bc, k))
 end
 
 @propagate_inbounds @inline function upper_storage_els_range(
   bc::AbstractBandColumn,
-  k,
+  k::Int,
 )
   m = bc.m_els
   j = first_storage_el(bc, k)
-  intersect(1:m, j:(j + get_upper_bw(bc, k) - 1))
+  intersect(1:m, j:(j + upper_bw(bc, :, k) - 1))
 end
 
 @propagate_inbounds @inline function middle_storage_els_range(
   bc::AbstractBandColumn,
-  k,
+  k::Int,
 )
   m = bc.m_els
-  j = first_storage_el(bc, k) + get_upper_bw(bc, k)
-  intersect(1:m, j:(j + get_middle_bw(bc, k) - 1))
+  j = first_storage_el(bc, k) + upper_bw(bc, :, k)
+  intersect(1:m, j:(j + middle_bw(bc, :, k) - 1))
 end
 
 @propagate_inbounds @inline function lower_storage_els_range(
   bc::AbstractBandColumn,
-  k,
+  k::Int,
 )
   m = bc.m_els
-  j = first_storage_el(bc, k) + get_upper_bw(bc, k) + get_middle_bw(bc, k)
-  intersect(1:m, j:(j + get_lower_bw(bc, k) - 1))
+  j = first_storage_el(bc, k) + upper_bw(bc, :, k) + middle_bw(bc, :, k)
+  intersect(1:m, j:(j + lower_bw(bc, :, k) - 1))
 end
 
 @propagate_inbounds @inline function bc_index_stored(
@@ -270,7 +497,7 @@ end
   j::Int,
   k::Int,
 )
-  j1 = j - get_offset(bc, k)
+  j1 = j - storage_offset(bc, k)
   j1 >= first_storage_el(bc, k) && j1 <= last_storage_el(bc, k)
 end
 
@@ -296,7 +523,7 @@ end
     check_bc_storage_bounds(bc, j, k)
     bc_index_stored(bc, j, k) || return zero(E)
   end
-  j1 = j - get_offset(bc, k)
+  j1 = j - storage_offset(bc,k)
   @inbounds get_band_element(bc, j1, k)
 end
 
@@ -310,9 +537,9 @@ end
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
   end
-  extend_upper_band(bc, j, k)
-  extend_lower_band(bc, j, k)
-  j1 = j - get_offset(bc, k)
+  extend_upper_band!(bc, j, k)
+  extend_lower_band!(bc, j, k)
+  j1 = j - storage_offset(bc, k)
   @inbounds set_band_element!(bc, x, j1, k)
 end
 
@@ -332,7 +559,7 @@ where the bandwidth can be extended outside the loop.
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
   end
-  j1 = j - get_offset(bc, k)
+  j1 = j - storage_offset(bc, k)
   @inbounds set_band_element!(bc, x, j1, k)
 end
 
@@ -346,14 +573,14 @@ end
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
   end
-  j1 = j - get_offset(bc, k)
+  j1 = j - storage_offset(bc, k)
   @inbounds set_band_element!(bc, zero(E), j1, k)
-  rangek = els_range(bc,k)
-  if bc.bws[1,k]>0 && j == rangek.start
-    bc.bws[1,k] -= bc.bws[1,k]
+  rangek = els_range(bc, :, k)
+  if bc.cbws[1,k]>0 && j == rangek.start
+    bc.cbws[1,k] -= bc.cbws[1,k]
   end
-  if bc.bws[3,k]>0 && j == rangek.stop
-    bc.bws[3,k] -= bc.bws[3,k]
+  if bc.cbws[3,k]>0 && j == rangek.stop
+    bc.cbws[3,k] -= bc.cbws[3,k]
   end
 end
 
@@ -367,16 +594,18 @@ end
 )
   (rows, cols) = i
   @when let BandColumn(;
-      m,
-      n,
-      m_els,
-      offset_all = oall,
-      upper_bw_max = ubw_max,
-      middle_bw_max = mbw_max,
-      lower_bw_max = lbw_max,
-      bws,
-      band_elements = els,
-    ) = bc,
+                       m,
+                       n,
+                       m_els,
+                       roffset = roffs,
+                       coffset = coffs,
+                       upper_bw_max = ubw_max,
+                       middle_bw_max = mbw_max,
+                       lower_bw_max = lbw_max,
+                       rbws,
+                       cbws,
+                       band_elements = els,
+                       ) = bc,
     UnitRange(j0, j1) = rows,
     UnitRange(k0, k1) = cols
 
@@ -388,12 +617,14 @@ end
       max(j1 - j0 + 1, 0),
       max(k1 - k0 + 1, 0),
       m_els,
-      oall - j0 + 1,
+      roffs + j0 - 1,
+      coffs + k0 - 1,
       ubw_max,
       mbw_max,
       lbw_max,
-      view(bws, :, cols),
-      view(els, :, cols),
+      view(rbws, rows, 1:4),
+      view(cbws, 1:4, cols),
+      view(els, 1:4, cols),
     )
     @otherwise
     throw(MatchError)
@@ -407,16 +638,18 @@ end
 )
 
   @when let BandColumn(;
-      m,
-      n,
-      m_els,
-      offset_all = oall,
-      upper_bw_max = ubw_max,
-      middle_bw_max = mbw_max,
-      lower_bw_max = lbw_max,
-      bws,
-      band_elements = els,
-    ) = bc,
+                       m,
+                       n,
+                       m_els,
+                       roffset = roffs,
+                       coffset = coffs,
+                       upper_bw_max = ubw_max,
+                       middle_bw_max = mbw_max,
+                       lower_bw_max = lbw_max,
+                       rbws,
+                       cbws,
+                       band_elements = els,
+                       ) = bc,
     UnitRange(j0, j1) = rows,
     UnitRange(k0, k1) = cols
 
@@ -428,11 +661,13 @@ end
       max(j1 - j0 + 1, 0),
       max(k1 - k0 + 1, 0),
       m_els,
-      oall - j0 + 1,
+      roffs + j0 - 1,
+      coffs + k0 - 1,
       ubw_max,
       mbw_max,
       lbw_max,
-      bws[:, cols],
+      rbws[rows, :],
+      cbws[:, cols],
       els[:, cols],
     )
     @otherwise
@@ -469,7 +704,7 @@ function Matrix(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
   (m, n) = size(bc)
   a = zeros(E, m, n)
   for k = 1:n
-    for j = els_range(bc,k)
+    for j in els_range(bc, :, k)
       a[j, k] = bc[j, k]
     end
   end
@@ -479,37 +714,41 @@ end
 # TODO: This should probably return CartesianIndices.
 function eachindex(bc::AbstractBandColumn)
   (_, n) = size(bc)
-  (CartesianIndex(j, k) for k = 1:n for j ∈ els_range(bc, k))
+  (CartesianIndex(j, k) for k = 1:n for j ∈ els_range(bc, :, k))
 end
 
 function get_elements(bc::AbstractBandColumn)
   (_, n) = size(bc)
-  (bc[j, k] for k = 1:n for j ∈ els_range(bc, k))
+  (bc[j, k] for k = 1:n for j ∈ els_range(bc, :, k))
 end
 
 # Copying
 
 function copy(bc::BandColumn)
   @when let BandColumn(
-      m,
-      n,
-      m_els,
-      oall,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      bws,
-      bels,
-    ) = bc
+    m,
+    n,
+    m_els,
+    roffs,
+    coffs,
+    ubw_max,
+    mbw_max,
+    lbw_max,
+    rbws,
+    cbws,
+    bels,
+  ) = bc
     BandColumn(
       m,
       n,
       m_els,
-      oall,
+      roffs,
+      coffs,
       ubw_max,
       mbw_max,
       lbw_max,
-      copy(bws),
+      copy(rbws),
+      copy(cbws),
       copy(bels),
     )
     @otherwise
@@ -521,6 +760,15 @@ end
 ## Print and show.
 ##
 
+"""
+
+The method show for BandColumn matrices represents elements for which
+there is no storage with `N`.  Elements that have available storage
+but are not actually stored are represented by `O`.  These are
+elements that are outside the current bandwidth but not outside the
+maximum bandwidth.
+
+"""
 function show(io::IO, bc::BandColumn{E,AE,AI}) where {E,AE,AI}
   print(
     io,
@@ -532,7 +780,9 @@ function show(io::IO, bc::BandColumn{E,AE,AI}) where {E,AE,AI}
     ", ",
     bc.m_els,
     ", ",
-    bc.offset_all,
+    bc.roffset,
+    ", ",
+    bc.coffset,
     ", ",
     bc.upper_bw_max,
     ", ",
@@ -540,7 +790,9 @@ function show(io::IO, bc::BandColumn{E,AE,AI}) where {E,AE,AI}
     ", ",
     bc.lower_bw_max,
     ", ",
-    bc.bws,
+    bc.rbws,
+    ", ",
+    bc.cbws,
     "): ",
   )
   for j ∈ 1:(bc.m)
@@ -571,7 +823,9 @@ print(io::IO, bc::BandColumn) = print(
     ", ",
     bc.m_els,
     ", ",
-    bc.offset_all,
+    bc.roffset,
+    ", ",
+    bc.coffset,
     ", ",
     bc.upper_bw_max,
     ", ",
@@ -579,12 +833,58 @@ print(io::IO, bc::BandColumn) = print(
     ", ",
     bc.lower_bw_max,
     ", ",
-    bc.bws,
+    bc.rbws,
+    ", ",
+    bc.cbws,
     ", ",
     bc.band_elements,
     ")",
 )
 
 print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
+
+struct Wilk
+  arr :: Array{Char,2}
+end
+
+function show(io::IO, w::Wilk)
+  (m, n) = size(w.arr)
+  for j = 1:m
+    println(io)
+    for k = 1:n
+      print(io,w.arr[j, k], " ")
+    end
+  end
+end
+
+function show(w::Wilk)
+  (m, n) = size(w.arr)
+  for j = 1:m
+    println()
+    for k = 1:n
+      print(w.arr[j, k], " ")
+    end
+  end
+end
+
+@views function wilk(bc :: BandColumn)
+  (m,n) = size(bc)
+  a = fill('N', (m, n))
+  for k ∈ 1:n
+    for j ∈ storable_els_range(bc, :, k)
+      a[j,k] = 'O'
+    end
+    for j ∈ upper_els_range(bc, :, k)
+      a[j,k] = 'U'
+    end
+    for j ∈ middle_els_range(bc, :, k)
+      a[j,k] = 'M'
+    end
+    for j ∈ lower_els_range(bc, :, k)
+      a[j,k] = 'L'
+    end
+  end
+  Wilk(a)
+end
 
 end # module
