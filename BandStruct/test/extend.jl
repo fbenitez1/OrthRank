@@ -419,3 +419,88 @@ show_equality_result(
   wilk(lbcr9_ext[1:end, 1:end]).arr,
   wilkr9,
 )
+
+####
+## Scalar extend
+####
+
+# Scalar (6,2)
+
+lbce62_ext = copy(lbc0_ext)
+wilke62 = [
+  'X' 'U' 'O' 'O' 'N'
+  'L' 'X' 'O' 'O' 'N'
+  'L' 'X' 'U' 'U' 'O'
+  'O' 'L' 'X' 'X' 'O'
+  'O' 'L' 'L' 'L' 'O'
+  'O' 'L' 'L' 'L' 'O'
+  'O' 'O' 'O' 'O' 'O'
+  'N' 'O' 'O' 'O' 'O'
+  'N' 'N' 'O' 'O' 'U'
+  'N' 'N' 'O' 'O' 'X'
+]
+extend_band!(lbce62_ext, 6, 2)
+show_bool_result(
+  "LBC extend_band! validate_rbws (element (6,2))",
+  validate_rbws(lbce62_ext),
+)
+show_equality_result(
+  "LBC extend_band! Wilkinson equality (element (6,2))",
+  ==,
+  wilk(lbce62_ext[1:end, 1:end]).arr,
+  wilke62,
+)
+
+# Scalar (10,3)
+
+lbce103_ext = copy(lbc0_ext)
+wilke103 = [
+  'X' 'U' 'O' 'O' 'N'
+  'L' 'X' 'O' 'O' 'N'
+  'L' 'X' 'U' 'U' 'O'
+  'O' 'L' 'X' 'X' 'O'
+  'O' 'O' 'L' 'L' 'O'
+  'O' 'O' 'L' 'L' 'O'
+  'O' 'O' 'L' 'L' 'O'
+  'N' 'O' 'L' 'L' 'O'
+  'N' 'N' 'L' 'L' 'U'
+  'N' 'N' 'L' 'L' 'X'
+]
+extend_band!(lbce103_ext, 10, 3)
+show_bool_result(
+  "LBC extend_band! validate_rbws (element (10,3))",
+  validate_rbws(lbce103_ext),
+)
+show_equality_result(
+  "LBC extend_band! Wilkinson equality (element (10,3))",
+  ==,
+  wilk(lbce103_ext[1:end, 1:end]).arr,
+  wilke103,
+)
+
+# Scalar (1,4)
+
+lbce14_ext = copy(lbc0_ext)
+wilke14 = [
+  'X' 'U' 'U' 'U' 'N'
+  'L' 'X' 'U' 'U' 'N'
+  'L' 'X' 'U' 'U' 'O'
+  'O' 'L' 'X' 'X' 'O'
+  'O' 'O' 'O' 'L' 'O'
+  'O' 'O' 'O' 'L' 'O'
+  'O' 'O' 'O' 'O' 'O'
+  'N' 'O' 'O' 'O' 'O'
+  'N' 'N' 'O' 'O' 'U'
+  'N' 'N' 'O' 'O' 'X'
+]
+extend_band!(lbce14_ext, 1, 4)
+show_bool_result(
+  "LBC extend_band! validate_rbws (element (1,4))",
+  validate_rbws(lbce14_ext),
+)
+show_equality_result(
+  "LBC extend_band! Wilkinson equality (element (1,4))",
+  ==,
+  wilk(lbce14_ext[1:end, 1:end]).arr,
+  wilke14,
+)

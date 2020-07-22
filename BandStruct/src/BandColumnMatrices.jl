@@ -198,28 +198,6 @@ structure.
 @propagate_inbounds @inline first_sub(bc::AbstractBandColumn, ::Colon, k::Int) =
   first_super(bc, :, k) + middle_bw(bc, :, k) + 1
 
-@propagate_inbounds @inline function extend_upper_band!(
-  bc::AbstractBandColumn,
-  j::Int,
-  k::Int,
-)
-  @boundscheck begin
-    checkbounds(bc, j, k)
-    check_bc_storage_bounds(bc, j, k)
-  end
-  cbws = get_cbws(bc)
-  rbws = get_rbws(bc)
-  j1 = first_el(bc, :, k) - 1
-  k0 = last_el(bc, j, :) + 1
-  for l = j:j1
-    rbws[l, 3] = max(rbws[l, 3], k - first_super(bc, l, :) + 1)
-  end
-  for l = k0:k
-    cbws[1, l] = max(cbws[1, l], first_super(bc, :, l) - j + 1)
-  end
-  nothing
-end
-
 # merge rows j and j+1.  Note this depends on a well-free
 # assumption.
 @propagate_inbounds @inline function extend_band!(
@@ -275,6 +253,28 @@ end
   end
   for l ∈ jrange0.stop+1:jrange1.stop
     rbws[l,1] += 1
+  end
+  nothing
+end
+
+@propagate_inbounds @inline function extend_upper_band!(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+  end
+  cbws = get_cbws(bc)
+  rbws = get_rbws(bc)
+  j1 = first_el(bc, :, k) - 1
+  k0 = last_el(bc, j, :) + 1
+  for l = j:j1
+    rbws[l, 3] = max(rbws[l, 3], k - first_super(bc, l, :) + 1)
+  end
+  for l = k0:k
+    cbws[1, l] = max(cbws[1, l], first_super(bc, :, l) - j + 1)
   end
   nothing
 end

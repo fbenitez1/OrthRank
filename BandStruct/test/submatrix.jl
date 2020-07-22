@@ -6,6 +6,15 @@ println("""
 
 """)
 
+function rand_range(bc :: AbstractBandColumn)
+  (m,n)= size(bc)
+  j1 = rand(1:m)
+  j2 = rand(1:m)
+  k1 = rand(1:n)
+  k2 = rand(1:n)
+  (UnitRange(j1,j2), UnitRange(k1,k2))
+end
+
 res = true
 for j ∈ 1:100
   global res

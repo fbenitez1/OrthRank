@@ -11,15 +11,6 @@ using Random
 
 include("show.jl")
 
-function rand_range(bc :: AbstractBandColumn)
-  (m,n)= size(bc)
-  j1 = rand(1:m)
-  j2 = rand(1:m)
-  k1 = rand(1:n)
-  k2 = rand(1:n)
-  (UnitRange(j1,j2), UnitRange(k1,k2))
-end
-
 blocks = [
   1 3 4 6 7 9 9 11 12
   1 2 5 5 6 7 8 9 10
