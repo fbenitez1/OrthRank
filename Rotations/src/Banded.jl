@@ -29,9 +29,8 @@ MultBCRotReal = (BandColumn{Float64, Array{Float64,2}, Array{Int,2}}, AdjRot{Flo
   s = r.s
   (_, n) = size(bc)
   k = r.j
-  jrange = hull(els_range(bc, k), els_range(bc, k + 1))
-  extend_band(bc, jrange, k)
-  extend_band(bc, jrange, k+1)
+  jrange = hull(els_range(bc, :, k), els_range(bc, :, k + 1))
+  extend_band!(bc, :, k)
   for j ∈ jrange
     tmp = bc[j, k]
     setindex_noext!(bc, tmp * c - bc[j, k + 1] * s, j, k)

@@ -8,11 +8,13 @@ function compare_ranges(xs, ys)
   res
 end
 
-println()
-println("**************")
-println("** Range tests")
-println("**************")
-println()
+println("""
+
+**************
+** Range tests
+**************
+
+""")
 
 column_els_ranges_lbc0 = [1:3, 1:4, 3:4, 3:4, 3:7, 5:9, 7:9, 9:11, 9:12, 11:12]
 

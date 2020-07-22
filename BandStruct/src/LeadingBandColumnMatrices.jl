@@ -16,6 +16,8 @@ if isdefined(@__MODULE__, :LanguageServer)
     get_rbws,
     get_cbws,
     get_upper_bw_max,
+    get_middle_bw_max,
+    get_lower_bw_max,
     upper_bw,
     middle_bw,
     lower_bw,
@@ -36,6 +38,8 @@ else
     get_rbws,
     get_cbws,
     get_upper_bw_max,
+    get_middle_bw_max,
+    get_lower_bw_max,
     upper_bw,
     middle_bw,
     lower_bw,
@@ -52,8 +56,8 @@ export LeadingBandColumn,
   size,
   getindex,
   setindex!,
-  leading_lower_ranks_to_cbws,
-  leading_upper_ranks_to_cbws,
+  leading_lower_ranks_to_cbws!,
+  leading_upper_ranks_to_cbws!,
   leading_constrain_lower_ranks,
   leading_constrain_upper_ranks
 
@@ -225,8 +229,8 @@ function LeadingBandColumn(
     leading_blocks,
   )
 
-  leading_lower_ranks_to_cbws(lbc, lower_ranks)
-  leading_upper_ranks_to_cbws(lbc, upper_ranks)
+  leading_lower_ranks_to_cbws!(lbc, lower_ranks)
+  leading_upper_ranks_to_cbws!(lbc, upper_ranks)
   compute_rbws!(lbc)
   rand!(rng,lbc)
   lbc
@@ -248,6 +252,8 @@ end
 @inline get_cbws(lbc::LeadingBandColumn) = lbc.cbws
 
 @inline get_upper_bw_max(lbc::LeadingBandColumn) = lbc.upper_bw_max
+@inline get_middle_bw_max(lbc::LeadingBandColumn) = lbc.middle_bw_max
+@inline get_lower_bw_max(lbc::LeadingBandColumn) = lbc.lower_bw_max
 
 @inline upper_bw(lbc::LeadingBandColumn, ::Colon, k::Int) = lbc.cbws[1, k]
 @inline middle_bw(lbc::LeadingBandColumn, ::Colon, k::Int) = lbc.cbws[2, k]
@@ -472,7 +478,6 @@ function leading_constrain_lower_ranks(
     lr[l] = min(m1, n1, lower_ranks[l])
   end
   lr
-
 end
 
 function leading_constrain_upper_ranks(
@@ -509,7 +514,7 @@ end
 end
 
 # Set lower bandwidth appropriate for a given lower rank sequence.
-function leading_lower_ranks_to_cbws(
+function leading_lower_ranks_to_cbws!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
 )
@@ -527,7 +532,7 @@ function leading_lower_ranks_to_cbws(
 end
 
 # Set upper bandwidth appropriate for a given lower rank sequence.
-function leading_upper_ranks_to_cbws(
+function leading_upper_ranks_to_cbws!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
 )
@@ -559,30 +564,11 @@ end
     fill!(a[2 * row, 1:(2 * col - 1)], '_')
   end
   for k = 1:n
-    j = lbc.cbws[4, k] + 1
-
-    fill!(
-      a[
-        max(1, 2 * (j - lbc.upper_bw_max) - 1):2:min(
-          2 * m,
-          2 * (j + lbc.m_els - lbc.upper_bw_max - 1) - 1,
-        ),
-        2 * k - 1,
-      ],
-      'O',
-    )
-    fill!(a[(2 * (j - lbc.cbws[1, k]) - 1):2:(2 * (j - 1) - 1), 2 * k - 1], 'U')
-    fill!(a[(2 * j - 1):2:(2 * (j + lbc.cbws[2, k] - 1) - 1), 2 * k - 1], 'X')
-    fill!(
-      a[
-        (2 * (j + lbc.cbws[2, k]) - 1):2:(2 * (j + lbc.cbws[2, k] + lbc.cbws[
-          3,
-          k,
-        ] - 1) - 1),
-        2 * k - 1,
-      ],
-      'L',
-    )
+    kk = 2 * k - 1
+    fill!(a[2 .* storable_els_range(lbc, :, k) .- 1, kk], 'O')
+    fill!(a[2 .* upper_els_range(lbc, :, k) .- 1, kk], 'U')
+    fill!(a[2 .* middle_els_range(lbc, :, k) .- 1, kk], 'X')
+    fill!(a[2 .* lower_els_range(lbc, :, k) .- 1, kk], 'L')
   end
   Wilk(a)
 end

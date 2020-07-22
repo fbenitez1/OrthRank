@@ -1,8 +1,10 @@
-println()
-println("******************")
-println("** Submatrix tests")
-println("******************")
-println()
+println("""
+
+******************
+** Submatrix tests
+******************
+
+""")
 
 res = true
 for j ∈ 1:100

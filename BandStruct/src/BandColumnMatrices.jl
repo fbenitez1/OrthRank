@@ -26,10 +26,12 @@ export BandColumn,
   upper_storage_els_range,
   middle_storage_els_range,
   lower_storage_els_range,
+  first_storable_el,
+  last_storable_el,
+  storable_els_range,
   first_el,
   last_el,
   els_range,
-  storable_els_range,
   upper_els_range,
   middle_els_range,
   lower_els_range,
@@ -45,6 +47,8 @@ export BandColumn,
   get_rbws,
   get_cbws,
   get_upper_bw_max,
+  get_middle_bw_max,
+  get_lower_bw_max,
   upper_bw,
   middle_bw,
   lower_bw,
@@ -134,6 +138,8 @@ end
 @inline get_coffset(bc::BandColumn) = bc.coffset
 
 @inline get_upper_bw_max(bc::BandColumn) = bc.upper_bw_max
+@inline get_middle_bw_max(bc::BandColumn) = bc.middle_bw_max
+@inline get_lower_bw_max(bc::BandColumn) = bc.lower_bw_max
 @inline get_rbws(bc::BandColumn) = bc.rbws
 @inline get_cbws(bc::BandColumn) = bc.cbws
 
@@ -214,6 +220,65 @@ structure.
   nothing
 end
 
+# merge rows j and j+1.  Note this depends on a well-free
+# assumption.
+@propagate_inbounds @inline function extend_band!(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  krange0 = els_range(bc, j, :)
+  krange1 = els_range(bc, j+1, :)
+  @boundscheck begin
+    checkbounds(bc, j, 1)
+    checkbounds(bc, j+1, 1)
+    isempty(krange0) || check_bc_storage_bounds(bc, j+1, krange0.start)
+    isempty(krange1) || check_bc_storage_bounds(bc, j, krange1.stop)
+  end
+  cbws = get_cbws(bc)
+  rbws = get_rbws(bc)
+  rbws[j + 1, 1] = rbws[j, 1] + first_sub(bc, j + 1, :) - first_sub(bc, j, :)
+  rbws[j, 3] = rbws[j + 1, 3] + first_super(bc, j + 1, :) - first_super(bc, j, :)
+  # for l ∈ (jrange0.start):(jrange1.start - 1)
+  for l ∈ (krange0.start):(krange1.start - 1)
+    # rbws[l,3] += 1
+    cbws[3, l] += 1
+  end
+  for l ∈ (krange0.stop + 1):(krange1.stop)
+    # rbws[l,1] += 1
+    cbws[1, l] += 1
+  end
+  nothing
+end
+
+# merge columns k and k+1.  Note this depends on a well-free
+# assumption.
+@propagate_inbounds @inline function extend_band!(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  jrange0 = els_range(bc, :, k)
+  jrange1 = els_range(bc, :, k+1)
+  @boundscheck begin
+    checkbounds(bc, 1, k)
+    checkbounds(bc, 1, k+1)
+    isempty(jrange0) || check_bc_storage_bounds(bc, jrange0.start, k+1)
+    isempty(jrange1) || check_bc_storage_bounds(bc, jrange1.stop, k)
+  end
+  cbws = get_cbws(bc)
+  rbws = get_rbws(bc)
+  cbws[1,k+1] = cbws[1,k] + first_super(bc,:,k+1) - first_super(bc,:,k)
+  cbws[3,k] = cbws[3,k+1] + first_sub(bc,:,k+1) - first_sub(bc,:,k)
+  for l ∈ jrange0.start:jrange1.start - 1
+    rbws[l,3] += 1
+  end
+  for l ∈ jrange0.stop+1:jrange1.stop
+    rbws[l,1] += 1
+  end
+  nothing
+end
+
 @propagate_inbounds @inline function extend_lower_band!(
   bc::AbstractBandColumn,
   j::Int,
@@ -231,11 +296,12 @@ end
     cbws[3, l] = max(cbws[3, l], j - first_sub(bc, :, l) + 1)
   end
   for l ∈ j0:j
-    println(l)
     rbws[l, 1] = max(rbws[l, 1], first_sub(bc, l, :) - k + 1)
   end
   nothing
 end
+
+
 
 @propagate_inbounds @inline function extend_band!(
   bc::AbstractBandColumn,
@@ -265,6 +331,17 @@ end
   if !isempty(krange)
     extend_upper_band!(bc, j, krange.start)
     extend_lower_band!(bc, j, krange.stop)
+  end
+end
+
+@propagate_inbounds @inline function extend_band!(
+  bc::AbstractBandColumn,
+  jrange::UnitRange{Int},
+  krange::UnitRange{Int},
+)
+  if !isempty(jrange) && !isempty(krange)
+    extend_upper_band!(bc, jrange.start, krange.stop)
+    extend_lower_band!(bc, jrange.stop, krange.start)
   end
 end
 
@@ -361,6 +438,18 @@ end
 @propagate_inbounds @inline last_storage_el(bc::AbstractBandColumn, k::Int) =
   get_upper_bw_max(bc) + middle_bw(bc, :, k) + lower_bw(bc, :, k)
 
+@propagate_inbounds @inline first_storable_el(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = first_super(bc, :, k) - get_upper_bw_max(bc) + 1
+
+@propagate_inbounds @inline last_storable_el(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = first_super(bc, :, k) +  get_middle_bw_max(bc) + get_lower_bw_max(bc)
+
 @propagate_inbounds @inline first_el(bc::AbstractBandColumn, ::Colon, k::Int) =
   first_super(bc, :, k) - upper_bw(bc, :, k) + 1
 
@@ -389,16 +478,6 @@ end
 )
   (_, n) = size(bc)
   intersect(1:n, first_el(bc, j, :):last_el(bc, j, :))
-end
-
-@propagate_inbounds @inline function storable_els_range(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-)
-  (m, _) = size(bc)
-  d = first_super(bc,:,k) - get_upper_bw_max(bc)
-  intersect(1:m, (d + 1):(d + get_m_els(bc)))
 end
 
 @propagate_inbounds @inline function upper_els_range(
@@ -458,12 +537,27 @@ end
   intersect(1:n, first_el(bc, j, :):first_sub(bc,j,:))
 end
 
+"""
+    storage_els_range(bc, k)
+
+  Compute the range of elements actually stored in band_elements for column k.
+"""
 @propagate_inbounds @inline function storage_els_range(
   bc::AbstractBandColumn,
   k::Int,
 )
   intersect(1:get_m_els(bc), first_storage_el(bc, k):last_storage_el(bc, k))
 end
+
+@propagate_inbounds @inline function storable_els_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  intersect(1:get_m(bc), first_storable_el(bc, :, k):last_storable_el(bc, :, k))
+end
+
+
 
 @propagate_inbounds @inline function upper_storage_els_range(
   bc::AbstractBandColumn,
@@ -871,18 +965,10 @@ end
   (m,n) = size(bc)
   a = fill('N', (m, n))
   for k ∈ 1:n
-    for j ∈ storable_els_range(bc, :, k)
-      a[j,k] = 'O'
-    end
-    for j ∈ upper_els_range(bc, :, k)
-      a[j,k] = 'U'
-    end
-    for j ∈ middle_els_range(bc, :, k)
-      a[j,k] = 'M'
-    end
-    for j ∈ lower_els_range(bc, :, k)
-      a[j,k] = 'L'
-    end
+    fill!(a[storable_els_range(bc, :, k), k], 'O')
+    fill!(a[upper_els_range(bc, :, k), k], 'U')
+    fill!(a[middle_els_range(bc, :, k), k], 'X')
+    fill!(a[lower_els_range(bc, :, k), k], 'L')
   end
   Wilk(a)
 end

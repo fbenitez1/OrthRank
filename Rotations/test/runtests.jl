@@ -66,7 +66,7 @@ println()
 println("Testing BandStruct Rotations for a matrix with structure:")
 println()
 
-print_wilk(lbc0)
+show(wilk(lbc0))
 println()
 bc0 = lbc0[1:end,1:end]
 mx_bc0 = Matrix(bc0)
