@@ -255,9 +255,12 @@ end
 @inline get_middle_bw_max(lbc::LeadingBandColumn) = lbc.middle_bw_max
 @inline get_lower_bw_max(lbc::LeadingBandColumn) = lbc.lower_bw_max
 
-@inline upper_bw(lbc::LeadingBandColumn, ::Colon, k::Int) = lbc.cbws[1, k]
-@inline middle_bw(lbc::LeadingBandColumn, ::Colon, k::Int) = lbc.cbws[2, k]
-@inline lower_bw(lbc::LeadingBandColumn, ::Colon, k::Int) = lbc.cbws[3, k]
+@propagate_inbounds @inline upper_bw(lbc::LeadingBandColumn, ::Colon, k::Int) =
+  lbc.cbws[1, k]
+@propagate_inbounds @inline middle_bw(lbc::LeadingBandColumn, ::Colon, k::Int) =
+  lbc.cbws[2, k]
+@propagate_inbounds @inline lower_bw(lbc::LeadingBandColumn, ::Colon, k::Int) =
+  lbc.cbws[3, k]
 @propagate_inbounds @inline upper_bw(lbc::LeadingBandColumn, j::Int, ::Colon) =
   lbc.rbws[j, 3]
 @propagate_inbounds @inline middle_bw(lbc::LeadingBandColumn, j::Int, ::Colon) =

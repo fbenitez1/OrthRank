@@ -20,6 +20,9 @@ import Base:
 export BandColumn,
   AbstractBandColumn,
   MatchError,
+  WellError,
+  EmptyUpperRange,
+  EmptyLowerRange,
   first_storage_el,
   last_storage_el,
   storage_els_range,
@@ -68,21 +71,35 @@ export BandColumn,
   compute_rbws,
   validate_rbws,
   wilk,
-  Wilk
+  Wilk,
+  trim_upper!,
+  trim_lower!
+"""
+    MatchError
 
-"MatchError: An exception for pattern match errors in MLStyle."
+ An exception for pattern match errors in MLStyle.
+"""
 struct MatchError <: Exception end
 
 """
+    NoStorageForIndex
 
-NoStorageForIndex: An exception to indicate that there is no
-storage available to represent a particular element of a BandColumn.
-
+An exception to indicate that there is no storage available to
+represent a particular element of a BandColumn.
 """
 struct NoStorageForIndex <: Exception
   arr::Any
   ix::Any
 end
+
+"""
+    WellError
+
+An exception thrown when an operation would create a well.
+"""
+struct WellError <: Exception end
+struct EmptyUpperRange <: Exception end
+struct EmptyLowerRange <: Exception end
 
 showerror(io::IO, e::NoStorageForIndex) = print(
   io,
@@ -678,6 +695,105 @@ end
   end
 end
 
+"""
+    trim_upper!(bc :: AbstractBandColumn, ::Colon, k::Int)
+    trim_upper!(bc :: AbstractBandColumn, j::Int, ::Colon)
+
+Remove one upper element from column k or row j.
+
+"""
+@propagate_inbounds @inline function trim_upper!(
+  bc::AbstractBandColumn{E,AE,AI},
+  ::Colon,
+  k::Int,
+) where {E, AE, AI}
+  jrange = upper_els_range(bc, :, k)
+  j = jrange.start
+  @boundscheck begin
+    (m, n) = size(bc)
+    !isempty(jrange) || throw(EmptyUpperRange())
+    checkbounds(bc, j, k)
+    k == n || first_el(bc, :, k + 1) > j || throw(WellError())
+  end
+  rbws=get_rbws(bc)
+  cbws=get_cbws(bc)
+  setindex_noext!(bc,zero(E),j,k)
+  rbws[j,3] -= 1
+  cbws[1,k] -= 1
+  nothing
+end
+
+@propagate_inbounds @inline function trim_upper!(
+  bc::AbstractBandColumn{E,AE,AI},
+  j::Int,
+  ::Colon,
+) where {E, AE, AI}
+  krange = upper_els_range(bc, j, :)
+  k = krange.stop
+  @boundscheck begin
+    (m, n) = size(bc)
+    !isempty(krange) || throw(EmptyUpperRange())
+    checkbounds(bc, j, k)
+    j == 1 || last_el(bc, j - 1, :) < krange.stop || throw(WellError())
+  end
+  rbws=get_rbws(bc)
+  cbws=get_cbws(bc)
+  setindex_noext!(bc,zero(E),j,k)
+  rbws[j,3] -= 1
+  cbws[1,k] -= 1
+  nothing
+end
+
+"""
+    trim_lower!(bc :: AbstractBandColumn, ::Colon, k::Int)
+    trim_lower!(bc :: AbstractBandColumn, j::Int, ::Colon)
+
+Remove one upper element from row j or column k.
+
+"""
+
+@propagate_inbounds @inline function trim_lower!(
+  bc::AbstractBandColumn{E,AE,AI},
+  ::Colon,
+  k::Int,
+) where {E, AE, AI}
+  jrange = lower_els_range(bc, :, k)
+  j = jrange.stop
+  @boundscheck begin
+    (m, n) = size(bc)
+    !isempty(jrange) || throw(EmptyLowerRange())
+    checkbounds(bc, j, k)
+    k == 1 || last_el(bc, :, k-1) < j || throw(WellError())
+  end
+  rbws=get_rbws(bc)
+  cbws=get_cbws(bc)
+  setindex_noext!(bc,zero(E),j,k)
+  rbws[j,1] -= 1
+  cbws[3,k] -= 1
+  nothing
+end
+
+@propagate_inbounds @inline function trim_lower!(
+  bc::AbstractBandColumn{E,AE,AI},
+  j::Int,
+  ::Colon,
+) where {E, AE, AI}
+  krange = lower_els_range(bc, j, :)
+  k = krange.start
+  @boundscheck begin
+    (m, n) = size(bc)
+    !isempty(krange) || throw(EmptyUpperRange())
+    checkbounds(bc, j, k)
+    j == m || first_el(bc, j + 1, :) > krange.start || throw(WellError())
+  end
+  rbws=get_rbws(bc)
+  cbws=get_cbws(bc)
+  setindex_noext!(bc,zero(E),j,k)
+  rbws[j,1] -= 1
+  cbws[3,k] -= 1
+  nothing
+end
+
 @inline function view(bc::AbstractBandColumn, I::Vararg{Any,N}) where {N}
   viewbc(bc, I)
 end
@@ -854,15 +970,11 @@ end
 ## Print and show.
 ##
 
-"""
-
-The method show for BandColumn matrices represents elements for which
-there is no storage with `N`.  Elements that have available storage
-but are not actually stored are represented by `O`.  These are
-elements that are outside the current bandwidth but not outside the
-maximum bandwidth.
-
-"""
+# The method show for BandColumn matrices represents elements for
+# which there is no storage with `N`.  Elements that have available
+# storage but are not actually stored are represented by `O`.  These
+# are elements that are outside the current bandwidth but not outside
+# the maximum bandwidth.
 function show(io::IO, bc::BandColumn{E,AE,AI}) where {E,AE,AI}
   print(
     io,
@@ -961,6 +1073,12 @@ function show(w::Wilk)
   end
 end
 
+"""
+    wilk(bc :: BandColumn)
+
+Generate a Wilkinson diagram for bc.
+
+"""
 @views function wilk(bc :: BandColumn)
   (m,n) = size(bc)
   a = fill('N', (m, n))
