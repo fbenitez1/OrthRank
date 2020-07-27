@@ -65,7 +65,6 @@ export BandColumn,
   get_elements,
   viewbc,
   hull,
-  zero_to,
   setindex_noext!,
   compute_rbws!,
   compute_rbws,
@@ -672,27 +671,6 @@ where the bandwidth can be extended outside the loop.
   end
   j1 = j - storage_offset(bc, k)
   @inbounds set_band_element!(bc, x, j1, k)
-end
-
-"Put in a hard zero and adjust bandwidths as appropriate."
-@propagate_inbounds @inline function zero_to(
-  bc::AbstractBandColumn{E,AE,AI},
-  j::Int,
-  k::Int,
-) where {E,AE,AI}
-  @boundscheck begin
-    checkbounds(bc, j, k)
-    check_bc_storage_bounds(bc, j, k)
-  end
-  j1 = j - storage_offset(bc, k)
-  @inbounds set_band_element!(bc, zero(E), j1, k)
-  rangek = els_range(bc, :, k)
-  if bc.cbws[1,k]>0 && j == rangek.start
-    bc.cbws[1,k] -= bc.cbws[1,k]
-  end
-  if bc.cbws[3,k]>0 && j == rangek.stop
-    bc.cbws[3,k] -= bc.cbws[3,k]
-  end
 end
 
 """

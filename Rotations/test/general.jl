@@ -1,6 +1,9 @@
-println()
-println("Nonadjacent rotations.")
-println()
+println("""
+
+******************************************************
+** Tests of nonadjacent rotations on general matrices.
+******************************************************
+""")
 
 A_rlz = randn(Float64, 3, 3)
 r_rlz = lgivens(A_rlz[1, 1], A_rlz[3, 1], 1, 3)
@@ -85,14 +88,12 @@ A1_crz1 ⊘ r_crz1
 err_crz1 = norm(A1_crz1 - A_crz1, Inf) / norm(A_crz1, Inf)
 show_error_result("Complex right inverse (first element)", err_crz1, tol)
 
-####
-## Adjacent Rotations
-####
+println("""
 
-println()
-println("Adjacent rotations.")
-println()
-
+***************************************************
+** Tests of adjacent rotations on general matrices.
+***************************************************
+""")
 
 tol = 1e-15
 A_ralz = randn(Float64, 3, 3)
