@@ -233,13 +233,10 @@ structure.
   rbws = get_rbws(bc)
   rbws[j + 1, 1] = rbws[j, 1] + first_sub(bc, j + 1, :) - first_sub(bc, j, :)
   rbws[j, 3] = rbws[j + 1, 3] + first_super(bc, j + 1, :) - first_super(bc, j, :)
-  # for l ∈ (jrange0.start):(jrange1.start - 1)
   for l ∈ (krange0.start):(krange1.start - 1)
-    # rbws[l,3] += 1
     cbws[3, l] += 1
   end
   for l ∈ (krange0.stop + 1):(krange1.stop)
-    # rbws[l,1] += 1
     cbws[1, l] += 1
   end
   nothing
