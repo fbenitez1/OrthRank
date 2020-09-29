@@ -9,6 +9,7 @@ end
 
 using LinearAlgebra
 using Random
+using InPlace
 
 using BandStruct
 using BandStruct.BandColumnMatrices

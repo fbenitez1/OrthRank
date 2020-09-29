@@ -2,22 +2,19 @@ module Banded
 if isdefined(@__MODULE__, :LanguageServer)
   include("Givens.jl")
   using .Givens
-  import .Givens: ⊛, ⊘
 else
   using Rotations.Givens
-  import Rotations.Givens: ⊛, ⊘
 end
 
 using LinearAlgebra
 using BandStruct
 using BandStruct.BandColumnMatrices
 using BandStruct.LeadingBandColumnMatrices
+import InPlace
 
 import Base: @propagate_inbounds
 
-export ⊛, ⊘
-
-@propagate_inbounds @inline function ⊛(
+@propagate_inbounds @inline function InPlace.:⊛(
   bc::AbstractBandColumn{E,AE,AI},
   r::AdjRot{R,E},
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
@@ -34,7 +31,7 @@ export ⊛, ⊘
   nothing
 end
 
-@propagate_inbounds @inline function ⊘(
+@propagate_inbounds @inline function InPlace.:⊘(
   bc::AbstractBandColumn{E,AE,AI},
   r::AdjRot{R,E},
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
@@ -51,7 +48,7 @@ end
   nothing
 end
 
-@propagate_inbounds @inline function ⊛(
+@propagate_inbounds @inline function InPlace.:⊛(
   r::AdjRot{R,E},
   bc::AbstractBandColumn{E,AE,AI},
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
@@ -68,7 +65,7 @@ end
   nothing
 end
 
-@propagate_inbounds @inline function ⊘(
+@propagate_inbounds @inline function InPlace.:⊘(
   r::AdjRot{R,E},
   bc::AbstractBandColumn{E,AE,AI},
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}

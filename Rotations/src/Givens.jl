@@ -1,8 +1,9 @@
 module Givens
 
-export Rot, AdjRot, lgivens, lgivens1, rgivens, rgivens1, ⊛, ⊘
+export Rot, AdjRot, lgivens, lgivens1, rgivens, rgivens1
 
 using LinearAlgebra
+import InPlace
 
 """
 
@@ -235,7 +236,7 @@ end
 Apply a rotation, acting in-place to modify a.
 
 """
-@inline function ⊛(
+@inline function InPlace.:⊛(
   r::Rot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -252,7 +253,7 @@ Apply a rotation, acting in-place to modify a.
   nothing
 end
 
-@inline function ⊛(
+@inline function InPlace.:⊛(
   a::AbstractArray{T,2},
   r::Rot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -269,7 +270,7 @@ end
   nothing
 end
 
-@inline function ⊛(
+@inline function InPlace.:⊛(
   r::AdjRot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -285,7 +286,7 @@ end
   nothing
 end
 
-@inline function ⊛(
+@inline function InPlace.:⊛(
   a::AbstractArray{T,2},
   r::AdjRot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -306,7 +307,7 @@ end
 Apply an inverse rotation, acting in-place to modify a.
 
 """
-@inline function ⊘(
+@inline function InPlace.:⊘(
   r::Rot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -323,7 +324,7 @@ Apply an inverse rotation, acting in-place to modify a.
   nothing
 end
 
-@inline function ⊘(
+@inline function InPlace.:⊘(
   a::AbstractArray{T,2},
   r::Rot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -340,7 +341,7 @@ end
   nothing
 end
 
-@inline function ⊘(
+@inline function InPlace.:⊘(
   r::AdjRot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -356,7 +357,7 @@ end
   nothing
 end
 
-@inline function ⊘(
+@inline function InPlace.:⊘(
   a::AbstractArray{T,2},
   r::AdjRot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}

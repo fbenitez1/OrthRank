@@ -11,6 +11,11 @@ git-tree-sha1 = "a2a6a5fea4d6f730ec4c18a76d27ec10e8ec1c50"
 uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 version = "1.0.0"
 
+[[InPlace]]
+path = "../InPlace"
+uuid = "be40da39-38af-4299-9425-252ac2c40a94"
+version = "0.1.0"
+
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
