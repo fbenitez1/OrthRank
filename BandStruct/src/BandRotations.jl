@@ -1,4 +1,4 @@
-module Banded
+module BandRotations
 if isdefined(@__MODULE__, :LanguageServer)
   include("Givens.jl")
   using .Givens

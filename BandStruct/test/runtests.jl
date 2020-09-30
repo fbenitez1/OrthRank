@@ -3,11 +3,17 @@ if isdefined(@__MODULE__, :LanguageServer)
   using .BandColumnMatrices
   include("src/LeadingBandColumnMatrices.jl")
   using .LeadingBandColumnMatrices
+  include("src/BandRotations.jl")
+  using .BandRotations
 else
   using BandStruct.BandColumnMatrices
   using BandStruct.LeadingBandColumnMatrices
+  using BandStruct.BandRotations
 end
 using Random
+using Rotations
+using InPlace
+using LinearAlgebra
 
 include("show.jl")
 
@@ -39,8 +45,10 @@ println()
 bc0 = lbc0[1:end, 1:end]
 mx_bc0 = Matrix(bc0)
 
+include("show.jl")
 include("index.jl")
 include("submatrix.jl")
 include("range.jl")
 include("extend.jl")
 include("trim.jl")
+include("rotations.jl")
