@@ -8,8 +8,8 @@ end
 using LinearAlgebra
 using Random
 using InPlace
+using ShowTests
 
 tol = 1e-15
 
-include("show.jl")
 include("general.jl")

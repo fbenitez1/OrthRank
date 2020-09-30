@@ -6,3 +6,4 @@ version = "0.1.0"
 [deps]
 InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+ShowTests = "18e42089-513e-4f41-93b9-af293e7a89dc"

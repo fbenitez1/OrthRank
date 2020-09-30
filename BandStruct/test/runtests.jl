@@ -13,9 +13,8 @@ end
 using Random
 using Rotations
 using InPlace
+using ShowTests
 using LinearAlgebra
-
-include("show.jl")
 
 blocks = [
   1 3 4 6 7 9 9 11 12
@@ -45,7 +44,6 @@ println()
 bc0 = lbc0[1:end, 1:end]
 mx_bc0 = Matrix(bc0)
 
-include("show.jl")
 include("index.jl")
 include("submatrix.jl")
 include("range.jl")

@@ -1,7 +1,6 @@
 using InPlace
 using Random
-
-include("show.jl")
+using ShowTests
 
 a = randn(Float64, 3, 3)
 b = randn(Float64, 3, 3)
