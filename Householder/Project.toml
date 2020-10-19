@@ -1,0 +1,10 @@
+name = "Householder"
+uuid = "c865288b-f3c9-4f4c-a1b9-0a546e45b448"
+authors = ["Michael Stewart <mastewart@gsu.edu>"]
+version = "0.1.0"
+
+[deps]
+InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+ShowTests = "18e42089-513e-4f41-93b9-af293e7a89dc"
