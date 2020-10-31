@@ -1,8 +1,11 @@
 if isdefined(@__MODULE__, :LanguageServer)
   include("src/Compute.jl")
   using .Compute
+  include("src/WY.jl")
+  using .WY
 else
   using Householder.Compute
+  using Householder.WY
 end
 
 using LinearAlgebra
@@ -14,131 +17,31 @@ tol = 1e-14
 l=2
 m=3
 
-print("""
-Real Left Multiplcation Tests
+include("HouseholderGeneral.jl")
 
-""")
-
-# Real Left Multiplication
-
-a=rand(Complex{Float64},m,m) .- 0.5
-h = lhouseholder(copy(a[:,1]),l,0)
-
-a0 = copy(a)
-h ⊘ a
-column_nonzero!(a,l,1)
-
-show_error_result(
-  "Singular value errors for left multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for column_nonzero!, Real",
-  0.0,
-  norm(a[1:(l - 1), 1]) + norm(a[(l + 1):m, 1]),
-)
-
-h ⊛ a
-show_error_result(
-  "Left inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-# Real Right Multiplication
-print("""
-
-Real Right Multiplcation Tests
-
-""")
-
-a=rand(Float64,m,m) .- 0.5
-h = rhouseholder(copy(a[1,:]),l,0)
-
-a0 = copy(a)
-a ⊛ h
-row_nonzero!(a,1,l)
-
-show_error_result(
-  "Singular value errors for right multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for row_nonzero!, Real",
-  0.0,
-  norm(a[1,1:(l - 1)]) + norm(a[1, (l + 1):m]),
-)
-
-a ⊘ h
-show_error_result(
-  "Right inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-print("""
-
-Complex Left Multiplcation Tests
-
-""")
-
-a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-h = lhouseholder(copy(a[:,1]),l,0)
-
-a0 = copy(a)
-h ⊘ a
-column_nonzero!(a,l,1)
-
-show_error_result(
-  "Singular value errors for left multiplication, Complex",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for column_nonzero!, Complex",
-  0.0,
-  norm(a[1:(l - 1), 1]) + norm(a[(l + 1):m, 1]),
-)
-
-h ⊛ a
-show_error_result(
-  "Left inverse error test, Complex",
-  norm(a-a0),
-  tol,
-)
-
-print("""
-
-Complex Right Multiplcation Tests
-
-""")
-
-a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-h = rhouseholder(copy(a[1,:]),l,0)
-
-a0 = copy(a)
-a ⊛ h
-row_nonzero!(a,1,l)
-show_error_result(
-  "Singular value errors for right multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for row_nonzero!, Real",
-  0.0,
-  norm(a[1,1:(l - 1)]) + norm(a[1, (l + 1):m]),
-)
-
-a ⊘ h
-show_error_result(
-  "Right inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
+tol = 1e-14
+maxk=2
+m=10
+n=10
+E=Float64
+a=rand(E,m,n) .- 0.5
+a0=copy(a)
+wy1=WYTrans(E,m,n,maxk)
+wy1=resetWY(0,m,wy1)
+wy2=WYTrans(E,m,n,maxk)
+wy2=resetWY(0,m,wy2)
+q=Matrix{E}(I,m,m)
+for j=1:2
+  h = lhouseholder(a[j:m,j],1,j-1)
+  h ⊘ a
+  q ⊛ h
+  wy1 ⊛ h
+  h ⊘ wy2 
+end
+q1 = Matrix{E}(I,m,m)
+q1 ⊛ wy1
+q2 = Matrix{E}(I,m,m)
+q2 ⊘ wy2
+println(norm(q*a-a0))
+println(norm(q1*a-a0))
+println(norm(q2*a-a0))
