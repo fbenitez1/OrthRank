@@ -17,8 +17,12 @@ struct HouseholderTrans{E,AE}
   β::E
   v::AE          # Householder vector.
   l::Int64       # element to leave nonzero.
-  size::Int64       # size of transformation.
+  size::Int64    # size of transformation.
   offs::Int64    # offset for applying to a matrix.
+  # Size = opposite side size of A.  For m × n A:
+  # h ⊛ A requires work space of size n.
+  # A ⊛ h requires work space of size m.
+  work::AE       
 end
 
 @inline function update_norm(a::R, b::E) where {R<:Real,E<:Union{R,Complex{R}}}
@@ -51,6 +55,7 @@ function lhouseholder(
   a::A,
   l::Int64,
   offs::Int64,
+  work::A
 ) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
   m = length(a)
   a1 = a[l]
@@ -58,7 +63,7 @@ function lhouseholder(
     a[1] = 1
     sign_a1 = a1 == zero(a1) ? one(a1) : sign(a1)
     β = (sign_a1 - one(a1)) / sign_a1
-    HouseholderTrans(conj(β), a, l, m, offs)
+    HouseholderTrans(conj(β), a, l, m, offs, work)
   else
     norm_a2 = update_norm(norm(view(a, 1:(l - 1))), norm(view(a,(l + 1):m)))
     norm_a = update_norm(norm_a2, a1)
@@ -76,8 +81,18 @@ function lhouseholder(
     a[l] = one(a1)
     rdiv!(view(a,1:(l-1)), alpha)
     rdiv!(view(a,(l+1):m), alpha)
-    HouseholderTrans(conj(β), a, l, m, offs)
+    HouseholderTrans(conj(β), a, l, m, offs,work)
   end
+end
+
+function lhouseholder(
+  a::A,
+  l::Int64,
+  offs::Int64,
+  work_size::Int64,
+) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
+  work = zeros(E, work_size)
+  lhouseholder(a,l,offs,work)
 end
 
 """
@@ -90,6 +105,7 @@ function rhouseholder(
   a::A,
   l::Int64,
   offs::Int64,
+  work::A,
 ) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
   m = length(a)
   a1 = a[l]
@@ -98,7 +114,7 @@ function rhouseholder(
     sign_a1 = a1 == zero(a1) ? one(a1) : sign(a1)
     β = (sign_a1 - one(a1)) / sign_a1
     conj!(a)
-    HouseholderTrans(β, a, l, m, offs)
+    HouseholderTrans(β, a, l, m, offs, work)
   else
     norm_a2 = update_norm(norm(view(a,1:(l - 1))), norm(view(a,(l + 1):m)))
     norm_a = update_norm(norm_a2, a1)
@@ -117,8 +133,18 @@ function rhouseholder(
     rdiv!(view(a,1:(l-1)), alpha)
     rdiv!(view(a,(l+1):m), alpha)
     conj!(a)
-    HouseholderTrans(β, a, l, m, offs)
+    HouseholderTrans(β, a, l, m, offs, work)
   end
+end
+
+function rhouseholder(
+  a::A,
+  l::Int64,
+  offs::Int64,
+  work_size::Int64,
+) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
+  work = zeros(E, work_size)
+  rhouseholder(a,l,offs,work)
 end
 
 @inline function column_nonzero!(
@@ -180,7 +206,6 @@ end
 end
 
 
-# A - β A v vᴴ
 @inline function InPlace.:⊛(
   a::AE2,
   h::HouseholderTrans{E,AE1},
@@ -188,12 +213,21 @@ end
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
-  a[:, (offs + 1):(offs + m)] =
-    view(a, :, (offs + 1):(offs + m)) -
-    (h.β * (view(a, :, (offs + 1):(offs + m)) * v)) * v'
+  work = h.work
+  ma = size(a,1)
+  work[1:ma] .= zero(E)
+  for k ∈ 1:m
+    for j ∈ 1:ma
+      work[j] += a[j,k+offs] * v[k]
+    end
+  end
+  for k ∈ 1:m
+    for j ∈ 1:ma
+      a[j,k+offs] -= h.β * work[j] * conj(v[k])
+    end
+  end
   nothing
 end
-
 
 @inline function InPlace.:⊘(
   a::AE2,
@@ -202,11 +236,20 @@ end
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
-  a[:, (offs + 1):(offs + m)] =
-    view(a, :, (offs + 1):(offs + m)) -
-    (conj(h.β) * (view(a, :, (offs + 1):(offs + m)) * v)) * v'
+  work = h.work
+  ma = size(a,1)
+  work[1:ma] .= zero(E)
+  for k ∈ 1:m
+    for j ∈ 1:ma
+      work[j] += a[j,k+offs] * v[k]
+    end
+  end
+  for k ∈ 1:m
+    for j ∈ 1:ma
+      a[j,k+offs] -= conj(h.β) * work[j] * conj(v[k])
+    end
+  end
   nothing
 end
-
 
 end # module

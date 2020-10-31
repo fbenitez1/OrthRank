@@ -13,7 +13,7 @@ Real Left Multiplication Tests
 # Real Left Multiplication
 
 a=rand(Complex{Float64},m,m) .- 0.5
-h = lhouseholder(copy(a[:,1]),l,0)
+h = lhouseholder(copy(a[:,1]),l,0,m)
 
 a0 = copy(a)
 h ⊘ a
@@ -46,7 +46,7 @@ Real Right Multiplication Tests
 """)
 
 a=rand(Float64,m,m) .- 0.5
-h = rhouseholder(copy(a[1,:]),l,0)
+h = rhouseholder(copy(a[1,:]),l,0,m)
 
 a0 = copy(a)
 a ⊛ h
@@ -78,7 +78,7 @@ Complex Left Multiplication Tests
 """)
 
 a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-h = lhouseholder(copy(a[:,1]),l,0)
+h = lhouseholder(copy(a[:,1]),l,0,m)
 
 a0 = copy(a)
 h ⊘ a
@@ -110,7 +110,7 @@ Complex Right Multiplication Tests
 """)
 
 a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-h = rhouseholder(copy(a[1,:]),l,0)
+h = rhouseholder(copy(a[1,:]),l,0,m)
 
 a0 = copy(a)
 a ⊛ h

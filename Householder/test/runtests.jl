@@ -31,8 +31,9 @@ wy1=resetWY(0,m,wy1)
 wy2=WYTrans(E,m,n,maxk)
 wy2=resetWY(0,m,wy2)
 q=Matrix{E}(I,m,m)
+work=zeros(E,m)
 for j=1:2
-  h = lhouseholder(a[j:m,j],1,j-1)
+  h = lhouseholder(a[j:m,j],1,j-1,work)
   h ⊘ a
   q ⊛ h
   wy1 ⊛ h
