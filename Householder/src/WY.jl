@@ -10,24 +10,29 @@ else
   using Householder.Compute
 end
 
-export WYTrans, resetWY, reworkWY, WYIndexSubsetError
+export WYTrans, resetWY!, reworkWY!, WYIndexSubsetError
 
 """
 
   I - W Yᴴ
 
 """
-struct WYTrans{E<:Number,AE<:AbstractArray{E,2}}
+mutable struct WYTrans{
+  E<:Number,
+  AEW<:AbstractArray{E,2},
+  AEY<:AbstractArray{E,2},
+  AEWork<:AbstractArray{E,1},
+}
   offs::Int # Offset
-  bs::Int # Size of the individual block transformation
-  k::Ref{Int} # Number of Householders.
+  sizeWY::Int # Size of the individual block transformation
+  num_h::Int # Number of Householders.
   sizeA_h::Int # Size of the full matrix transformed on the
-               # side of the transformation.
+  # side of the transformation.
   sizeA_other::Int # Other dimension of a.
   max_k::Int # maximum number of Householders.
-  W::AE # sizeA_h×max_k array.
-  Y::AE # sizeA_h×max_k array.
-  work::AE # sizeA_other×max_k work array.
+  W::AEW # sizeA_h×max_k array.
+  Y::AEY # sizeA_h×max_k array.
+  work::AEWork # sizeA_other*max_k work array.
 end
 
 function WYTrans(
@@ -39,64 +44,49 @@ function WYTrans(
   WYTrans(
     0,
     0,
-    Ref(0),
+    0,
     sizeA_h,
     sizeA_other,
     max_k,
     zeros(E, sizeA_h, max_k),
     zeros(E, sizeA_h, max_k),
-    zeros(E, sizeA_other, max_k),
+    zeros(E, sizeA_other * max_k),
   )
 end
 
-@inline function resetWY(
+@inline function resetWY!(
   offs::Int,
-  bs::Int,
-  wy::WYTrans{E,AE},
-) where {E<:Number,AE<:AbstractArray{E,2}}
-  WYTrans(
-    offs,
-    bs,
-    Ref(0),
-    wy.sizeA_h,
-    wy.sizeA_other,
-    wy.max_k,
-    wy.W,
-    wy.Y,
-    wy.work,
-  )
+  sizeWY::Int,
+  wy::WYTrans{E},
+) where {E<:Number}
+  wy.offs = offs
+  wy.sizeWY = sizeWY
+  wy.num_h=0
+  nothing
 end
 
 """
 allocate a new work space
 """
-@inline function reworkWY(
+@inline function reworkWY!(
   sizeA_other,
-  wy::WYTrans{E,AE},
-) where {E<:Number,AE<:AbstractArray{E,2}}
-  WYTrans(
-    offs,
-    bs,
-    Ref(0),
-    wy.sizeA_h,
-    sizeA_other,
-    wy.max_k,
-    wy.W,
-    wy.Y,
-    zeros(E, sizeA_other, wy.max_k),
-  )
+  wy::WYTrans{E},
+) where {E<:Number}
+  wy.num_h=0
+  wy.sizeA_other = sizeA_other
+  wy.work = zeros(E, sizeA_other * wy.max_k)
 end
 
 # Array Updates
 
 @inline function InPlace.:⊛(
   A::AE2,
-  wy::WYTrans{E,AE2},
+  wy::WYTrans{E},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  k = wy.k[]
-  inds = (wy.offs + 1):(wy.offs + wy.bs)
+  k = wy.num_h
+  inds = (wy.offs + 1):(wy.offs + wy.sizeWY)
   ma = size(A, 1)
-  work = view(wy.work, 1:ma, 1:k)
+  work = reshape(view(wy.work, 1:ma*k), ma, k)
   W = view(wy.W, inds, 1:k)
   Y = view(wy.Y, inds, 1:k)
   A0 = view(A, :, inds)
@@ -107,12 +97,12 @@ end
 
 @inline function InPlace.:⊘(
   A::AE2,
-  wy::WYTrans{E,AE2},
+  wy::WYTrans{E},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  k = wy.k[]
-  inds = (wy.offs + 1):(wy.offs + wy.bs)
+  k = wy.num_h
+  inds = (wy.offs + 1):(wy.offs + wy.sizeWY)
   ma = size(A, 1)
-  work = view(wy.work, 1:ma, 1:k)
+  work = reshape(view(wy.work, 1:ma * k), ma, k)
   W = view(wy.W, inds, 1:k)
   Y = view(wy.Y, inds, 1:k)
   A0 = view(A, :, inds)
@@ -122,13 +112,13 @@ end
 end
 
 @inline function InPlace.:⊛(
-  wy::WYTrans{E,AE2},
+  wy::WYTrans{E},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  k = wy.k[]
-  inds = (wy.offs + 1):(wy.offs + wy.bs)
+  k = wy.num_h
+  inds = (wy.offs + 1):(wy.offs + wy.sizeWY)
   na = size(A, 2)
-  work = view(wy.work, 1:na, 1:k)'
+  work = reshape(view(wy.work, 1:na, 1:k),k,na)
   W = view(wy.W, inds, 1:k)
   Y = view(wy.Y, inds, 1:k)
   A0 = view(A, inds, :)
@@ -138,17 +128,18 @@ end
 end
 
 @inline function InPlace.:⊘(
-  wy::WYTrans{E,AE2},
+  wy::WYTrans{E},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  k = wy.k[]
-  inds = (wy.offs + 1):(wy.offs + wy.bs)
+  k = wy.num_h
+  inds = (wy.offs + 1):(wy.offs + wy.sizeWY)
   na = size(A, 2)
-  work = view(wy.work, 1:na, 1:k)'
+  work = reshape(view(wy.work, 1:na*k),k,na)
   W = view(wy.W, inds, 1:k)
   Y = view(wy.Y, inds, 1:k)
   A0 = view(A, inds, :)
   oneE = one(E)
+  zeroE = zero(E)
   mul!(work, W', A0)
   mul!(A0, Y, work, -oneE, oneE)
 end
@@ -158,50 +149,52 @@ end
 struct WYIndexSubsetError <: Exception end
 
 @inline function InPlace.:⊛(
-  wy::WYTrans{E,AE2},
-  h::HouseholderTrans{E,AE1},
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  wy::WYTrans{E},
+  h::HouseholderTrans{E},
+) where {E<:Number}
 
-  k = wy.k[]
+  k = wy.num_h
   v=reshape(h.v,length(h.v),1)
   
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = (wy.offs + 1):(wy.offs + wy.bs)
+  indswy = (wy.offs + 1):(wy.offs + wy.sizeWY)
+  indshwy = (h.offs - wy.offs + 1):(h.offs - wy.offs + h.size)
 
   indsh ⊆ indswy || throw(WYIndexSubsetError)
 
-  work = view(wy.work, 1:1, 1:k)'
+  work = reshape(view(wy.work, 1:k),k,1)
 
   W0 = view(wy.W, indswy, 1:k)
-  W1 = view(wy.W, indswy, k + 1:k+1)
+  W1 = view(wy.W, indswy, (k + 1):(k + 1))
   Y0 = view(wy.Y, indswy, 1:k)
-  Y1 = view(wy.Y, indswy, k + 1:k+1)
+  Y1 = view(wy.Y, indswy, (k + 1):(k + 1))
 
   W1[:,:] .= zero(E)
   Y1[:,:] .= zero(E)
-  W1[indsh,:] = v
-  Y1[indsh,:] = v
+  W1[indshwy,:] = v
+  Y1[indshwy,:] = v
 
   mul!(work, Y0', W1)
   mul!(W1, W0, work, -h.β, h.β)
 
-  wy.k[] = wy.k[] + 1
+  wy.num_h = wy.num_h + 1
 end
 
 @inline function InPlace.:⊘(
-  wy::WYTrans{E,AE2},
-  h::HouseholderTrans{E,AE1},
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  wy::WYTrans{E},
+  h::HouseholderTrans{E},
+) where {E<:Number}
 
-  k = wy.k[]
+  k = wy.num_h
   v=reshape(h.v,length(h.v),1)
   
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = (wy.offs + 1):(wy.offs + wy.bs)
+  indswy = (wy.offs + 1):(wy.offs + wy.sizeWY)
+  indshwy = (h.offs - wy.offs + 1):(h.offs - wy.offs + h.size)
 
   indsh ⊆ indswy || throw(WYIndexSubsetError)
 
-  work = view(wy.work, 1:1, 1:k)'
+  work = reshape(view(wy.work, 1:k),k,1)
 
   W0 = view(wy.W, indswy, 1:k)
   W1 = view(wy.W, indswy, k + 1:k+1)
@@ -210,29 +203,30 @@ end
 
   W1[:,:] .= zero(E)
   Y1[:,:] .= zero(E)
-  W1[indsh,:] = v
-  Y1[indsh,:] = v
+  W1[indshwy,:] = v
+  Y1[indshwy,:] = v
 
   mul!(work, Y0', W1)
   mul!(W1, W0, work, -conj(h.β), conj(h.β))
 
-  wy.k[] = wy.k[] + 1
+  wy.num_h = wy.num_h + 1
 end
 
 @inline function InPlace.:⊛(
-  h::HouseholderTrans{E,AE1},
-  wy::WYTrans{E,AE2},
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  h::HouseholderTrans{E},
+  wy::WYTrans{E},
+) where {E<:Number}
 
-  k = wy.k[]
+  k = wy.num_h
   v=reshape(h.v,length(h.v),1)
   
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = (wy.offs + 1):(wy.offs + wy.bs)
+  indswy = (wy.offs + 1):(wy.offs + wy.sizeWY)
+  indshwy = (h.offs - wy.offs + 1):(h.offs - wy.offs + h.size)
 
   indsh ⊆ indswy || throw(WYIndexSubsetError)
 
-  work = view(wy.work, 1:1, 1:k)'
+  work = reshape(view(wy.work, 1:k),k,1)
 
   W0 = view(wy.W, indswy, 1:k)
   W1 = view(wy.W, indswy, k + 1:k+1)
@@ -241,44 +235,45 @@ end
 
   W1[:,:] .= zero(E)
   Y1[:,:] .= zero(E)
-  W1[indsh,:] = v
-  Y1[indsh,:] = v
+  W1[indshwy,:] = v
+  Y1[indshwy,:] = v
 
   mul!(work, W0', Y1)
   mul!(Y1, Y0, work, -conj(h.β), conj(h.β))
 
-  wy.k[] = wy.k[] + 1
+  wy.num_h = wy.num_h + 1
 end
 
 @inline function InPlace.:⊘(
-  h::HouseholderTrans{E,AE1},
-  wy::WYTrans{E,AE2},
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  h::HouseholderTrans{E},
+  wy::WYTrans{E},
+) where {E<:Number}
 
-  k = wy.k[]
-  v=reshape(h.v,length(h.v),1)
-  
+  k = wy.num_h
+  v = reshape(h.v, length(h.v), 1)
+
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = (wy.offs + 1):(wy.offs + wy.bs)
+  indswy = (wy.offs + 1):(wy.offs + wy.sizeWY)
+  indshwy = (h.offs - wy.offs + 1):(h.offs - wy.offs + h.size)
 
   indsh ⊆ indswy || throw(WYIndexSubsetError)
 
-  work = view(wy.work, 1:1, 1:k)'
+  work = reshape(view(wy.work, 1:k),k,1)
 
   W0 = view(wy.W, indswy, 1:k)
-  W1 = view(wy.W, indswy, k + 1:k+1)
+  W1 = view(wy.W, indswy, (k + 1):(k + 1))
   Y0 = view(wy.Y, indswy, 1:k)
-  Y1 = view(wy.Y, indswy, k + 1:k+1)
+  Y1 = view(wy.Y, indswy, (k + 1):(k + 1))
 
-  W1[:,:] .= zero(E)
-  Y1[:,:] .= zero(E)
-  W1[indsh,:] = v
-  Y1[indsh,:] = v
+  W1[:, :] .= zero(E)
+  Y1[:, :] .= zero(E)
+  W1[indshwy, :] = v
+  Y1[indshwy, :] = v
 
   mul!(work, W0', Y1)
   mul!(Y1, Y0, work, -h.β, h.β)
 
-  wy.k[] = wy.k[] + 1
+  wy.num_h = wy.num_h + 1
 end
 
 end # module
