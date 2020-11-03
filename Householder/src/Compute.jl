@@ -13,16 +13,20 @@ A Householder data structure: h ⊛ A is equivalent to
   A[h.j:h.j+h.size] = A[h.j:h.j+h.size] - h.beta * h.v * (h.v' * A[h.j:h.j+h.size])
 
 """
-struct HouseholderTrans{E,AE}
+struct HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}}
   β::E
-  v::AE          # Householder vector.
-  l::Int64       # element to leave nonzero.
-  size::Int64    # size of transformation.
-  offs::Int64    # offset for applying to a matrix.
+  # Householder vector.
+  v::AEV
+  # element to leave nonzero.
+  l::Int64
+  # size of transformation.
+  size::Int64
+  # offset for applying to a matrix.
+  offs::Int64
   # Size = opposite side size of A.  For m × n A:
   # h ⊛ A requires work space of size n.
   # A ⊛ h requires work space of size m.
-  work::AE       
+  work::AEW
 end
 
 @inline function update_norm(a::R, b::E) where {R<:Real,E<:Union{R,Complex{R}}}
@@ -52,11 +56,11 @@ end
 
 """
 function lhouseholder(
-  a::A,
+  a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
-  work::A
-) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
+  work::AbstractArray{E,1}
+) where {R<:Real,E<:Union{R,Complex{R}}}
   m = length(a)
   a1 = a[l]
   if m == 1
@@ -81,16 +85,16 @@ function lhouseholder(
     a[l] = one(a1)
     rdiv!(view(a,1:(l-1)), alpha)
     rdiv!(view(a,(l+1):m), alpha)
-    HouseholderTrans(conj(β), a, l, m, offs,work)
+    HouseholderTrans(conj(β), a, l, m, offs, work)
   end
 end
 
 function lhouseholder(
-  a::A,
+  a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
   work_size::Int64,
-) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
+) where {R<:Real,E<:Union{R,Complex{R}}}
   work = zeros(E, work_size)
   lhouseholder(a,l,offs,work)
 end
@@ -102,11 +106,11 @@ end
 
 """
 function rhouseholder(
-  a::A,
+  a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
-  work::A,
-) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
+  work::AbstractArray{E,1},
+) where {R<:Real,E<:Union{R,Complex{R}}}
   m = length(a)
   a1 = a[l]
   if m == 1
@@ -138,11 +142,11 @@ function rhouseholder(
 end
 
 function rhouseholder(
-  a::A,
+  a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
   work_size::Int64,
-) where {R<:Real,E<:Union{R,Complex{R}},A<:AbstractArray{E,1}}
+) where {R<:Real,E<:Union{R,Complex{R}}}
   work = zeros(E, work_size)
   rhouseholder(a,l,offs,work)
 end
@@ -166,9 +170,9 @@ end
 end
   
 @inline function InPlace.:⊛(
-  h::HouseholderTrans{E,AE1},
-  a::AE2,
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  h::HouseholderTrans{E},
+  a::AbstractArray{E,2},
+) where {E<:Number}
   m = h.size
   na = size(a,2)
   v = reshape(h.v, m, 1)
@@ -186,9 +190,9 @@ end
 end
 
 @inline function InPlace.:⊘(
-  h::HouseholderTrans{E,AE1},
-  a::AE2,
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  h :: HouseholderTrans{E},
+  a::AbstractArray{E,2},
+) where {E<:Number}
   m = h.size
   na = size(a,2)
   v = reshape(h.v, m, 1)
@@ -207,9 +211,9 @@ end
 
 
 @inline function InPlace.:⊛(
-  a::AE2,
-  h::HouseholderTrans{E,AE1},
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  a::AbstractArray{E,2},
+  h::HouseholderTrans{E},
+) where {E<:Number}
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
@@ -230,9 +234,9 @@ end
 end
 
 @inline function InPlace.:⊘(
-  a::AE2,
-  h::HouseholderTrans{E,AE1},
-) where {E<:Number,AE1<:AbstractArray{E,1},AE2<:AbstractArray{E,2}}
+  a::AbstractArray{E,2},
+  h::HouseholderTrans{E},
+) where {E<:Number}
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
@@ -251,5 +255,100 @@ end
   end
   nothing
 end
+
+# Adjoint operations.
+
+# A - β v vᴴ A
+
+@inline function InPlace.:⊛(
+  h::HouseholderTrans{E},
+  a::Adjoint{E,<:AbstractArray{E,2}},
+) where {E<:Number}
+  m = h.size
+  na = size(a,2)
+  v = reshape(h.v, m, 1)
+  offs = h.offs
+  work = h.work
+  na = size(a,2)
+  work[1:na] .= zero(E)
+  for j ∈ 1:m
+    for k ∈ 1:na
+      work[k] += a[j+offs,k] * conj(v[j])
+    end
+  end
+  for j ∈ 1:m
+    for k ∈ 1:na
+      a[j+offs,k] -= h.β * work[k] * v[j]
+    end
+  end
+  nothing
+end
+
+@inline function InPlace.:⊘(
+  h::HouseholderTrans{E},
+  a::Adjoint{E,<:AbstractArray{E,2}},
+) where {E<:Number}
+  m = h.size
+  na = size(a,2)
+  v = reshape(h.v, m, 1)
+  offs = h.offs
+  work = h.work
+  na = size(a,2)
+  work[1:na] .= zero(E)
+  for j ∈ 1:m
+    for k ∈ 1:na
+      work[k] += a[j+offs,k] * conj(v[j])
+    end
+  end
+  for j ∈ 1:m
+    for k ∈ 1:na
+      a[j+offs,k] -= conj(h.β) * work[k] * v[j]
+    end
+  end
+  nothing
+end
+
+@inline function InPlace.:⊛(
+  a::Adjoint{E,<:AbstractArray{E,2}},
+  h::HouseholderTrans{E},
+) where {E<:Number}
+  m = h.size
+  v = reshape(h.v, m, 1)
+  offs = h.offs
+  work = h.work
+  ma = size(a,1)
+  for j ∈ 1:ma
+    x = zero(E)
+    for k ∈ 1:m
+      x = x + a[j,k+offs] * v[k]
+    end
+    for k ∈ 1:m
+      a[j,k+offs] -= h.β * conj(v[k]) * x
+    end
+  end
+  nothing
+end
+
+@inline function InPlace.:⊘(
+  a::Adjoint{E,<:AbstractArray{E,2}},
+  h::HouseholderTrans{E},
+) where {E<:Number}
+  m = h.size
+  v = reshape(h.v, m, 1)
+  offs = h.offs
+  work = h.work
+  ma = size(a,1)
+  for j ∈ 1:ma
+    x = zero(E)
+    for k ∈ 1:m
+      x = x + a[j,k+offs] * v[k]
+    end
+    for k ∈ 1:m
+      a[j,k+offs] -= conj(h.β) * conj(v[k]) * x
+    end
+  end
+  nothing
+end
+
 
 end # module
