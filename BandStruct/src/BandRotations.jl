@@ -15,9 +15,9 @@ import InPlace
 import Base: @propagate_inbounds
 
 @propagate_inbounds @inline function InPlace.:⊛(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   r::AdjRot{R,E},
-) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
+) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   k = r.j
@@ -32,9 +32,9 @@ import Base: @propagate_inbounds
 end
 
 @propagate_inbounds @inline function InPlace.:⊘(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   r::AdjRot{R,E},
-) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
+) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   k = r.j
@@ -50,8 +50,8 @@ end
 
 @propagate_inbounds @inline function InPlace.:⊛(
   r::AdjRot{R,E},
-  bc::AbstractBandColumn{E,AE,AI},
-) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
+  bc::AbstractBandColumn{E},
+) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   j = r.j
@@ -67,8 +67,8 @@ end
 
 @propagate_inbounds @inline function InPlace.:⊘(
   r::AdjRot{R,E},
-  bc::AbstractBandColumn{E,AE,AI},
-) where {R<:AbstractFloat,E<:Union{R,Complex{R}},AE,AI}
+  bc::AbstractBandColumn{E},
+) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   j = r.j

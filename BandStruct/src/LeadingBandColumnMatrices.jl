@@ -151,7 +151,7 @@ function LeadingBandColumn(
   upper_bw_max::Int,
   lower_bw_max::Int,
   leading_blocks::Array{Int,2},
-) where {E}
+) where {E<:Number}
   num_blocks = size(leading_blocks,2)
   cbws = zeros(Int, 4, n)
   cbws[2, 1] = leading_blocks[1, 1]
@@ -198,8 +198,8 @@ end
 
 function rand!(
   rng::AbstractRNG,
-  lbc::LeadingBandColumn{E,AE,AI},
-) where {E,AE,AI}
+  lbc::LeadingBandColumn{E},
+) where {E}
 
   for k = 1:(lbc.n)
     for j = first_storage_el(lbc, k):last_storage_el(lbc, k)
@@ -219,7 +219,7 @@ function LeadingBandColumn(
   leading_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
   lower_ranks::Array{Int,1},
-) where {E}
+) where {E<:Number}
   lbc = LeadingBandColumn(
     T,
     m,
@@ -276,11 +276,11 @@ end
 ) = lbc.band_elements[j, k]
 
 @propagate_inbounds @inline function set_band_element!(
-  lbc::LeadingBandColumn{E,AE,AI},
+  lbc::LeadingBandColumn{E},
   x::E,
   j::Int,
   k::Int,
-) where {E,AE,AI}
+) where {E<:Number}
   lbc.band_elements[j, k] = x
 end
 

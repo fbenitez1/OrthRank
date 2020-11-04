@@ -364,11 +364,11 @@ end
   bc.band_elements[j, k]
 
 @propagate_inbounds @inline function set_band_element!(
-  bc::BandColumn{E,AE,AI},
+  bc::BandColumn{E},
   x::E,
   j::Int,
   k::Int,
-) where {E,AE,AI}
+) where {E<:Number}
   bc.band_elements[j, k] = x
 end
 
@@ -387,9 +387,9 @@ sizes in a LeadingBandColumn matrix.
 
 """
 function compute_rbws!(
-  bc::AbstractBandColumn{E,AE,AI},
-  rbws::Array{Int,2},
-) where {E,AE,AI} 
+  bc::AbstractBandColumn,
+  rbws::AbstractArray{Int,2},
+)
   (m, n) = size(bc)
   rbws[:, 1:3] .= zero(Int)
   roffs = get_roffset(bc)
@@ -404,11 +404,11 @@ function compute_rbws!(
 end
 
 
-function compute_rbws!(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+function compute_rbws!(bc::AbstractBandColumn)
   compute_rbws!(bc, bc.rbws)
 end
 
-function compute_rbws(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+function compute_rbws(bc::AbstractBandColumn)
   (m, n) = size(bc)
   rbws1 = zeros(Int,m,3)
   compute_rbws!(bc, rbws1)
@@ -416,7 +416,7 @@ function compute_rbws(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
 end
 
 
-function validate_rbws(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+function validate_rbws(bc::AbstractBandColumn)
   (m, n) = size(bc)
   rbws1 = zeros(Int,m,3)
   compute_rbws!(bc, rbws1)
@@ -621,10 +621,10 @@ end
 
 # (BandColumn{Float64, Array{Float64,2}, Array{Int}}, Int, Int))
 @propagate_inbounds @inline function getindex(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn,
   j::Int,
   k::Int,
-) where {E,AE,AI}
+)
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
@@ -635,11 +635,11 @@ end
 end
 
 @propagate_inbounds @inline function setindex!(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   x::E,
   j::Int,
   k::Int,
-) where {E,AE,AI}
+) where {E<:Number}
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
@@ -657,11 +657,11 @@ where the bandwidth can be extended outside the loop.
 
 """
 @propagate_inbounds @inline function setindex_noext!(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   x::E,
   j::Int,
   k::Int,
-) where {E,AE,AI}
+) where {E<:Number}
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
@@ -678,10 +678,10 @@ Remove one upper element from column k or row j.
 
 """
 @propagate_inbounds @inline function trim_upper!(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   ::Colon,
   k::Int,
-) where {E, AE, AI}
+) where {E<:Number}
   jrange = upper_els_range(bc, :, k)
   j = jrange.start
   @boundscheck begin
@@ -699,10 +699,10 @@ Remove one upper element from column k or row j.
 end
 
 @propagate_inbounds @inline function trim_upper!(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   j::Int,
   ::Colon,
-) where {E, AE, AI}
+) where{E<:Number}
   krange = upper_els_range(bc, j, :)
   k = krange.stop
   @boundscheck begin
@@ -728,10 +728,10 @@ Remove one upper element from row j or column k.
 """
 
 @propagate_inbounds @inline function trim_lower!(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   ::Colon,
   k::Int,
-) where {E, AE, AI}
+) where {E<:Number}
   jrange = lower_els_range(bc, :, k)
   j = jrange.stop
   @boundscheck begin
@@ -749,10 +749,10 @@ Remove one upper element from row j or column k.
 end
 
 @propagate_inbounds @inline function trim_lower!(
-  bc::AbstractBandColumn{E,AE,AI},
+  bc::AbstractBandColumn{E},
   j::Int,
   ::Colon,
-) where {E, AE, AI}
+) where {E}
   krange = lower_els_range(bc, j, :)
   k = krange.start
   @boundscheck begin
@@ -885,7 +885,7 @@ end
   viewbc(bc, (1:get_m(bc), 1:get_n(bc)))
 end
 
-function Matrix(bc::AbstractBandColumn{E,AE,AI}) where {E,AE,AI}
+function Matrix(bc::AbstractBandColumn{E}) where {E<:Number}
   (m, n) = size(bc)
   a = zeros(E, m, n)
   for k = 1:n
@@ -950,7 +950,7 @@ end
 # storage but are not actually stored are represented by `O`.  These
 # are elements that are outside the current bandwidth but not outside
 # the maximum bandwidth.
-function show(io::IO, bc::BandColumn{E,AE,AI}) where {E,AE,AI}
+function show(io::IO, bc::BandColumn)
   print(
     io,
     typeof(bc),
