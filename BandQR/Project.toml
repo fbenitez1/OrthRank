@@ -4,5 +4,6 @@ authors = ["mas "]
 version = "0.1.0"
 
 [deps]
+InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Rotations = "736fae1d-e7b5-4d1b-9fe5-a4d954b343ea"

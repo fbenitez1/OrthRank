@@ -1,6 +1,7 @@
 module Factorization
 using LinearAlgebra
 
+using InPlace
 using Rotations
 
 export bandQR
