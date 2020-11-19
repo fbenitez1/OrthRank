@@ -621,10 +621,10 @@ end
 
 # (BandColumn{Float64, Array{Float64,2}, Array{Int}}, Int, Int))
 @propagate_inbounds @inline function getindex(
-  bc::AbstractBandColumn,
+  bc::AbstractBandColumn{E},
   j::Int,
   k::Int,
-)
+) where {E}
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
