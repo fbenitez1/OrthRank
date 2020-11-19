@@ -21,7 +21,7 @@ Im=Matrix{E}(I,m,m)
 Q=copy(Im)
 work=zeros(E,m)
 for j=1:3
-  h = lhouseholder(A[j:m,j],1,j-1,work)
+  local h = lhouseholder(A[j:m,j],1,j-1,work)
   h ⊘ A
   Q ⊛ h
   wy1 ⊛ h
@@ -59,7 +59,7 @@ Im=Matrix{E}(I,m,m)
 Q=copy(Im)
 work=zeros(E,m)
 for j=1:3
-  h = lhouseholder(A[j:m,j],1,j-1,work)
+  local h = lhouseholder(A[j:m,j],1,j-1,work)
   h ⊘ A
   Q ⊛ h
   wy1 ⊛ h
@@ -91,7 +91,7 @@ function qrH(A::AbstractArray{E,2}, bs::Int64) where {E<:Number}
     for k ∈ ((b - 1) * bs + 1):min(b * bs, n)
       vk = view(v, 1:(m - k + 1))
       vk[:] = A[k:m, k]
-      h = lhouseholder(vk, 1, k - 1, work)
+      local h = lhouseholder(vk, 1, k - 1, work)
       h ⊘ view(A, :, k:n)
       A[(k + 1):m, k] .= zero(E)
       Q ⊛ h
@@ -115,7 +115,7 @@ end
     for k ∈ ((b - 1) * bs + 1):block_end
       vk = view(v, 1:(m - k + 1))
       vk[:] = view(A, k:m, k)
-      h = lhouseholder(vk, 1, k - 1, workh)
+      local h = lhouseholder(vk, 1, k - 1, workh)
       h ⊘ view(A, :, k:block_end)
       A[(k + 1):m, k] .= zero(E)
       wy ⊛ h
