@@ -1,9 +1,4 @@
-if isdefined(@__MODULE__, :LanguageServer)
-  include("src/Factorization.jl")
-  using .Factorization
-else
-  using BandQR.Factorization
-end
+using BandQR.Factorization
 
 # Generate a random banded type containing floats.
 function makeA(

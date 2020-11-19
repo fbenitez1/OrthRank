@@ -5,52 +5,28 @@ using Random
 
 import Base: size, getindex, setindex!, @propagate_inbounds, show, print, copy
 
-if isdefined(@__MODULE__, :LanguageServer)
-  include("src/BandColumnMatrices.jl")
-  import .BandColumnMatrices:
-    get_m_els,
-    get_m,
-    get_n,
-    get_roffset,
-    get_coffset,
-    get_rbws,
-    get_cbws,
-    get_upper_bw_max,
-    get_middle_bw_max,
-    get_lower_bw_max,
-    upper_bw,
-    middle_bw,
-    lower_bw,
-    first_super,
-    first_sub,
-    get_band_element,
-    set_band_element!,
-    viewbc,
-    wilk
-  using .BandColumnMatrices
-else
-  import BandStruct.BandColumnMatrices:
-    get_m_els,
-    get_m,
-    get_n,
-    get_roffset,
-    get_coffset,
-    get_rbws,
-    get_cbws,
-    get_upper_bw_max,
-    get_middle_bw_max,
-    get_lower_bw_max,
-    upper_bw,
-    middle_bw,
-    lower_bw,
-    first_super,
-    first_sub,
-    get_band_element,
-    set_band_element!,
-    viewbc,
-    wilk
-  using BandStruct.BandColumnMatrices
-end
+import BandStruct.BandColumnMatrices:
+  get_m_els,
+  get_m,
+  get_n,
+  get_roffset,
+  get_coffset,
+  get_rbws,
+  get_cbws,
+  get_upper_bw_max,
+  get_middle_bw_max,
+  get_lower_bw_max,
+  upper_bw,
+  middle_bw,
+  lower_bw,
+  first_super,
+  first_sub,
+  get_band_element,
+  set_band_element!,
+  viewbc,
+  wilk
+using BandStruct.BandColumnMatrices
+
 
 export HouseholderWeightMatrix
   # size,

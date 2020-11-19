@@ -1,15 +1,7 @@
-if isdefined(@__MODULE__, :LanguageServer)
-  include("src/BandColumnMatrices.jl")
-  using .BandColumnMatrices
-  include("src/LeadingBandColumnMatrices.jl")
-  using .LeadingBandColumnMatrices
-  include("src/BandRotations.jl")
-  using .BandRotations
-else
-  using BandStruct.BandColumnMatrices
-  using BandStruct.LeadingBandColumnMatrices
-  using BandStruct.BandRotations
-end
+using BandStruct.BandColumnMatrices
+using BandStruct.LeadingBandColumnMatrices
+using BandStruct.BandRotations
+
 using Random
 using Rotations
 using InPlace

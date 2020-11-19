@@ -1,9 +1,4 @@
-if isdefined(@__MODULE__, :LanguageServer)
-  include("src/Givens.jl")
-  using .Givens
-else
-  using Rotations.Givens
-end
+using Rotations.Givens
 
 using LinearAlgebra
 using Random

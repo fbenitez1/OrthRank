@@ -1,12 +1,9 @@
 module BandRotations
-if isdefined(@__MODULE__, :LanguageServer)
-  include("Givens.jl")
-  using .Givens
-else
-  using Rotations.Givens
-end
 
 using LinearAlgebra
+
+using Rotations.Givens
+
 using BandStruct
 using BandStruct.BandColumnMatrices
 using BandStruct.LeadingBandColumnMatrices

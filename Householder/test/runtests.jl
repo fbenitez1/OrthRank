@@ -1,12 +1,5 @@
-if isdefined(@__MODULE__, :LanguageServer)
-  include("src/Compute.jl")
-  using .Compute
-  include("src/WY.jl")
-  using .WY
-else
-  using Householder.Compute
-  using Householder.WY
-end
+using Householder.Compute
+using Householder.WY
 
 using LinearAlgebra
 using Random

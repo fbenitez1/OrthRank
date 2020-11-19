@@ -3,12 +3,7 @@ module WY
 using LinearAlgebra
 import InPlace
 
-if isdefined(@__MODULE__, :LanguageServer)
-  include("src/Compute.jl")
-  using .Compute
-else
-  using Householder.Compute
-end
+using Householder.Compute
 
 export WYTrans, resetWY!, reworkWY!, WYIndexSubsetError
 

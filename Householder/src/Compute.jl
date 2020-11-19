@@ -1,10 +1,11 @@
 module Compute
 
-export HouseholderTrans,
-  update_norm, lhouseholder, rhouseholder, column_nonzero!, row_nonzero!
 
 using LinearAlgebra
 import InPlace
+
+export HouseholderTrans,
+  update_norm, lhouseholder, rhouseholder, column_nonzero!, row_nonzero!
 
 """
 
