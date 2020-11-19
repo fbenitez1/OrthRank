@@ -1,5 +1,4 @@
 module HouseholderWeight
-using MLStyle
 using Printf
 using Random
 
@@ -90,7 +89,5 @@ struct HouseholderWeightMatrix{
   right_betas::AE2
   right_ks::AI2
 end
-
-@as_record HouseholderWeightMatrix
 
 end

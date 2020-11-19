@@ -1,5 +1,4 @@
 module LeadingBandColumnMatrices
-using MLStyle
 using Printf
 using Random
 
@@ -115,8 +114,6 @@ struct LeadingBandColumn{
   leading_blocks::AI # 2xn matrix, leading block row and column counts.
   band_elements::AE
 end
-
-@as_record LeadingBandColumn
 
 # Construct an empty (all zero) structure from the matrix size, bounds
 # on the upper and lower bandwidth, and blocksizes.
@@ -344,40 +341,28 @@ print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
   i::Tuple{UnitRange{Int},UnitRange{Int}},
 )
   (rows, cols) = i
-  @when let LeadingBandColumn(;
-                              m,
-                              n,
-                              m_els,
-                              upper_bw_max = ubw_max,
-                              middle_bw_max = mbw_max,
-                              lower_bw_max = lbw_max,
-                              rbws,                        
-                              cbws,
-                              band_elements = els,
-                              ) = lbc,
-    UnitRange(j0, j1) = rows,
-    UnitRange(k0, k1) = cols
+  j0 = rows.start
+  j1 = rows.stop
+  k0 = cols.start
+  k1 = cols.stop
 
-    @boundscheck begin
-      checkbounds(lbc, j0, k0)
-      checkbounds(lbc, j1, k1)
-    end
-    BandColumn(
-      max(j1 - j0 + 1, 0),
-      max(k1 - k0 + 1, 0),
-      m_els,
-      j0 - 1,
-      k0 - 1,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      view(rbws, rows, 1:4),
-      view(cbws, 1:4, cols),
-      view(els, 1:4, cols),
-    )
-    @otherwise
-    throw(MatchError)
+  @boundscheck begin
+    checkbounds(lbc, j0, k0)
+    checkbounds(lbc, j1, k1)
   end
+  BandColumn(
+    max(j1 - j0 + 1, 0),
+    max(k1 - k0 + 1, 0),
+    lbc.m_els,
+    j0 - 1,
+    k0 - 1,
+    lbc.upper_bw_max,
+    lbc.middle_bw_max,
+    lbc.lower_bw_max,
+    view(lbc.rbws, rows, 1:4),
+    view(lbc.cbws, 1:4, cols),
+    view(lbc.band_elements, 1:4, cols),
+  )
 end
 
 @inline function getindex(
@@ -385,42 +370,28 @@ end
   rows::UnitRange{Int},
   cols::UnitRange{Int},
 )
+  j0 = rows.start
+  j1 = rows.stop
+  k0 = cols.start
+  k1 = cols.stop
 
-  @when let LeadingBandColumn(;
-                              m,
-                              n,
-                              m_els,
-                              num_blocks,
-                              upper_bw_max = ubw_max,
-                              middle_bw_max = mbw_max,
-                              lower_bw_max = lbw_max,
-                              rbws,
-                              cbws,
-                              band_elements = els,
-                              ) = lbc,
-    UnitRange(j0, j1) = rows,
-    UnitRange(k0, k1) = cols
-
-    @boundscheck begin
-      checkbounds(lbc, j0, k0)
-      checkbounds(lbc, j1, k1)
-    end
-    BandColumn(
-      max(j1 - j0 + 1, 0),
-      max(k1 - k0 + 1, 0),
-      m_els,
-      j0 - 1,
-      k0 - 1,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      rbws[rows, :],
-      cbws[:, cols],
-      els[:, cols],
-    )
-    @otherwise
-    throw(MatchError)
+  @boundscheck begin
+    checkbounds(lbc, j0, k0)
+    checkbounds(lbc, j1, k1)
   end
+  BandColumn(
+    max(j1 - j0 + 1, 0),
+    max(k1 - k0 + 1, 0),
+    lbc.m_els,
+    j0 - 1,
+    k0 - 1,
+    lbc.upper_bw_max,
+    lbc.middle_bw_max,
+    lbc.lower_bw_max,
+    lbc.rbws[rows, :],
+    lbc.cbws[:, cols],
+    lbc.band_elements[:, cols],
+  )
 end
 
 # Find bounds for lower left block l in A.
@@ -553,35 +524,19 @@ end
 end
 
 function copy(lbc::LeadingBandColumn)
-  @when let LeadingBandColumn(
-    m,
-    n,
-    m_els,
-    num_blocks,
-    ubw_max,
-    mbw_max,
-    lbw_max,
-    rbws,
-    cbws,
-    lblocks,
-    bels,
-  ) = lbc
-    LeadingBandColumn(
-      m,
-      n,
-      m_els,
-      num_blocks,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      copy(rbws),
-      copy(cbws),
-      lblocks,
-      copy(bels),
-    )
-    @otherwise
-    throw(MatchError)
-  end
+  LeadingBandColumn(
+    lbc.m,
+    lbc.n,
+    lbc.m_els,
+    lbc.num_blocks,
+    lbc.upper_bw_max,
+    lbc.middle_bw_max,
+    lbc.lower_bw_max,
+    copy(lbc.rbws),
+    copy(lbc.cbws),
+    lbc.leading_blocks,
+    copy(lbc.band_elements),
+  )
 end
 
 

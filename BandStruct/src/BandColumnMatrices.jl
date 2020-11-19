@@ -1,6 +1,5 @@
 module BandColumnMatrices
 
-using MLStyle
 using ConstructionBase
 using Printf
 import LinearAlgebra.Matrix
@@ -19,7 +18,6 @@ import Base:
 
 export BandColumn,
   AbstractBandColumn,
-  MatchError,
   WellError,
   EmptyUpperRange,
   EmptyLowerRange,
@@ -73,12 +71,6 @@ export BandColumn,
   Wilk,
   trim_upper!,
   trim_lower!
-"""
-    MatchError
-
- An exception for pattern match errors in MLStyle.
-"""
-struct MatchError <: Exception end
 
 """
     NoStorageForIndex
@@ -136,9 +128,6 @@ struct BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
   cbws::AI # Column bandwidths and first superdiagonal in each column.
   band_elements::AE
 end
-
-@as_record BandColumn
-@as_record UnitRange
 
 ##
 ## Functions that should be implemented as part of the
@@ -773,47 +762,30 @@ end
   viewbc(bc, I)
 end
 
-@inline function viewbc(
-  bc::BandColumn,
-  i::Tuple{UnitRange{Int},UnitRange{Int}},
-)
+@inline function viewbc(bc::BandColumn, i::Tuple{UnitRange{Int},UnitRange{Int}})
   (rows, cols) = i
-  @when let BandColumn(;
-                       m,
-                       n,
-                       m_els,
-                       roffset = roffs,
-                       coffset = coffs,
-                       upper_bw_max = ubw_max,
-                       middle_bw_max = mbw_max,
-                       lower_bw_max = lbw_max,
-                       rbws,
-                       cbws,
-                       band_elements = els,
-                       ) = bc,
-    UnitRange(j0, j1) = rows,
-    UnitRange(k0, k1) = cols
+  j0 = rows.start
+  j1 = rows.stop
+  k0 = cols.start
+  k1 = cols.stop
 
-    @boundscheck begin
-      checkbounds(bc, j0, k0)
-      checkbounds(bc, j1, k1)
-    end
-    BandColumn(
-      max(j1 - j0 + 1, 0),
-      max(k1 - k0 + 1, 0),
-      m_els,
-      roffs + j0 - 1,
-      coffs + k0 - 1,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      view(rbws, rows, 1:4),
-      view(cbws, 1:4, cols),
-      view(els, 1:4, cols),
-    )
-    @otherwise
-    throw(MatchError)
+  @boundscheck begin
+    checkbounds(bc, j0, k0)
+    checkbounds(bc, j1, k1)
   end
+  BandColumn(
+    max(j1 - j0 + 1, 0),
+    max(k1 - k0 + 1, 0),
+    bc.m_els,
+    bc.roffset + j0 - 1,
+    bc.coffset + k0 - 1,
+    bc.upper_bw_max,
+    bc.middle_bw_max,
+    bc.lower_bw_max,
+    view(bc.rbws, rows, 1:4),
+    view(bc.cbws, 1:4, cols),
+    view(bc.band_elements, 1:4, cols),
+  )
 end
 
 @inline function getindex(
@@ -822,42 +794,28 @@ end
   cols::UnitRange{Int},
 )
 
-  @when let BandColumn(;
-                       m,
-                       n,
-                       m_els,
-                       roffset = roffs,
-                       coffset = coffs,
-                       upper_bw_max = ubw_max,
-                       middle_bw_max = mbw_max,
-                       lower_bw_max = lbw_max,
-                       rbws,
-                       cbws,
-                       band_elements = els,
-                       ) = bc,
-    UnitRange(j0, j1) = rows,
-    UnitRange(k0, k1) = cols
+  j0 = rows.start
+  j1 = rows.stop
+  k0 = cols.start
+  k1 = cols.stop
 
-    @boundscheck begin
-      checkbounds(bc, j0, k0)
-      checkbounds(bc, j1, k1)
-    end
-    BandColumn(
-      max(j1 - j0 + 1, 0),
-      max(k1 - k0 + 1, 0),
-      m_els,
-      roffs + j0 - 1,
-      coffs + k0 - 1,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      rbws[rows, :],
-      cbws[:, cols],
-      els[:, cols],
-    )
-    @otherwise
-    throw(MatchError)
+  @boundscheck begin
+    checkbounds(bc, j0, k0)
+    checkbounds(bc, j1, k1)
   end
+  BandColumn(
+    max(j1 - j0 + 1, 0),
+    max(k1 - k0 + 1, 0),
+    bc.m_els,
+    bc.roffset + j0 - 1,
+    bc.coffset + k0 - 1,
+    bc.upper_bw_max,
+    bc.middle_bw_max,
+    bc.lower_bw_max,
+    bc.rbws[rows, :],
+    bc.cbws[:, cols],
+    bc.band_elements[:, cols],
+  )
 end
 
 @inline getindex(bc::AbstractBandColumn, ::Colon, cols::UnitRange{Int}) =
@@ -910,35 +868,19 @@ end
 # Copying
 
 function copy(bc::BandColumn)
-  @when let BandColumn(
-    m,
-    n,
-    m_els,
-    roffs,
-    coffs,
-    ubw_max,
-    mbw_max,
-    lbw_max,
-    rbws,
-    cbws,
-    bels,
-  ) = bc
-    BandColumn(
-      m,
-      n,
-      m_els,
-      roffs,
-      coffs,
-      ubw_max,
-      mbw_max,
-      lbw_max,
-      copy(rbws),
-      copy(cbws),
-      copy(bels),
-    )
-    @otherwise
-    throw(MatchError)
-  end
+  BandColumn(
+    bc.m,
+    bc.n,
+    bc.m_els,
+    bc.roffset,
+    bc.coffset,
+    bc.upper_bw_max,
+    bc.middle_bw_max,
+    bc.lower_bw_max,
+    copy(bc.rbws),
+    copy(bc.cbws),
+    copy(bc.band_elements),
+  )
 end
 
 ##
