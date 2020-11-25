@@ -1,3 +1,7 @@
+bc = copy(bc0)
+lbc = copy(lbc0)
+mx_bc = copy(mx_bc0)
+
 println("""
 
 ****************************

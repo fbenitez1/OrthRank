@@ -1,3 +1,7 @@
+bc = copy(bc0)
+lbc = copy(lbc0)
+mx_bc = copy(mx_bc0)
+
 println("""
 
 ******************
@@ -16,7 +20,7 @@ function rand_range(bc :: AbstractBandColumn)
 end
 
 res = true
-for j ∈ 1:100
+for j ∈ 1:1
   global res
   (rows, cols) = rand_range(bc)
   if Matrix(bc[rows, cols]) != mx_bc[rows, cols]
@@ -30,11 +34,8 @@ for j ∈ 1:100
 end
 show_bool_result("BC submatrix test", res)
 
-bc_ = bc[1:end, 1:end]
-bc__ = view(bc, 1:2, 1:2)
-
 res = true
-for j ∈ 1:100
+for j ∈ 1:1
   global res
   (rows, cols) = rand_range(bc)
   if Matrix(view(bc, rows, cols)) != view(mx_bc, rows, cols)
@@ -49,7 +50,7 @@ end
 show_bool_result("BC View test", res)
 
 res = true
-for j ∈ 1:100
+for j ∈ 1:1
   global res
   (rows, cols) = rand_range(lbc)
   if Matrix(lbc[rows, cols]) != mx_bc[rows, cols]
@@ -64,7 +65,7 @@ end
 show_bool_result("LBC submatrix test", res)
 
 res = true
-for j ∈ 1:100
+for j ∈ 1:1
   global res
   (rows, cols) = rand_range(lbc)
   if Matrix(view(lbc, rows, cols)) != view(mx_bc, rows, cols)
