@@ -210,6 +210,9 @@ end
 @inline BandColumnMatrices.get_lower_bw_max(lbc::LeadingBandColumn) =
   lbc.lower_bw_max
 
+@inline BandColumnMatrices.get_band_elements(lbc::LeadingBandColumn) =
+  lbc.band_elements
+
 @propagate_inbounds @inline BandColumnMatrices.upper_bw(
   lbc::LeadingBandColumn,
   ::Colon,
@@ -240,22 +243,6 @@ end
   j::Int,
   ::Colon,
 ) = lbc.rbws[j, 1]
-
-
-@propagate_inbounds @inline BandColumnMatrices.get_band_element(
-  lbc::LeadingBandColumn,
-  j::Int,
-  k::Int,
-) = lbc.band_elements[j, k]
-
-@propagate_inbounds @inline function BandColumnMatrices.set_band_element!(
-  lbc::LeadingBandColumn{E},
-  x::E,
-  j::Int,
-  k::Int,
-) where {E<:Number}
-  lbc.band_elements[j, k] = x
-end
 
 @inline Base.size(lbc::LeadingBandColumn) = (lbc.m, lbc.n)
 

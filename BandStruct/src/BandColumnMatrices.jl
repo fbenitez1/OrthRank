@@ -39,13 +39,12 @@ export BandColumn,
   get_upper_bw_max,
   get_middle_bw_max,
   get_lower_bw_max,
+  get_band_elements,
   upper_bw,
   middle_bw,
   lower_bw,
   first_super,
   first_sub,
-  get_band_element,
-  set_band_element!,
   extend_lower_band!,
   extend_upper_band!,
   extend_band!,
@@ -118,10 +117,7 @@ struct BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
   band_elements::AE
 end
 
-##
-## Functions that should be implemented as part of the
-## AbstractBandColumn interface.
-##
+@inline Base.size(bc::BandColumn) = (bc.m, bc.n)
 
 @inline get_m_els(bc::BandColumn) = bc.m_els
 
@@ -136,6 +132,8 @@ end
 @inline get_lower_bw_max(bc::BandColumn) = bc.lower_bw_max
 @inline get_rbws(bc::BandColumn) = bc.rbws
 @inline get_cbws(bc::BandColumn) = bc.cbws
+
+@inline get_band_elements(bc::BandColumn) = bc.band_elements
 
 @propagate_inbounds @inline upper_bw(bc::BandColumn, ::Colon, k::Int) =
   bc.cbws[1, k]
@@ -335,26 +333,6 @@ end
     extend_lower_band!(bc, jrange.stop, krange.start)
   end
 end
-
-
-
-@propagate_inbounds @inline get_band_element(bc::BandColumn, j::Int, k::Int) =
-  bc.band_elements[j, k]
-
-@propagate_inbounds @inline function set_band_element!(
-  bc::BandColumn{E},
-  x::E,
-  j::Int,
-  k::Int,
-) where {E<:Number}
-  bc.band_elements[j, k] = x
-end
-
-@inline Base.size(bc::BandColumn) = (bc.m, bc.n)
-
-##
-## Generic functions defined for AbstractBandColumn
-##
 
 """
 
@@ -607,7 +585,7 @@ end
     bc_index_stored(bc, j, k) || return zero(E)
   end
   j1 = j - storage_offset(bc,k)
-  @inbounds get_band_element(bc, j1, k)
+  @inbounds getindex(get_band_elements(bc), j1, k)
 end
 
 @propagate_inbounds @inline function Base.setindex!(
@@ -623,7 +601,7 @@ end
   extend_upper_band!(bc, j, k)
   extend_lower_band!(bc, j, k)
   j1 = j - storage_offset(bc, k)
-  @inbounds set_band_element!(bc, x, j1, k)
+  @inbounds (get_band_elements(bc))[j1,k]=x
 end
 
 """
@@ -643,7 +621,7 @@ where the bandwidth can be extended outside the loop.
     check_bc_storage_bounds(bc, j, k)
   end
   j1 = j - storage_offset(bc, k)
-  @inbounds set_band_element!(bc, x, j1, k)
+  @inbounds get_band_elements(bc)[j1,k]=x
 end
 
 """
