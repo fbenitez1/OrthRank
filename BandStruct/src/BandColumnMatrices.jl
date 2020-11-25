@@ -2,19 +2,8 @@ module BandColumnMatrices
 
 using ConstructionBase
 using Printf
-import LinearAlgebra.Matrix
-
-import Base:
-  size,
-  getindex,
-  setindex!,
-  showerror,
-  show,
-  print,
-  @propagate_inbounds,
-  copy,
-  view,
-  eachindex
+using LinearAlgebra
+using Base: @propagate_inbounds
 
 export BandColumn,
   AbstractBandColumn,
@@ -92,7 +81,7 @@ struct WellError <: Exception end
 struct EmptyUpperRange <: Exception end
 struct EmptyLowerRange <: Exception end
 
-showerror(io::IO, e::NoStorageForIndex) = print(
+Base.showerror(io::IO, e::NoStorageForIndex) = print(
   io,
   "NoStorageForIndex:  Attempt to access ",
   typeof(e.arr),
@@ -361,7 +350,7 @@ end
   bc.band_elements[j, k] = x
 end
 
-@inline size(bc::BandColumn) = (bc.m, bc.n)
+@inline Base.size(bc::BandColumn) = (bc.m, bc.n)
 
 ##
 ## Generic functions defined for AbstractBandColumn
@@ -559,8 +548,6 @@ end
   intersect(1:get_m(bc), first_storable_el(bc, :, k):last_storable_el(bc, :, k))
 end
 
-
-
 @propagate_inbounds @inline function upper_storage_els_range(
   bc::AbstractBandColumn,
   k::Int,
@@ -609,7 +596,7 @@ end
 ##
 
 # (BandColumn{Float64, Array{Float64,2}, Array{Int}}, Int, Int))
-@propagate_inbounds @inline function getindex(
+@propagate_inbounds @inline function Base.getindex(
   bc::AbstractBandColumn{E},
   j::Int,
   k::Int,
@@ -623,7 +610,7 @@ end
   @inbounds get_band_element(bc, j1, k)
 end
 
-@propagate_inbounds @inline function setindex!(
+@propagate_inbounds @inline function Base.setindex!(
   bc::AbstractBandColumn{E},
   x::E,
   j::Int,
@@ -758,7 +745,7 @@ end
   nothing
 end
 
-@inline function view(bc::AbstractBandColumn, I::Vararg{Any,N}) where {N}
+@inline function Base.view(bc::AbstractBandColumn, I::Vararg{Any,N}) where {N}
   viewbc(bc, I)
 end
 
@@ -788,7 +775,7 @@ end
   )
 end
 
-@inline function getindex(
+@inline function Base.getindex(
   bc::BandColumn,
   rows::UnitRange{Int},
   cols::UnitRange{Int},
@@ -818,13 +805,13 @@ end
   )
 end
 
-@inline getindex(bc::AbstractBandColumn, ::Colon, cols::UnitRange{Int}) =
+@inline Base.getindex(bc::AbstractBandColumn, ::Colon, cols::UnitRange{Int}) =
   getindex(bc, 1:get_m(bc), cols)
 
-@inline getindex(bc::AbstractBandColumn, rows::UnitRange{Int}, ::Colon) =
+@inline Base.getindex(bc::AbstractBandColumn, rows::UnitRange{Int}, ::Colon) =
   getindex(bc, rows, 1:get_n(bc))
 
-@inline getindex(bc::AbstractBandColumn, ::Colon, ::Colon) = bc
+@inline Base.getindex(bc::AbstractBandColumn, ::Colon, ::Colon) = bc
 
 @inline function viewbc(
   bc::AbstractBandColumn,
@@ -843,7 +830,7 @@ end
   viewbc(bc, (1:get_m(bc), 1:get_n(bc)))
 end
 
-function Matrix(bc::AbstractBandColumn{E}) where {E<:Number}
+function LinearAlgebra.Matrix(bc::AbstractBandColumn{E}) where {E<:Number}
   (m, n) = size(bc)
   a = zeros(E, m, n)
   for k = 1:n
@@ -855,7 +842,7 @@ function Matrix(bc::AbstractBandColumn{E}) where {E<:Number}
 end
 
 # TODO: This should probably return CartesianIndices.
-function eachindex(bc::AbstractBandColumn)
+function Base.eachindex(bc::AbstractBandColumn)
   (_, n) = size(bc)
   (CartesianIndex(j, k) for k = 1:n for j ∈ els_range(bc, :, k))
 end
@@ -867,7 +854,7 @@ end
 
 # Copying
 
-function copy(bc::BandColumn)
+function Base.copy(bc::BandColumn)
   BandColumn(
     bc.m,
     bc.n,
@@ -892,7 +879,7 @@ end
 # storage but are not actually stored are represented by `O`.  These
 # are elements that are outside the current bandwidth but not outside
 # the maximum bandwidth.
-function show(io::IO, bc::BandColumn)
+function Base.show(io::IO, bc::BandColumn)
   print(
     io,
     typeof(bc),
@@ -934,9 +921,9 @@ function show(io::IO, bc::BandColumn)
   end
 end
 
-show(io::IO, ::MIME"text/plain", bc::BandColumn) = show(io, bc)
+Base.show(io::IO, ::MIME"text/plain", bc::BandColumn) = show(io, bc)
 
-print(io::IO, bc::BandColumn) = print(
+Base.print(io::IO, bc::BandColumn) = print(
     io,
     typeof(bc),
     "(",
@@ -964,13 +951,13 @@ print(io::IO, bc::BandColumn) = print(
     ")",
 )
 
-print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
+Base.print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
 
 struct Wilk
   arr :: Array{Char,2}
 end
 
-function show(io::IO, w::Wilk)
+function Base.show(io::IO, w::Wilk)
   (m, n) = size(w.arr)
   for j = 1:m
     println(io)
@@ -980,7 +967,7 @@ function show(io::IO, w::Wilk)
   end
 end
 
-function show(w::Wilk)
+function Base.show(w::Wilk)
   (m, n) = size(w.arr)
   for j = 1:m
     println()

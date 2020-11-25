@@ -1,31 +1,9 @@
 module LeadingBandColumnMatrices
 using Printf
 using Random
+using Base: @propagate_inbounds
 
-import Base: size, getindex, setindex!, @propagate_inbounds, show, print, copy
-
-import BandStruct.BandColumnMatrices:
-  get_m_els,
-  get_m,
-  get_n,
-  get_roffset,
-  get_coffset,
-  get_rbws,
-  get_cbws,
-  get_upper_bw_max,
-  get_middle_bw_max,
-  get_lower_bw_max,
-  upper_bw,
-  middle_bw,
-  lower_bw,
-  first_super,
-  first_sub,
-  get_band_element,
-  set_band_element!,
-  viewbc,
-  wilk
 using BandStruct.BandColumnMatrices
-
 
 export LeadingBandColumn,
   size,
@@ -34,7 +12,8 @@ export LeadingBandColumn,
   leading_lower_ranks_to_cbws!,
   leading_upper_ranks_to_cbws!,
   leading_constrain_lower_ranks,
-  leading_constrain_upper_ranks
+  leading_constrain_upper_ranks,
+  get_lower_block
 
 """
 A banded matrix with structure defined by leading blocks and
@@ -213,42 +192,63 @@ end
 ## Functions implementing AbstractBandColumn.
 ##
 
-@inline get_m_els(lbc::LeadingBandColumn) = lbc.m_els
+@inline BandColumnMatrices.get_m_els(lbc::LeadingBandColumn) = lbc.m_els
 
-@inline get_m(lbc::LeadingBandColumn) = lbc.m
-@inline get_n(lbc::LeadingBandColumn) = lbc.n
+@inline BandColumnMatrices.get_m(lbc::LeadingBandColumn) = lbc.m
+@inline BandColumnMatrices.get_n(lbc::LeadingBandColumn) = lbc.n
 
-@inline get_roffset(lbc::LeadingBandColumn) = 0
-@inline get_coffset(lbc::LeadingBandColumn) = 0
+@inline BandColumnMatrices.get_roffset(lbc::LeadingBandColumn) = 0
+@inline BandColumnMatrices.get_coffset(lbc::LeadingBandColumn) = 0
 
-@inline get_rbws(lbc::LeadingBandColumn) = lbc.rbws
-@inline get_cbws(lbc::LeadingBandColumn) = lbc.cbws
+@inline BandColumnMatrices.get_rbws(lbc::LeadingBandColumn) = lbc.rbws
+@inline BandColumnMatrices.get_cbws(lbc::LeadingBandColumn) = lbc.cbws
 
-@inline get_upper_bw_max(lbc::LeadingBandColumn) = lbc.upper_bw_max
-@inline get_middle_bw_max(lbc::LeadingBandColumn) = lbc.middle_bw_max
-@inline get_lower_bw_max(lbc::LeadingBandColumn) = lbc.lower_bw_max
+@inline BandColumnMatrices.get_upper_bw_max(lbc::LeadingBandColumn) =
+  lbc.upper_bw_max
+@inline BandColumnMatrices.get_middle_bw_max(lbc::LeadingBandColumn) =
+  lbc.middle_bw_max
+@inline BandColumnMatrices.get_lower_bw_max(lbc::LeadingBandColumn) =
+  lbc.lower_bw_max
 
-@propagate_inbounds @inline upper_bw(lbc::LeadingBandColumn, ::Colon, k::Int) =
-  lbc.cbws[1, k]
-@propagate_inbounds @inline middle_bw(lbc::LeadingBandColumn, ::Colon, k::Int) =
-  lbc.cbws[2, k]
-@propagate_inbounds @inline lower_bw(lbc::LeadingBandColumn, ::Colon, k::Int) =
-  lbc.cbws[3, k]
-@propagate_inbounds @inline upper_bw(lbc::LeadingBandColumn, j::Int, ::Colon) =
-  lbc.rbws[j, 3]
-@propagate_inbounds @inline middle_bw(lbc::LeadingBandColumn, j::Int, ::Colon) =
-  lbc.rbws[j, 2]
-@propagate_inbounds @inline lower_bw(lbc::LeadingBandColumn, j::Int, ::Colon) =
-  lbc.rbws[j, 1]
+@propagate_inbounds @inline BandColumnMatrices.upper_bw(
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cbws[1, k]
+@propagate_inbounds @inline BandColumnMatrices.middle_bw(
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cbws[2, k]
+@propagate_inbounds @inline BandColumnMatrices.lower_bw(
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cbws[3, k]
+@propagate_inbounds @inline BandColumnMatrices.upper_bw(
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rbws[j, 3]
+@propagate_inbounds @inline BandColumnMatrices.middle_bw(
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rbws[j, 2]
+@propagate_inbounds @inline BandColumnMatrices.lower_bw(
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rbws[j, 1]
 
 
-@propagate_inbounds @inline get_band_element(
+@propagate_inbounds @inline BandColumnMatrices.get_band_element(
   lbc::LeadingBandColumn,
   j::Int,
   k::Int,
 ) = lbc.band_elements[j, k]
 
-@propagate_inbounds @inline function set_band_element!(
+@propagate_inbounds @inline function BandColumnMatrices.set_band_element!(
   lbc::LeadingBandColumn{E},
   x::E,
   j::Int,
@@ -257,9 +257,9 @@ end
   lbc.band_elements[j, k] = x
 end
 
-@inline size(lbc::LeadingBandColumn) = (lbc.m, lbc.n)
+@inline Base.size(lbc::LeadingBandColumn) = (lbc.m, lbc.n)
 
-function show(io::IO, lbc::LeadingBandColumn)
+function Base.show(io::IO, lbc::LeadingBandColumn)
   print(
     io,
     typeof(lbc),
@@ -301,9 +301,9 @@ function show(io::IO, lbc::LeadingBandColumn)
   end
 end
 
-show(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = show(io, lbc)
+Base.show(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = show(io, lbc)
 
-print(io::IO, lbc::LeadingBandColumn) = print(
+Base.print(io::IO, lbc::LeadingBandColumn) = print(
   io,
   typeof(lbc),
   "(",
@@ -329,14 +329,14 @@ print(io::IO, lbc::LeadingBandColumn) = print(
   ")",
 )
 
-print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
+Base.print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
 
 ##
 ## Index operations.  Scalar operations are defined for
 ## AbstractBandColumn matrices.
 ##
 
-@inline function viewbc(
+@inline function BandColumnMatrices.viewbc(
   lbc::LeadingBandColumn,
   i::Tuple{UnitRange{Int},UnitRange{Int}},
 )
@@ -365,7 +365,7 @@ print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
   )
 end
 
-@inline function getindex(
+@inline function Base.getindex(
   lbc::LeadingBandColumn,
   rows::UnitRange{Int},
   cols::UnitRange{Int},
@@ -498,7 +498,7 @@ function leading_upper_ranks_to_cbws!(
   end
 end
 
-@views function wilk(lbc::LeadingBandColumn)
+@views function BandColumnMatrices.wilk(lbc::LeadingBandColumn)
   (m, n) = size(lbc)
   num_blocks = lbc.num_blocks - 1 # leave off the full matrix.
   a = fill('N', (2 * m, 2 * n))
@@ -523,7 +523,7 @@ end
   Wilk(a)
 end
 
-function copy(lbc::LeadingBandColumn)
+function Base.copy(lbc::LeadingBandColumn)
   LeadingBandColumn(
     lbc.m,
     lbc.n,
