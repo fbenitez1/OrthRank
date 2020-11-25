@@ -1,17 +1,22 @@
 module BandStruct
 
+using Reexport
+
 export BandColumnMatrices, LeadingBandColumnMatrices, HouseholderWeight
 
 include("BandColumnMatrices.jl")
-using BandStruct.BandColumnMatrices
+@reexport using .BandColumnMatrices
 
 include("LeadingBandColumnMatrices.jl")
-using BandStruct.LeadingBandColumnMatrices
+@reexport using .LeadingBandColumnMatrices
 
 include("BandRotations.jl")
-using BandStruct.BandRotations
+@reexport using .BandRotations
+
+include("BandHouseholder.jl")
+@reexport using .BandHouseholder
 
 include("HouseholderWeight.jl")
-using BandStruct.HouseholderWeight
+@reexport using .HouseholderWeight
 
 end # module
