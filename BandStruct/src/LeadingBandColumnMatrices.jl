@@ -13,11 +13,61 @@ export LeadingBandColumn,
   leading_upper_ranks_to_cbws!,
   leading_constrain_lower_ranks,
   leading_constrain_upper_ranks,
-  get_lower_block
+  get_lower_block_ranges
 
 """
-A banded matrix with structure defined by leading blocks and
-stored in a compressed column-wise format.
+
+# LeadingBandColumn
+
+    struct LeadingBandColumn{
+      E<:Number,
+      AE<:AbstractArray{E,2},
+      AI<:AbstractArray{Int,2},
+    } <: AbstractBandColumn{E,AE,AI}
+
+A banded matrix with structure defined by leading blocks and stored in
+a compressed column-wise format.  This is basically a `BandColumn`
+with additional leading block information and without the `roffset`
+and `coffset` fields.
+
+# Fields
+
+- `m::Int`: Matrix number of rows.
+
+- `n::Int`: Matrix and elements number of columns.
+
+- `m_els::Int`: Elements number of rows.
+
+- `num_blocks::Int`: Number of leading blocks.
+
+- `upper_bw_max::Int`: Maximum upper bandwidth.
+
+- `middle_bw_max::Int`: Maximum middle bandwidth.
+
+- `lower_bw_max::Int`: Maximum lower bandwidth.
+
+- `rbws::AI`: Row bandwidths and first subdiagonal in each row.  An
+   ``m×4`` matrix with each row containing lower, middle, and upper
+   bandwidths as well as the first subdiagonal position in that row.
+
+- `cbws::AI`: Column bandwidths and first superdiagonal in each
+   column. A ``4×n`` matrix with each column containing lower, middle,
+   and upper bandwidths as well as the first superdiagonal position in
+   that row.
+
+- `leading_blocks::AI`: A ``2xnum_blocks`` matrix, leading block row
+   and column counts.
+
+- `band_elements::AE`: Column-wise storage of the band elements with
+  dimensions:
+   
+  ``(upper_bw_max + middle_bw_max lower_bw_max) × n``
+
+It is assumed that the middle bandwidths and the first row subdiagonal
+and column superdiagonal will never change.  In the case of a
+`LeadingBandColumn`, these are determined by the leading blocks.
+
+# Example
 
 Given
 
@@ -79,23 +129,32 @@ struct LeadingBandColumn{
   AE<:AbstractArray{E,2},
   AI<:AbstractArray{Int,2},
 } <: AbstractBandColumn{E,AE,AI}
-  m::Int             # Matrix number of rows.
-  n::Int             # Matrix number of columns.
-  m_els::Int         # number of elements rows.
-  num_blocks::Int    # Number of leading blocks.
-  upper_bw_max::Int  # maximum upper bandwidth.
-  middle_bw_max::Int # maximum middle bandwidth.
-  lower_bw_max::Int  # maximum lower bandwidth.
-  rbws::AI           # mx4 matrix: row-wise lower, middle, and upper bw +
-                     # first subdiagonal postion in A.
-  cbws::AI           # 4xn matrix: column-wise upper, middle, and lower bw +
-                     # first superdiagonal postion in A.
-  leading_blocks::AI # 2xn matrix, leading block row and column counts.
+  m::Int
+  n::Int
+  m_els::Int
+  num_blocks::Int
+  upper_bw_max::Int
+  middle_bw_max::Int
+  lower_bw_max::Int
+  rbws::AI
+  cbws::AI
+  leading_blocks::AI
   band_elements::AE
 end
 
-# Construct an empty (all zero) structure from the matrix size, bounds
-# on the upper and lower bandwidth, and blocksizes.
+"""
+    LeadingBandColumn(
+      ::Type{E},
+      m::Int,
+      n::Int,
+      upper_bw_max::Int,
+      lower_bw_max::Int,
+      leading_blocks::Array{Int,2},
+    ) where {E<:Number}
+
+Construct an empty (all zero) `LeadingBandColumn` structure from the
+matrix size, bounds on the upper and lower bandwidth, and blocksizes.
+"""
 function LeadingBandColumn(
   ::Type{E},
   m::Int,
@@ -148,19 +207,44 @@ function LeadingBandColumn(
   )
 end
 
+"""
+    rand!(
+      rng::AbstractRNG,
+      lbc::LeadingBandColumn{E},
+    ) where {E}
+
+Fill a leading band column with random elements.  This assumes
+that the bandwidths have already been set.
+"""
 function rand!(
   rng::AbstractRNG,
   lbc::LeadingBandColumn{E},
 ) where {E}
 
   for k = 1:(lbc.n)
-    for j = first_storage_el(lbc, k):last_storage_el(lbc, k)
-      lbc.band_elements[j, k] = rand(rng,E)
+    for j = first_inband_el_storage(lbc, k):last_inband_el_storage(lbc, k)
+      lbc.band_elements[j, k] = rand(rng, E)
     end
   end
 
 end
 
+"""
+    LeadingBandColumn(
+      rng::AbstractRNG,
+      T::Type{E},
+      m::Int,
+      n::Int,
+      upper_bw_max::Int,
+      lower_bw_max::Int,
+      leading_blocks::Array{Int,2},
+      upper_ranks::Array{Int,1},
+      lower_ranks::Array{Int,1},
+    ) where {E<:Number}
+
+Generate a random band column corresponding to a specific rank
+structure in the upper and lower blocks.
+"""
 function LeadingBandColumn(
   rng::AbstractRNG,
   T::Type{E},
@@ -209,7 +293,6 @@ end
   lbc.middle_bw_max
 @inline BandColumnMatrices.get_lower_bw_max(lbc::LeadingBandColumn) =
   lbc.lower_bw_max
-
 @inline BandColumnMatrices.get_band_elements(lbc::LeadingBandColumn) =
   lbc.band_elements
 
@@ -381,19 +464,51 @@ end
   )
 end
 
-# Find bounds for lower left block l in A.
-@inline function get_lower_block(
+"""
+    function get_lower_block_ranges(
+      lbc::LeadingBandColumn,
+      l::Integer,
+    )
+
+Get ranges for lower block ``l``.
+"""
+@inline function get_lower_block_ranges(
   lbc::LeadingBandColumn,
   l::Integer,
 )
   (m, _) = size(lbc)
   j1 = lbc.leading_blocks[1, l] + 1
   k2 = lbc.leading_blocks[2, l]
-  ((j1, m), (1, k2))
+  (UnitRange(j1, m), UnitRange(1, k2))
 end
 
-# Take lower and upper rank sequences and constrain them to be
-# consistent with the size of the blocks (and preceding ranks).
+"""
+    function get_upper_block_ranges(
+      lbc::LeadingBandColumn,
+      l::Integer,
+    )
+
+Get ranges for upper block ``l``.
+"""
+@inline function get_upper_block_ranges(lbc::LeadingBandColumn, l::Integer)
+  (_, n) = size(lbc)
+  j2 = lbc.leading_blocks[1, l]
+  k1 = lbc.leading_blocks[2, l] + 1
+  (UnitRange(1, j2), UnitRange(k1, n))
+end
+
+"""
+    leading_constrain_lower_ranks(
+      blocks::AbstractArray{Int,2},
+      lower_ranks::AbstractArray{Int,1},
+    )
+
+Take a nominal lower rank sequence and constrain it to be
+consistent with the size of the leading blocks and preceding ranks.
+If the rank of block 'l' is larger than is consistent with the size
+of the corresponding lower block or the rank of the previous block,
+this function decreases the rank.
+"""
 function leading_constrain_lower_ranks(
   blocks::AbstractArray{Int,2},
   lower_ranks::AbstractArray{Int,1},
@@ -417,6 +532,18 @@ function leading_constrain_lower_ranks(
   lr
 end
 
+"""
+    leading_constrain_upper_ranks(
+      blocks::AbstractArray{Int,2},
+      upper_ranks::AbstractArray{Int,1},
+    )
+
+Take a nominal upper rank sequence and constrain it to be
+consistent with the size of the leading blocks and preceding ranks.
+If the rank of block 'l' is larger than is consistent with the size
+of the corresponding upper block or the rank of the previous block,
+this function decreases the rank.
+"""
 function leading_constrain_upper_ranks(
   blocks::AbstractArray{Int,2},
   upper_ranks::AbstractArray{Int,1},
@@ -439,18 +566,16 @@ function leading_constrain_upper_ranks(
     ur[l] = min(m1, n1, upper_ranks[l])
   end
   ur
-
 end
 
-# Find bounds for upper right block l in A.
-@inline function get_upper_block(lbc::LeadingBandColumn, l::Integer)
-  (_, n) = size(lbc)
-  j2 = lbc.leading_blocks[1, l]
-  k1 = lbc.leading_blocks[2, l] + 1
-  ((1, j2), (k1, n))
-end
+"""
+    leading_lower_ranks_to_cbws!(
+      lbc::LeadingBandColumn,
+      rs::AbstractArray{Int},
+    )
 
-# Set lower bandwidth appropriate for a given lower rank sequence.
+Set lower bandwidth appropriate for a given lower rank sequence.
+"""
 function leading_lower_ranks_to_cbws!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
@@ -461,14 +586,25 @@ function leading_lower_ranks_to_cbws!(
   rs1 = leading_constrain_lower_ranks(lbc.leading_blocks, rs)
 
   for l = 1:(lbc.num_blocks - 1)
-    ((j0, _), (_, k0)) = get_lower_block(lbc, l)
-    ((j1, _), (_, k1)) = get_lower_block(lbc, l + 1)
+    (rows0, cols0) = get_lower_block_ranges(lbc, l)
+    j0=rows0.start
+    k0=cols0.stop
+    (rows1, cols1) = get_lower_block_ranges(lbc, l + 1)
+    j1=rows1.start
+    k1=cols1.stop
     d = j1 - j0
     lbc.cbws[3, (k0 - rs1[l] + 1):k0] .+= d
   end
 end
 
-# Set upper bandwidth appropriate for a given lower rank sequence.
+"""
+    leading_upper_ranks_to_cbws!(
+      lbc::LeadingBandColumn,
+      rs::AbstractArray{Int},
+    )
+
+Set upper bandwidth appropriate for a given upper rank sequence.
+"""
 function leading_upper_ranks_to_cbws!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
@@ -479,8 +615,10 @@ function leading_upper_ranks_to_cbws!(
   rs1 = leading_constrain_upper_ranks(lbc.leading_blocks, rs)
 
   for l = 1:(lbc.num_blocks - 1)
-    (_, (k0, _)) = get_upper_block(lbc, l)
-    (_, (k1, _)) = get_upper_block(lbc, l + 1)
+    (_, cols0) = get_upper_block_ranges(lbc, l)
+    k0 = cols0.start
+    (_, cols1) = get_upper_block_ranges(lbc, l + 1)
+    k1 = cols1.start
     lbc.cbws[1, k0:(k1 - 1)] .= rs1[l]
   end
 end
@@ -503,9 +641,9 @@ end
   for k = 1:n
     kk = 2 * k - 1
     fill!(a[2 .* storable_els_range(lbc, :, k) .- 1, kk], 'O')
-    fill!(a[2 .* upper_els_range(lbc, :, k) .- 1, kk], 'U')
-    fill!(a[2 .* middle_els_range(lbc, :, k) .- 1, kk], 'X')
-    fill!(a[2 .* lower_els_range(lbc, :, k) .- 1, kk], 'L')
+    fill!(a[2 .* upper_inband_els_range(lbc, :, k) .- 1, kk], 'U')
+    fill!(a[2 .* middle_inband_els_range(lbc, :, k) .- 1, kk], 'X')
+    fill!(a[2 .* lower_inband_els_range(lbc, :, k) .- 1, kk], 'L')
   end
   Wilk(a)
 end

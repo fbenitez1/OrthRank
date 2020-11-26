@@ -19,7 +19,7 @@ using InPlace
   c = r.c
   s = r.s
   k = r.j
-  jrange = hull(els_range(bc, :, k), els_range(bc, :, k + 1))
+  jrange = hull(inband_els_range(bc, :, k), inband_els_range(bc, :, k + 1))
   extend_band!(bc, :, k)
   for j ∈ jrange
     tmp = bc[j, k]
@@ -36,7 +36,7 @@ end
   c = r.c
   s = r.s
   k = r.j
-  jrange = hull(els_range(bc, :, k), els_range(bc, :, k + 1))
+  jrange = hull(inband_els_range(bc, :, k), inband_els_range(bc, :, k + 1))
   extend_band!(bc, :, k)
   for j ∈ jrange
     tmp = bc[j, k]
@@ -53,7 +53,7 @@ end
   c = r.c
   s = r.s
   j = r.j
-  krange = hull(els_range(bc, j, :), els_range(bc, j + 1, :))
+  krange = hull(inband_els_range(bc, j, :), inband_els_range(bc, j + 1, :))
   extend_band!(bc, j, :)
   for k ∈ krange
     tmp = bc[j, k]
@@ -70,7 +70,7 @@ end
   c = r.c
   s = r.s
   j = r.j
-  krange = hull(els_range(bc, j, :), els_range(bc, j+1, :))
+  krange = hull(inband_els_range(bc, j, :), inband_els_range(bc, j+1, :))
   extend_band!(bc, j, :)
   for k ∈ krange
     tmp = bc[j, k]
