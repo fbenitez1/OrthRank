@@ -4,7 +4,7 @@ authors = ["mas "]
 version = "0.1.0"
 
 [deps]
-ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+Householder = "c865288b-f3c9-4f4c-a1b9-0a546e45b448"
 InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"

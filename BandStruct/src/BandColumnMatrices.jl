@@ -1,6 +1,6 @@
 module BandColumnMatrices
 
-using ConstructionBase
+# using ConstructionBase
 using Printf
 using LinearAlgebra
 using Base: @propagate_inbounds

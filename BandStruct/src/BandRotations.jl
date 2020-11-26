@@ -1,15 +1,16 @@
 module BandRotations
 
 using LinearAlgebra
+using Base: @propagate_inbounds
 
 using Rotations.Givens
 
 using BandStruct
 using BandStruct.BandColumnMatrices
 using BandStruct.LeadingBandColumnMatrices
-import InPlace
+using InPlace
 
-import Base: @propagate_inbounds
+
 
 @propagate_inbounds @inline function InPlace.:⊛(
   bc::AbstractBandColumn{E},
