@@ -219,8 +219,8 @@ where
                            1 0 2 5;
                            1 1 0 6;
                            1 1 0 6 ]
-    leading_blocks =     [ 1, 3, 4, 6, 6, 8;     # rows
-                           1, 2, 5, 5, 6, 7 ]    # columns
+    leading_blocks =     [ 1 3 4 6 6 8;     # rows
+                           1 2 5 5 6 7 ]    # columns
 
 
 """

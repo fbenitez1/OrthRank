@@ -8,21 +8,27 @@ using InPlace
 using ShowTests
 using LinearAlgebra
 
-blocks = [
-  1 3 4 6 7 9 9 11 12
-  1 2 5 5 6 7 8 9 10
+lower_blocks = [
+  2 4 5 7
+  2 3 4 6
+]
+
+upper_blocks = [
+  1 3 4 6
+  3 4 6 7
 ]
 
 lbc0 = LeadingBandColumn(
   MersenneTwister(0),
   Float64,
-  12,
-  10,
+  8,
+  7,
+  3,
   2,
-  2,
-  blocks,
-  [1, 1, 1, 2, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1],
+  upper_blocks,
+  lower_blocks,
+  [1, 2, 1, 0],
+  [1, 1, 1, 1],
 )
 
 
@@ -31,7 +37,6 @@ println()
 
 
 show(wilk(lbc0))
-println()
 
 bc0 = lbc0[1:end, 1:end]
 mx_bc0 = Matrix(bc0)
