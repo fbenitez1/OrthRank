@@ -13,10 +13,10 @@ include("LeadingBandColumnMatrices.jl")
 include("BandRotations.jl")
 @reexport using .BandRotations
 
-include("BandHouseholder.jl")
-@reexport using .BandHouseholder
+# include("BandHouseholder.jl")
+# @reexport using .BandHouseholder
 
-include("HouseholderWeight.jl")
-@reexport using .HouseholderWeight
+# include("HouseholderWeight.jl")
+# @reexport using .HouseholderWeight
 
 end # module
