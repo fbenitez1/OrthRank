@@ -6,58 +6,98 @@ using Base: @propagate_inbounds
 
 export BandColumn,
   AbstractBandColumn,
+  # AbstractBandColumn methods requiring implementation.
+  viewbc,
+  toBandColumn,
+  first_inband_index,
+  last_inband_index,
+  first_upper_index,
+  last_upper_index,
+  first_lower_index,
+  last_lower_index,
+  upper_bw_max,
+  middle_lower_bw_max,
+  row_offset,
+  col_offset,
+  bw_max,
+  row_size,
+  col_size,
+  band_elements,
+  compute_rows_first_last!, # One method only, to access rows_first_last array
+  validate_rows_first_last,
+  unsafe_set_first_inband_index!,
+  unsafe_set_last_inband_index!,
+  # Exceptions
   WellError,
   EmptyUpperRange,
   EmptyLowerRange,
-  first_inband_el_storage,
-  last_inband_el_storage,
-  inband_els_range_storage,
-  upper_inband_els_range_storage,
-  middle_inband_els_range_storage,
-  lower_inband_els_range_storage,
-  first_storable_el,
-  last_storable_el,
-  storable_els_range,
-  first_inband_el,
-  last_inband_el,
-  inband_els_range,
-  upper_inband_els_range,
-  middle_inband_els_range,
-  lower_inband_els_range,
+  IndexNotUpper,
+  IndexNotLower,
   NoStorageForIndex,
+  IndexNotInband,
+  # Methods implemented for any AbstractBandColumn
+  is_lower_notchable_with_no_well,
+  is_upper_notchable_with_no_well,
+  is_lower_bulgeable_with_no_well,
+  is_upper_bulgeable_with_no_well,
+  bulge_lower!,
+  bulge_upper!,
+  notch_upper!,
+  notch_lower!,
+  bulge!,
+  is_upper,
+  is_lower,
+  first_inband_index_storage,
+  last_inband_index_storage,
+  inband_index_range_storage,
+  upper_inband_index_range_storage,
+  middle_inband_index_range_storage,
+  lower_inband_index_range_storage,
+  first_storable_index,
+  last_storable_index,
+  storable_index_range,
+  inband_index_range,
+  upper_inband_index_range,
+  middle_inband_index_range,
+  lower_inband_index_range,
   storage_offset,
-  bc_index_stored,
+  is_inband,
   check_bc_storage_bounds,
-  get_m_els,
-  get_m,
-  get_n,
-  get_roffset,
-  get_coffset,
-  get_rbws,
-  get_cbws,
-  get_upper_bw_max,
-  get_middle_bw_max,
-  get_lower_bw_max,
-  get_band_elements,
   upper_bw,
   middle_bw,
   lower_bw,
-  first_super,
-  first_sub,
-  extend_lower_band!,
-  extend_upper_band!,
-  extend_band!,
+  compute_rows_first_last,
   get_elements,
-  viewbc,
-  hull,
-  setindex_noext!,
-  compute_rbws!,
-  compute_rbws,
-  validate_rbws,
+  setindex_no_bulge!,
   wilk,
   Wilk,
-  trim_upper!,
-  trim_lower!
+  # utility functions
+  hull,
+  project,
+  # types
+  BCFloat64,
+  NonSub,
+  Sub
+
+
+@inline function project(j::Int, m::Int)
+  min(max(j, 1), m)
+end
+
+@inline function project(j::Int, r::AbstractUnitRange{Int})
+  min(max(j, first(r)), last(r))
+end
+
+"""
+  hull(a :: AbstractUnitRange, b :: AbstractUnitRange)
+
+Return the convex hull of two closed intervals, with
+the intervals represented by an `AbstractUnitRange`.
+"""
+@inline function hull(a::AbstractUnitRange, b::AbstractUnitRange)
+  isempty(a) ? b :
+  (isempty(b) ? a : UnitRange(min(first(a), first(b)), max(last(a), last(b))))
+end
 
 """
     NoStorageForIndex
@@ -78,6 +118,20 @@ An exception thrown when an operation would create a well.
 struct WellError <: Exception end
 struct EmptyUpperRange <: Exception end
 struct EmptyLowerRange <: Exception end
+struct IndexNotUpper <: Exception 
+  j :: Int
+  k :: Int
+end
+struct IndexNotLower <: Exception
+  j :: Int
+  k :: Int
+end
+struct IndexNotInband <: Exception
+  j :: Int
+  k :: Int
+end
+struct NonSub end
+struct Sub end
 
 Base.showerror(io::IO, e::NoStorageForIndex) = print(
   io,
@@ -92,38 +146,63 @@ Base.showerror(io::IO, e::NoStorageForIndex) = print(
 
 # AbstractBandColumn
 
-    AbstractBandColumn{E,AE,AI} <: AbstractArray{E,2}
+    AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2}
 
 An AbstractBandColumn should implement the following:
 
-- `get_m(bc)`
+- `AbstractArray`: `getindex`, `setindex!`, 
 
-- `get_n(bc)`
+- `viewbc`
 
-- `get_roffset(bc)`
+- `first_inband_index`
 
-- `get_coffset(bc)`
+- `last_inband_index`
 
-- `get_upper_bw_max()`
+- `first_upper_index`
 
-- `get_lower_bw_max()`
+- `first_lower_index`
 
-- `get_rbws(bc)`
+- `last_upper_index`
 
-- `get_cbws(bc)`
+- `last_lower_index`
 
-- `get_band_elements(bc)`
+- `upper_bw_max`
+
+- `middle_lower_bw_max`
+
+- `bw_max`
+
+- `row_offset`
+
+- `col_offset`
+
+- `row_size`
+
+- `col_size`
+
+- `band_elements(bc)`
+
+- `compute_rows_first_last!`: One method only, to access rows_first_last array.
+
+- `validate_rows_first_last`
+
+- `bulge_upper!(bc, j::Int, k::Int)`
+
+- `bulge_lower!(bc, j::Int, k::Int)`
+
+- `notch_upper!(bc, j::Int, k::Int)`
+
+- `notch_lower!(bc, j::Int, k::Int)`
 
 """
-abstract type AbstractBandColumn{E,AE,AI} <: AbstractArray{E,2} end
-# abstract type AbstractBandColumn{E,AE,AI} end
+abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2} end
 
 """
 
 # BandColumn
 
-    BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}}
-    <: AbstractBandColumn{E,AE,AI}
+    BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}}
+    <: AbstractBandColumn{S,E,AE,AI}
 
 A simplified band column structure that does not include leading
 blocks but does include uniform offsets that can be changed to give
@@ -131,30 +210,59 @@ different submatrices.  This can be used to represent submatrices of a
 LeadingBandColumn matrix.
 
 # Fields
+- `m_nosub::Int`: Full matrix number of rows.
+
+- `n_nosub::Int`: Full matrix and full elements array number of columns.
+
 - `m::Int`: Matrix number of rows.
 
 - `n::Int`: Matrix and elements number of columns.
 
-- `m_els::Int`: Elements number of rows.
+- `roffset::Int`: Uniform column offset, used to identify submatrices.
 
-- `roffset::Int`: Uniform column offset.
+- `coffset::Int`: Uniform row offset, used to identify submatrices.
 
-- `coffset::Int`: Uniform row offset.
+- `bw_max::Int`: Elements array number of rows.
 
 - `upper_bw_max::Int`: Maximum upper bandwidth.
 
-- `middle_bw_max::Int`: Maximum middle bandwidth.
+- `middle_lower_bw_max::Int`: Maximum middle + lower bandwidth.
 
-- `lower_bw_max::Int`: Maximum lower bandwidth.
+- `rows_first_last::AI`: `rows_first_last[j,:]` contains
+   
+  - `rows_first_last[j,1]`: Index of the first inband element in row
+    `j` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
 
-- `rbws::AI`: Row bandwidths and first subdiagonal in each row.  An
-   ``m×4`` matrix with each row containing lower, middle, and upper
-   bandwidths as well as the first subdiagonal position in that row.
+  - `rows_first_last[j,2]`: Index of the last lower element in row
+    `j` for a `NonSub` or for the larger containing matrix of a
+    submatrix.  This is not necessarily an inband element.
 
-- `cbws::AI`: Column bandwidths and first superdiagonal in each
-   column. A ``4×n`` matrix with each column containing lower, middle,
-   and upper bandwidths as well as the first superdiagonal position in
-   that row.
+  - `rows_first_last[j,3]`: Index of the first upper element in row
+    `j` for a `NonSub` or for the larger containing matrix of a
+    submatrix.  This is not necessarily an inband element.
+
+  - `rows_first_last[j,4]`: Index of the last inband element in row
+    `j` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
+
+- `cols_first_last::AI`: `cols_first_last[:,k]` contains
+   
+  - `cols_first_last[1,k]`: Index of the first inband element in column
+    `k` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
+
+  - `cols_first_last[2,k]`: Index of the last upper element in column
+    `k` for a `NonSub` or for the larger containing matrix of a
+    submatrix.  This is not necessarily an inband element.
+
+  - `cols_first_last[3,k]`: Index of the first lower element in column
+    `k` for a `NonSub` or for the larger containing matrix of a
+    submatrix.  This is not necessarily an inband element.
+
+  - `cols_first_last[4,k]`: Index of the last inband element in column
+    `k` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
 
 - `band_elements::AE`: Column-wise storage of the band elements with
   dimensions:
@@ -200,435 +308,544 @@ The matrix is stored as
 
 where
 
+    m_nonsub =           8
+    n_nonsub =           7
     m =                  8
     n =                  7
-    m_els =              8
-    num_blocks =         6
+    roffset =            0
+    coffset =            0
+    bw_max =             8
     upper_bw_max =       4
-    middle_bw_max =      2
-    lower_bw_max =       2
-    cbws =               [ 1 1 1 1 1 1 1;  # upper
-                           1 2 1 1 1 0 2;  # middle
-                           2 1 0 0 2 1 0;  # lower
-                           0 1 3 3 3 6 6 ] # first superdiagonal.
-    rbws =               [ 0 1 1 0;
-                           1 1 0 1;
-                           1 1 3 1;
-                           1 3 0 2;
-                           1 0 0 5;
-                           1 0 2 5;
-                           1 1 0 6;
-                           1 1 0 6 ]
-    leading_blocks =     [ 1 3 4 6 6 8;     # rows
-                           1 2 5 5 6 7 ]    # columns
+    middle_lowerbw_max = 4
 
 
+    cols_first_last =    [ 1 1 3 3 3 6 6;
+                           0 1 3 3 3 6 6;
+                           2 4 5 5 5 7 9;
+                           3 4 4 4 6 8 8 ]
+    rows_first_last =    [ 1 0 2 2;
+                           1 1 3 2;
+                           1 1 3 5;
+                           2 2 7 6;
+                           5 5 6 5;
+                           5 5 6 7;
+                           6 6 8 7;
+                           6 6 8 7 ]
 """
-struct BandColumn{E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
-       AbstractBandColumn{E,AE,AI}
+struct BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
+       AbstractBandColumn{S,E,AE,AI}
+  sub :: S
+  m_nonsub::Int
+  n_nonsub::Int
   m::Int
   n::Int
-  m_els::Int
   roffset::Int
   coffset::Int
+  bw_max::Int
   upper_bw_max::Int
-  middle_bw_max::Int
-  lower_bw_max::Int
-  rbws::AI
-  cbws::AI
+  middle_lower_bw_max::Int
+  rows_first_last :: AI
+  cols_first_last :: AI
   band_elements::AE
 end
 
-@inline Base.size(bc::BandColumn) = (bc.m, bc.n)
+@inline toBandColumn(bc::BandColumn) = bc
 
-@inline get_m_els(bc::BandColumn) = bc.m_els
+const BCFloat64 = BandColumn{NonSub,Float64,Array{Float64,2},Array{Int,2}}
 
-@inline get_m(bc::BandColumn) = bc.m
-@inline get_n(bc::BandColumn) = bc.n
+@inline row_size(bc::BandColumn) = bc.m
+@inline col_size(bc::BandColumn) = bc.n
+@inline row_size(::Type{NonSub}, bc::BandColumn) = bc.m_nonsub
+@inline col_size(::Type{NonSub}, bc::BandColumn) = bc.n_nonsub
 
-@inline get_roffset(bc::BandColumn) = bc.roffset
-@inline get_coffset(bc::BandColumn) = bc.coffset
+@inline Base.size(bc::AbstractBandColumn) = (row_size(bc), col_size(bc))
 
-@inline get_upper_bw_max(bc::BandColumn) = bc.upper_bw_max
-@inline get_middle_bw_max(bc::BandColumn) = bc.middle_bw_max
-@inline get_lower_bw_max(bc::BandColumn) = bc.lower_bw_max
-@inline get_rbws(bc::BandColumn) = bc.rbws
-@inline get_cbws(bc::BandColumn) = bc.cbws
-
-@inline get_band_elements(bc::BandColumn) = bc.band_elements
-
-@propagate_inbounds @inline upper_bw(bc::BandColumn, ::Colon, k::Int) =
-  bc.cbws[1, k]
-@propagate_inbounds @inline middle_bw(bc::BandColumn, ::Colon, k::Int) =
-  bc.cbws[2, k]
-@propagate_inbounds @inline lower_bw(bc::BandColumn, ::Colon, k::Int) =
-  bc.cbws[3, k]
-@propagate_inbounds @inline upper_bw(bc::BandColumn, j::Int, ::Colon) =
-  bc.rbws[j, 3]
-@propagate_inbounds @inline middle_bw(bc::BandColumn, j::Int, ::Colon) =
-  bc.rbws[j, 2]
-@propagate_inbounds @inline lower_bw(bc::BandColumn, j::Int, ::Colon) =
-  bc.rbws[j, 1]
+@inline bw_max(bc::BandColumn) = bc.bw_max
+@inline upper_bw_max(bc::BandColumn) = bc.upper_bw_max
+@inline middle_lower_bw_max(bc::BandColumn) = bc.middle_lower_bw_max
+@inline band_elements(bc::BandColumn) = bc.band_elements
 
 """
+    row_offset( bc )
 
-    first_super(bc, js, ks)
+Get the row offset of a `bc`.
+"""
+@propagate_inbounds @inline row_offset(
+  bc::AbstractBandColumn{NonSub},
+) = 0
 
-- If `js::Colon` and `ks::Int`, give the first superdiagonal in
-  columns `ks`.  Column superdiagonals are numbered going up starting
-  from the middle elements of the band structure.
-
-
-- If `js::Int` and `ks::Colon`, give the first superdiagonal in row
-  `js`.  Row superdiagonals are numbered going right from the middle
-  elements of the band structure.
-
+@propagate_inbounds @inline row_offset(
+  bc::BandColumn,
+) = bc.roffset
 
 """
-@propagate_inbounds @inline first_super(
+    col_offset( bc )
+
+Get the col offset of a `bc`.
+"""
+@propagate_inbounds @inline col_offset(
+  bc::AbstractBandColumn{NonSub},
+) = 0
+
+@propagate_inbounds @inline col_offset(
+  bc::BandColumn,
+) = bc.coffset
+
+"""
+    first_inband_index(bc, ::Colon, k::Int)
+    first_inband_index(bc, j::Int, ::Colon)
+
+If
+
+    j=first_inband_index(bc,:,k)
+
+then `bc[j,k]` is the first inband element in column ``k``.  If
+
+    k=first_inband_index(bc,j,:)
+
+then `bc[j,k]` is the first inband element in row ``j``.
+"""
+@propagate_inbounds @inline first_inband_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  ::Colon,
+  k::Int,
+) = bc.cols_first_last[1,k]
+
+@propagate_inbounds @inline first_inband_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  j::Int,
+  ::Colon,
+) = bc.rows_first_last[j,1]
+
+"""
+    last_inband_index(bc, ::Colon, k::Int)
+    last_inband_index(bc, j::Int, ::Colon)
+
+If
+
+    j=last_inband_index(bc,:,k)
+
+then `bc[j,k]` is the last inband element in column ``k``.  If
+
+    k=last_inband_index(bc,j,:)
+
+then `bc[j,k]` is the last inband element in row ``j``.
+"""
+@propagate_inbounds @inline last_inband_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  ::Colon,
+  k::Int,
+) = bc.cols_first_last[4,k]
+
+@propagate_inbounds @inline last_inband_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  j::Int,
+  ::Colon,
+) = bc.rows_first_last[j,4]
+
+"""
+    first_lower_index(bc::BandColumn, ::Colon, k::Int)
+
+If
+
+  j=first_lower_index(bc,:,k)
+
+then `bc[j,k]` is the first, possibly not inband, lower index in
+column ``k``.  For a submatrix, this does not necessarily
+have to be in the range `1:m` if the first lower index position
+of the underlying banded matrix is not in the submatrix.
+"""
+@propagate_inbounds @inline first_lower_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  ::Colon,
+  k::Int,
+) = bc.cols_first_last[3,k]
+
+"""
+    last_lower_index(bc::BandColumn, j::Int, ::Colon)
+
+If
+
+  k=last_lower_index(bc,j,:)
+
+then `bc[j,k]` is the last, possibly not inband, lower index in
+row ``j``.  For a submatrix, this does not necessarily
+have to be in the range `1:n` if the last lower index position
+of the underlying banded matrix is not in the submatrix.
+"""
+@propagate_inbounds @inline last_lower_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  j::Int,
+  ::Colon,
+) = bc.rows_first_last[j,2]
+
+"""
+    first_upper_index(bc::BandColumn, j::Int, ::Colon)
+
+If
+
+  k=first_upper_index(bc,j,:)
+
+then `bc[j,k]` is the first, possibly not inband, upper index in
+row ``j``.  For a submatrix, this does not necessarily
+have to be in the range `1:n` if the first lower index position
+of the underlying banded matrix is not in the submatrix.
+"""
+@propagate_inbounds @inline first_upper_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  j::Int,
+  ::Colon,
+) = bc.rows_first_last[j,3]
+
+"""
+    last_upper_index(bc::BandColumn, ::Colon, k::Int)
+
+If
+
+  j=last_upper_index(bc,:,k)
+
+then `bc[j,k]` is the last, possibly not inband, upper index in
+column ``k``.  For a submatrix, this does not necessarily
+have to be in the range `1:m` if the first lower index position
+of the underlying banded matrix is not in the submatrix.
+"""
+@propagate_inbounds @inline last_upper_index(
+  ::Type{NonSub},
+  bc::BandColumn,
+  ::Colon,
+  k::Int,
+) = bc.cols_first_last[2,k]
+
+#=
+
+AbstractBandColumn extensions of the basic NonSub interface.
+
+=#
+
+# col first_inband_index methods
+@propagate_inbounds @inline first_inband_index(
   bc::AbstractBandColumn,
   ::Colon,
   k::Int,
-) = get_cbws(bc)[4, k] - get_roffset(bc)
+) = first(inband_index_range(bc, :, k))
 
-@propagate_inbounds @inline first_super(
+@propagate_inbounds @inline first_inband_index(
+  bc::AbstractBandColumn{NonSub},
+  ::Colon,
+  k::Int,
+) = first_inband_index(NonSub,bc,:,k)
+
+# row first_inband_index methods
+@propagate_inbounds @inline first_inband_index(
   bc::AbstractBandColumn,
   j::Int,
   ::Colon,
-) = first_sub(bc, j, :) + middle_bw(bc, j, :) + 1
+) = first(inband_index_range(bc, j, :))
+
+@propagate_inbounds @inline first_inband_index(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  ::Colon,
+) = first_inband_index(NonSub, bc, j, :)
+
+
+# col last_inband_index methods
+@propagate_inbounds @inline last_inband_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = last(inband_index_range(bc, :, k))
+
+@propagate_inbounds @inline last_inband_index(
+  bc::BandColumn{NonSub},
+  ::Colon,
+  k::Int,
+) = last_inband_index(NonSub, bc, :, k)
+
+# row last_inband_index methods
+@propagate_inbounds @inline last_inband_index(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+) = last(inband_index_range(bc, j, :))
+
+@propagate_inbounds @inline last_inband_index(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  ::Colon,
+) = last_inband_index(NonSub, bc, j, :)
+
+# first_lower_index methods
+@propagate_inbounds @inline first_lower_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = first_lower_index(NonSub,bc,:,k) - row_offset(bc)
+
+@propagate_inbounds @inline first_lower_index(
+  bc::AbstractBandColumn{NonSub},
+  ::Colon,
+  k::Int,
+) = first_lower_index(NonSub,bc,:,k)
+
+# last_lower_index methods
+@propagate_inbounds @inline last_lower_index(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+) = last_lower_index(NonSub,bc,j,:) - col_offset(bc)
+
+@propagate_inbounds @inline last_lower_index(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  ::Colon,
+) = last_lower_index(NonSub,bc,j,:)
+
+# first_upper_index methods
+@propagate_inbounds @inline first_upper_index(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+) = first_upper_index(NonSub,bc,j,:) - col_offset(bc)
+
+@propagate_inbounds @inline first_upper_index(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  ::Colon,
+) = first_upper_index(NonSub,bc,j,:)
+
+# last_upper_index methods
+@propagate_inbounds @inline last_upper_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = bc.cols_first_last[2,k] - row_offset(bc)
+
+@propagate_inbounds @inline last_upper_index(
+  bc::AbstractBandColumn{NonSub},
+  ::Colon,
+  k::Int,
+) = bc.cols_first_last[2,k]
+
+is_upper(bc::AbstractBandColumn, j::Int, k::Int) =
+  j <= last_upper_index(bc, :, k)
+
+is_lower(bc::AbstractBandColumn, j::Int, k::Int) =
+  j >= first_lower_index(bc, :, k)
+
 
 """
+    function inband_index_range(
+      bc::AbstractBandColumn,
+      ::Colon,
+      k::Int,
+    )
 
-    first_sub(bc, js, ks)
+Range of inband elements in column ``k``.
+"""
+@propagate_inbounds @inline function inband_index_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  roffs = row_offset(bc)
+  (1:row_size(bc)) ∩ (
+    (first_inband_index(
+      NonSub,
+      bc,
+      :,
+      k,
+    ) - roffs):(last_inband_index(NonSub, bc, :, k) - roffs)
+  )
+end
 
-- If `js::Colon` and `ks::Int`, give the first subdiagonal in columns
-  `ks`.  Column sudiagonals are numbered going down, starting from the
-  middle of the band structure.
+@propagate_inbounds @inline function inband_index_range(
+  ::Type{NonSub},
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  first_inband_index(NonSub, bc, :, k):last_inband_index(NonSub, bc, :, k)
+end
 
-
-- If `js::Int` and `ks::Colon`, give the first subdiagonal in row
-  `js`.  Row subdiagonals are numbered going left from the middle
-  elements of the band structure.
+@propagate_inbounds @inline function inband_index_range(
+  bc::AbstractBandColumn{NonSub},
+  ::Colon,
+  k::Int,
+)
+  inband_index_range(NonSub, bc, :, k)
+end
 
 """
-@propagate_inbounds @inline first_sub(bc::AbstractBandColumn, j::Int, ::Colon) =
-  get_rbws(bc)[j, 4] - get_coffset(bc)
-
-@propagate_inbounds @inline first_sub(bc::AbstractBandColumn, ::Colon, k::Int) =
-  first_super(bc, :, k) + middle_bw(bc, :, k) + 1
-
-
-"""
-
-    extend_band!(
+    function inband_index_range(
       bc::AbstractBandColumn,
       j::Int,
       ::Colon,
     )
 
-Merge the band profile of rows ``j`` and ``j+1``, extending the lower
-bandwidth of row ``j+1`` and the upper bandwidth of row ``j``.  Note
-that this does not extend the lower bandwidth of row ``j`` or the
-upper bandwidth of row ``j+1``, which is justified by a "well-free"
-assumption.  The column bandwidths are adjusted accordingly to be
-consistent with the row bandwidths.
-
+Range of inband elements in row ``j``.
 """
-@propagate_inbounds @inline function extend_band!(
+@propagate_inbounds @inline function inband_index_range(
   bc::AbstractBandColumn,
   j::Int,
   ::Colon,
 )
-  krange0 = inband_els_range(bc, j, :)
-  krange1 = inband_els_range(bc, j+1, :)
-  @boundscheck begin
-    checkbounds(bc, j, 1)
-    checkbounds(bc, j+1, 1)
-    isempty(krange0) || check_bc_storage_bounds(bc, j+1, krange0.start)
-    isempty(krange1) || check_bc_storage_bounds(bc, j, krange1.stop)
-  end
-  cbws = get_cbws(bc)
-  rbws = get_rbws(bc)
-  rbws[j + 1, 1] = rbws[j, 1] + first_sub(bc, j + 1, :) - first_sub(bc, j, :)
-  rbws[j, 3] = rbws[j + 1, 3] + first_super(bc, j + 1, :) - first_super(bc, j, :)
-  for l ∈ (krange0.start):(krange1.start - 1)
-    cbws[3, l] += 1
-  end
-  for l ∈ (krange0.stop + 1):(krange1.stop)
-    cbws[1, l] += 1
-  end
-  nothing
+  coffs = col_offset(bc)
+  (1:col_size(bc)) ∩ (
+    (first_inband_index(
+      NonSub,
+      bc,
+      j,
+      :,
+    ) - coffs):(last_inband_index(NonSub, bc, j, :) - coffs)
+  )
+end
+
+@propagate_inbounds @inline function inband_index_range(
+  ::Type{NonSub},
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  first_inband_index(NonSub, j, :):last_inband_index(NonSub, bc, j, :)
+end
+
+@propagate_inbounds @inline function inband_index_range(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  ::Colon,
+)
+  inband_index_range(NonSub, bc, j, :)
 end
 
 """
-
-    extend_band!(
+    function upper_inband_index_range(
       bc::AbstractBandColumn,
       ::Colon,
       k::Int,
     )
 
-Merge the band profile of columns ``k`` and ``k+1``, extending the
-upper bandwidth of column ``k+1`` and the lower bandwidth of column
-``k``.  The row bandwidths are adjusted accordingly to be consistent
-with the column bandwidths.
-
+Range of inband upper elements in column ``k``.
 """
-@propagate_inbounds @inline function extend_band!(
+@propagate_inbounds @inline function upper_inband_index_range(
   bc::AbstractBandColumn,
   ::Colon,
   k::Int,
 )
-  jrange0 = inband_els_range(bc, :, k)
-  jrange1 = inband_els_range(bc, :, k+1)
-  @boundscheck begin
-    checkbounds(bc, 1, k)
-    checkbounds(bc, 1, k+1)
-    isempty(jrange0) || check_bc_storage_bounds(bc, jrange0.start, k+1)
-    isempty(jrange1) || check_bc_storage_bounds(bc, jrange1.stop, k)
-  end
-  cbws = get_cbws(bc)
-  rbws = get_rbws(bc)
-  cbws[1,k+1] = cbws[1,k] + first_super(bc,:,k+1) - first_super(bc,:,k)
-  cbws[3,k] = cbws[3,k+1] + first_sub(bc,:,k+1) - first_sub(bc,:,k)
-  for l ∈ jrange0.start:jrange1.start - 1
-    rbws[l,3] += 1
-  end
-  for l ∈ jrange0.stop+1:jrange1.stop
-    rbws[l,1] += 1
-  end
-  nothing
+  (1:row_size(bc)) ∩ (first_inband_index(bc, :, k):last_upper_index(bc, :, k))
 end
 
 """
-    extend_upper_band!(
+    function upper_inband_index_range(
       bc::AbstractBandColumn,
       j::Int,
+      ::Colon,
+    )
+
+Range of inband upper elements in row ``j``.
+"""
+@propagate_inbounds @inline function upper_inband_index_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  (1:col_size(bc)) ∩ (first_upper_index(bc, j, :):last_inband_index(bc, j, :))
+end
+
+"""
+    function middle_inband_index_range(
+      bc::AbstractBandColumn,
+      ::Colon,
       k::Int,
     )
 
-Given ``j`` and ``k`` in the storable upper triangular part of a
-`BandColumn` matrix `bc`, extend the upper bandwidth so that all
-elements in the upper triangular part below and to the left of
-`bc[j,k]` are inband.
-
+Range of inband middle elements in column ``k``.
 """
-@propagate_inbounds @inline function extend_upper_band!(
+@propagate_inbounds @inline function middle_inband_index_range(
   bc::AbstractBandColumn,
-  j::Int,
+  ::Colon,
   k::Int,
 )
-  @boundscheck begin
-    checkbounds(bc, j, k)
-    check_bc_storage_bounds(bc, j, k)
-  end
-  cbws = get_cbws(bc)
-  rbws = get_rbws(bc)
-  j1 = first_inband_el(bc, :, k) - 1
-  k0 = last_inband_el(bc, j, :) + 1
-  for l = j:j1
-    rbws[l, 3] = max(rbws[l, 3], k - first_super(bc, l, :) + 1)
-  end
-  for l = k0:k
-    cbws[1, l] = max(cbws[1, l], first_super(bc, :, l) - j + 1)
-  end
-  nothing
+  (1:row_size(bc)) ∩
+  ((last_upper_index(bc, :, k) + 1):(first_lower_index(bc, :, k) - 1))
 end
 
 """
-    extend_lower_band!(
+    function middle_inband_index_range(
       bc::AbstractBandColumn,
       j::Int,
+      ::Colon,
+    )
+
+Range of inband middle elements in row ``j``.
+"""
+@propagate_inbounds @inline function middle_inband_index_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  (1:col_size(bc)) ∩
+  ((last_lower_index(bc, j, :) + 1):(first_upper_index(bc, j, :) - 1))
+end
+
+"""
+    function lower_inband_index_range(
+      bc::AbstractBandColumn,
+      ::Colon,
       k::Int,
     )
 
-Given ``j`` and ``k`` in the storable lower triangular part of a
-`BandColumn` matrix `bc`, extend the lower bandwidth so that all
-elements in the lower triangular part above and to the right of
-`bc[j,k]` are inband.
-
+Range of inband lower elements in column ``k``.
 """
-@propagate_inbounds @inline function extend_lower_band!(
+@propagate_inbounds @inline function lower_inband_index_range(
   bc::AbstractBandColumn,
-  j::Int,
+  ::Colon,
   k::Int,
 )
-  @boundscheck begin
-    checkbounds(bc, j, k)
-    check_bc_storage_bounds(bc, j, k)
-  end
-  cbws = get_cbws(bc)
-  rbws = get_rbws(bc)
-  j0 = last_inband_el(bc, :, k) + 1
-  k1 = first_inband_el(bc,j,:) - 1
-  for l ∈ k:k1
-    cbws[3, l] = max(cbws[3, l], j - first_sub(bc, :, l) + 1)
-  end
-  for l ∈ j0:j
-    rbws[l, 1] = max(rbws[l, 1], first_sub(bc, l, :) - k + 1)
-  end
-  nothing
+  (1:row_size(bc)) ∩ (first_lower_index(bc, :, k):last_inband_index(bc, :, k))
 end
 
-
 """
-    extend_band!(
+    function lower_inband_index_range(
       bc::AbstractBandColumn,
       j::Int,
-      k::Int,
+      ::Colon,
     )
 
-Given ``j`` and ``k`` in the storable part of a `BandColumn` matrix
-`bc`, extend the lower or upper bandwidth so that `bc[j,k]` is
-inband.
-
+Range of inband elements in row ``j``.
 """
-@propagate_inbounds @inline function extend_band!(
+@propagate_inbounds @inline function lower_inband_index_range(
   bc::AbstractBandColumn,
   j::Int,
-  k::Int,
+  ::Colon,
 )
-  extend_upper_band!(bc, j, k)
-  extend_lower_band!(bc, j, k)
+  (1:col_size(bc)) ∩ (first_inband_index(bc, j, :):last_lower_index(bc, j, :))
 end
 
-"""
-    extend_band!(
-      bc::AbstractBandColumn,
-      js::UnitRange{Int},
-      k::Int,
-    )
+@propagate_inbounds @inline upper_bw(bc::AbstractBandColumn, ::Colon, k::Int) =
+  length(upper_inband_index_range(bc, :, k))
 
-Given ``js`` and ``k`` in the storable part of a `BandColumn` matrix
-`bc`, extend the lower and/or upper bandwidth so that `bc[js,k]` is
-inband.
+@propagate_inbounds @inline middle_bw(bc::AbstractBandColumn, ::Colon, k::Int) =
+  length(middle_inband_index_range(bc, :, k))
 
-"""
-@propagate_inbounds @inline function extend_band!(
-  bc::AbstractBandColumn,
-  js::UnitRange{Int},
-  k::Int,
-)
-  if !isempty(js)
-    extend_upper_band!(bc, js.start, k)
-    extend_lower_band!(bc, js.stop, k)
-  end
-end
+@propagate_inbounds @inline lower_bw(bc::AbstractBandColumn, ::Colon, k::Int) =
+  length(lower_inband_index_range(bc, :, k))
 
-"""
-    extend_band!(
-      bc::AbstractBandColumn,
-      j::Int,
-      ks::UnitRange{Int},
-    )
+@propagate_inbounds @inline upper_bw(bc::AbstractBandColumn, j::Int, ::Colon) =
+  length(upper_inband_index_range(bc, j, :))
 
-Given ``j`` and ``ks`` in the storable part of a `BandColumn` matrix
-bc`, extend the lower and/or upper bandwidth so that `bc[j,ks]` is
-inband.
+@propagate_inbounds @inline middle_bw(bc::AbstractBandColumn, j::Int, ::Colon) =
+  length(middle_inband_index_range(bc, j, :))
 
-"""
-@propagate_inbounds @inline function extend_band!(
-  bc::AbstractBandColumn,
-  j::Int,
-  ks::UnitRange{Int},
-)
-  if !isempty(ks)
-    extend_upper_band!(bc, j, ks.start)
-    extend_lower_band!(bc, j, ks.stop)
-  end
-end
-
-"""
-    extend_band!(
-      bc::AbstractBandColumn,
-      js::UnitRange{Int},
-      ks::UnitRange{Int},
-    )
-
-Given ``js`` and ``ks`` in the storable part of a `BandColumn` matrix
-bc`, extend the lower and/or upper bandwidth so that `bc[js,ks]` is
-inband.
-
-"""
-@propagate_inbounds @inline function extend_band!(
-  bc::AbstractBandColumn,
-  js::UnitRange{Int},
-  ks::UnitRange{Int},
-)
-  if !isempty(js) && !isempty(ks)
-    extend_upper_band!(bc, js.start, ks.stop)
-    extend_lower_band!(bc, js.stop, ks.start)
-  end
-end
-
-"""
-    compute_rbws!(
-      bc::AbstractBandColumn,
-      rbws::AbstractArray{Int,2},
-    )
-
-Compute row upper and lower bandwidths from column bandwidths, filling
-them into a separate array.  Note that this does not fill in
-rbws[j,4], which is the first subdiagonal in row j or the middle
-bandwidths.  It is assumed that those will never change.  (They are
-determined by the leading block sizes).
-
-"""
-function compute_rbws!(
-  bc::AbstractBandColumn,
-  rbws::AbstractArray{Int,2},
-)
-  (m, n) = size(bc)
-  rbws[:, 1:3] .= zero(Int)
-  roffs = get_roffset(bc)
-  for k ∈ n:-1:1
-    jrange = ((lower_inband_els_range(bc, :, k) .+ roffs)) ∩ (1:m)
-    rbws[jrange, 1] .+= 1
-    jrange = (middle_inband_els_range(bc, :, k) .+ roffs) ∩ (1:m)
-    rbws[jrange, 2] .+= 1
-    jrange = (upper_inband_els_range(bc, :, k) .+ roffs) ∩ (1:m)
-    rbws[jrange, 3] .+= 1
-  end
-end
-
-"""
-    compute_rbws!(bc::AbstractBandColumn)
-
-Compute row upper and lower bandwidths from column bandwidths, filling
-them into `bc.rbws`.
-
-"""
-function compute_rbws!(bc::AbstractBandColumn)
-  compute_rbws!(bc, bc.rbws)
-end
-
-"""
-    compute_rbws(bc::AbstractBandColumn)
-
-Compute row upper and lower bandwidths from column bandwidths, filling
-them into a newly allocated array.
-
-"""
-function compute_rbws(bc::AbstractBandColumn)
-  (m, n) = size(bc)
-  rbws1 = zeros(Int,m,3)
-  compute_rbws!(bc, rbws1)
-  rbws1
-end
-
-"""
-    validate_rbws(bc::AbstractBandColumn)
-
-Check that the upper and lower bandwidths in `bc.rbws` and `bc.cbws`
-are consistent.
-
-"""
-function validate_rbws(bc::AbstractBandColumn)
-  (m, n) = size(bc)
-  rbws1 = zeros(Int,m,3)
-  compute_rbws!(bc, rbws1)
-  rbws1 == bc.rbws[:,1:3]
-end
+@propagate_inbounds @inline lower_bw(bc::AbstractBandColumn, j::Int, ::Colon) =
+  length(lower_inband_index_range(bc, j, :))
 
 """
     storage_offset(bc::AbstractBandColumn, k::Int)
@@ -636,10 +853,177 @@ end
 Compute a row offset to look into storage:
 
     d = storage_offset(bc,k)
-    bc[j,k] == bc.band_elements[j - d, k]
+    bc[j,k] == band_elements(bc)[j - d, k]
 """
 @propagate_inbounds @inline storage_offset(bc::AbstractBandColumn, k::Int) =
-  first_super(bc, :, k) - get_upper_bw_max(bc)
+  last_upper_index(bc,:,k) - upper_bw_max(bc)
+
+"""
+    first_inband_index_storage(bc::AbstractBandColumn, k::Int)
+
+If 
+
+    j=first_inband_index_storage(bc::AbstractBandColumn, k::Int)
+
+then `bc.band_elements[j,k]` is the first inband element
+in column ``k``.
+"""
+@propagate_inbounds @inline first_inband_index_storage(
+  bc::AbstractBandColumn,
+  k::Int,
+) = first_inband_index(bc, :, k) - storage_offset(bc, k)
+
+"""
+    last_inband_index_storage(bc::AbstractBandColumn, k::Int)
+
+If 
+
+    j=last_inband_index_storage(bc::AbstractBandColumn, k::Int)
+
+then `bc.band_elements[j,k]` is the last inband element
+in column ``k``.
+"""
+@propagate_inbounds @inline last_inband_index_storage(
+  bc::AbstractBandColumn,
+  k::Int,
+) = last_inband_index(bc, :, k) - storage_offset(bc, k)
+
+"""
+    first_storable_index(bc::AbstractBandColumn, k::Int)
+
+If 
+
+    j=first_storable_index(bc::AbstractBandColumn, k::Int)
+
+then `bc[j,k]` is the first element in column ``k`` for which there is
+available storage.
+"""
+@propagate_inbounds @inline first_storable_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = project(1 + storage_offset(bc, k), row_size(bc))
+
+"""
+    last_storable_index(bc::AbstractBandColumn, k::Int)
+
+If 
+
+    j=last_storable_index(bc::AbstractBandColumn, k::Int)
+
+then `bc[j,k]` is the last element in column ``k`` for which there is
+available storage..
+"""
+@propagate_inbounds @inline last_storable_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = project(bw_max(bc) + storage_offset(bc, k), row_size(bc))
+
+"""
+    inband_index_range_storage(
+       bc::AbstractBandColumn,
+       k::Int,
+    )
+
+Compute the range of inband elements in column ``k`` of
+`bc.band_elements`.
+"""
+@propagate_inbounds @inline function inband_index_range_storage(
+  bc::AbstractBandColumn,
+  k::Int,
+)
+  inband_index_range(bc,:,k) .- storage_offset(bc,k)
+end
+
+"""
+    storable_index_range(
+      bc::AbstractBandColumn,
+      ::Colon,
+      k::Int,
+    )
+
+The range of elements in column ``k`` of `bc` for which storage is
+available.
+"""
+@propagate_inbounds @inline function storable_index_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  first_storable_index(bc, :, k):last_storable_index(bc, :, k)
+end
+
+"""
+    upper_inband_index_range_storage(
+       bc::AbstractBandColumn,
+       k::Int)
+
+Compute the range of upper inband elements in column ``k`` of
+`bc.band_elements`.
+"""
+@propagate_inbounds @inline function upper_inband_index_range_storage(
+  bc::AbstractBandColumn,
+  k::Int,
+)
+  upper_inband_index_range(bc,:,k) .- storage_offset(bc,k)
+end
+
+"""
+    middle_inband_index_range_storage(
+       bc::AbstractBandColumn,
+       k::Int,
+    )
+
+Compute the range of middle inband elements in column ``k`` of
+`bc.band_elements`.
+"""
+@propagate_inbounds @inline function middle_inband_index_range_storage(
+  bc::AbstractBandColumn,
+  k::Int,
+)
+  middle_inband_index_range(bc,:,k) .- storage_offset(bc,k)
+end
+
+"""
+    lower_inband_index_range_storage(
+       bc::AbstractBandColumn,
+       k::Int,
+    )
+
+Compute the range of lower inband elements in column ``k`` of
+`bc.band_elements`.
+"""
+@propagate_inbounds @inline function lower_inband_index_range_storage(
+  bc::AbstractBandColumn,
+  k::Int,
+)
+  lower_inband_index_range(bc,:,k) .- storage_offset(bc,k)
+end
+
+"""
+    is_inband(
+      bc::AbstractBandColumn,
+      j::Int,
+      k::Int,
+    )
+Test if `bc[j,k]` is an inband element.
+"""
+@propagate_inbounds @inline function is_inband(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  j ∈ inband_index_range(bc,:,k)
+end
+
+@propagate_inbounds @inline function is_inband(
+  bc::AbstractBandColumn,
+  jrange::AbstractRange{Int},
+  k::Int,
+)
+  jrange ⊆ inband_index_range(bc,:,k)
+end
 
 """
     check_bc_storage_bounds(
@@ -657,8 +1041,7 @@ Compute a row offset to look into storage:
   j::Int,
   k::Int,
 )
-  j1 = j - storage_offset(bc, k)
-  j1 >= 1 && j1 <= get_m_els(bc)
+  j ∈ storable_index_range(bc,:,k)
 end
 
 """
@@ -668,663 +1051,712 @@ end
       k::Int,
     )
 
-  Check whether `bc[j,k]` is a storable element, throwing
-  a `NoStorageForIndex` exception if it is not.
+Check whether `bc[j,k]` is a storable element, throwing
+a `NoStorageForIndex` exception if it is not.
 """
 @inline check_bc_storage_bounds(bc::AbstractBandColumn, j::Int, k::Int) =
   check_bc_storage_bounds(Bool, bc, j, k) ||
   throw(NoStorageForIndex(bc, (j, k)))
 
-"""
-    first_inband_el_storage(bc::AbstractBandColumn, k::Int)
+#=
 
-If 
+Bulge functions.  Note that bulge_upper!  and bulge_lower! must be
+implemented for any BandColumn.  The other methods have
+implementations in terms of these.
 
-    j=first_inband_el_storage(bc::AbstractBandColumn, k::Int)
+=#
 
-then `bc.band_elements[j,k]` is the first inband element
-in column ``k``.
-"""
-@propagate_inbounds @inline first_inband_el_storage(
-  bc::AbstractBandColumn,
+@inline is_upper_bulgeable_with_no_well(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
   k::Int,
-) = get_upper_bw_max(bc) - upper_bw(bc, :, k) + 1
+) = true
 
-"""
-    last_inband_el_storage(bc::AbstractBandColumn, k::Int)
-
-If 
-
-    j=last_inband_el_storage(bc::AbstractBandColumn, k::Int)
-
-then `bc.band_elements[j,k]` is the last inband element
-in column ``k``.
-"""
-@propagate_inbounds @inline last_inband_el_storage(
-  bc::AbstractBandColumn,
-  k::Int,
-) = get_upper_bw_max(bc) + middle_bw(bc, :, k) + lower_bw(bc, :, k)
-
-"""
-    first_storable_el(bc::AbstractBandColumn, k::Int)
-
-If 
-
-    j=first_storable_el(bc::AbstractBandColumn, k::Int)
-
-then `bc[j,k]` is the first element in column ``k`` for which there is
-available storage.
-"""
-@propagate_inbounds @inline first_storable_el(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-) = first_super(bc, :, k) - get_upper_bw_max(bc) + 1
-
-"""
-    last_storable_el(bc::AbstractBandColumn, k::Int)
-
-If 
-
-    j=last_storable_el(bc::AbstractBandColumn, k::Int)
-
-then `bc[j,k]` is the last element in column ``k`` for which there is
-available storage..
-"""
-@propagate_inbounds @inline last_storable_el(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-) = first_super(bc, :, k) +  get_middle_bw_max(bc) + get_lower_bw_max(bc)
-
-"""
-    first_inband_el(bc::AbstractBandColumn, ::Colon, k::Int)
-
-If
-
-  j=first_inband_el(bc,:,k)
-
-then `bc[j,k]` is the first inband element in column ``k``.
-
-"""
-@propagate_inbounds @inline first_inband_el(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-) = first_super(bc, :, k) - upper_bw(bc, :, k) + 1
-
-"""
-    first_inband_el(bc::AbstractBandColumn, j::Int, ::Colon)
-
-If
-
-  k=first_inband_el(bc,j,:)
-
-then `bc[j,k]` is the first inband element in row ``j``.
-"""
-@propagate_inbounds @inline first_inband_el(
+@inline @propagate_inbounds function is_upper_bulgeable_with_no_well(
   bc::AbstractBandColumn,
   j::Int,
-  ::Colon,
-) = first_sub(bc, j, :) - lower_bw(bc, j, :) + 1
-
-"""
-    last_inband_el(bc::AbstractBandColumn, ::Colon, k::Int)
-
-If
-
-  j=last_inband_el(bc,:,k)
-
-then `bc[j,k]` is the last inband element in column ``k``.
-
-"""
-@propagate_inbounds @inline last_inband_el(
-  bc::AbstractBandColumn,
-  ::Colon,
   k::Int,
-) = first_super(bc, :, k) + middle_bw(bc, :, k) + lower_bw(bc, :, k)
+)
+  (first_inband_index(NonSub, bc, :, k) - row_offset(bc) <= row_size(bc)) &&
+    (last_inband_index(NonSub, bc, j, :) - col_offset(bc) >= 1)
+end
 
-"""
-    last_inband_el(bc::AbstractBandColumn, j::Int, ::Colon)
+@inline is_lower_bulgeable_with_no_well(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  k::Int,
+) = true
 
-If
-
-  k=last_inband_el(bc,j,:)
-
-then `bc[j,k]` is the last inband element in row ``j``.
-"""
-@propagate_inbounds @inline last_inband_el(
+@inline @propagate_inbounds function is_lower_bulgeable_with_no_well(
   bc::AbstractBandColumn,
   j::Int,
-  ::Colon,
-) = first_sub(bc, j, :) + middle_bw(bc, j, :) + upper_bw(bc, j, :)
-
-"""
-    function inband_els_range(
-      bc::AbstractBandColumn,
-      ::Colon,
-      k::Int,
-    )
-
-Range of inband elements in column ``k``.
-"""
-@propagate_inbounds @inline function inband_els_range(
-  bc::AbstractBandColumn,
-  ::Colon,
   k::Int,
 )
-  (m, _) = size(bc)
-  (1:m) ∩ (first_inband_el(bc, :, k):last_inband_el(bc, :, k))
+  (last_inband_index(NonSub, bc, :, k) - row_offset(bc) >= 1) &&
+    (first_inband_index(NonSub, bc, j, :) - col_offset(bc) <= col_size(bc))
 end
 
-"""
-    function inband_els_range(
-      bc::AbstractBandColumn,
-      j::Int,
-      ::Colon,
-    )
-
-Range of inband elements in row ``j``.
-"""
-@propagate_inbounds @inline function inband_els_range(
-  bc::AbstractBandColumn,
-  j::Int,
-  ::Colon,
-)
-  (_, n) = size(bc)
-  (1:n) ∩ (first_inband_el(bc, j, :):last_inband_el(bc, j, :))
-end
 
 """
-    function upper_inband_els_range(
-      bc::AbstractBandColumn,
-      ::Colon,
-      k::Int,
-    )
-
-Range of inband upper elements in column ``k``.
-"""
-@propagate_inbounds @inline function upper_inband_els_range(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-)
-  (m, _) = size(bc)
-  (1:m) ∩ (first_inband_el(bc, :, k):first_super(bc, :, k))
-end
-
-"""
-    function upper_inband_els_range(
-      bc::AbstractBandColumn,
-      j::Int,
-      ::Colon,
-    )
-
-Range of inband upper elements in row ``j``.
-"""
-@propagate_inbounds @inline function upper_inband_els_range(
-  bc::AbstractBandColumn,
-  j::Int,
-  ::Colon,
-)
-  (_, n) = size(bc)
-  (1:n) ∩ (first_super(bc, j, :):last_inband_el(bc, j, :))
-end
-
-"""
-    function middle_inband_els_range(
-      bc::AbstractBandColumn,
-      ::Colon,
-      k::Int,
-    )
-
-Range of inband middle elements in column ``k``.
-"""
-@propagate_inbounds @inline function middle_inband_els_range(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-)
-  (m, _) = size(bc)
-  j = first_super(bc, :, k)
-  (1:m) ∩ ((j + 1):(j + middle_bw(bc, :, k)))
-end
-
-"""
-    function middle_inband_els_range(
-      bc::AbstractBandColumn,
-      j::Int,
-      ::Colon,
-    )
-
-Range of inband middle elements in row ``j``.
-"""
-@propagate_inbounds @inline function middle_inband_els_range(
-  bc::AbstractBandColumn,
-  j::Int,
-  ::Colon,
-)
-  (_, n) = size(bc)
-  k = first_sub(bc, j, :)
-  (1:n) ∩ ((k + 1):(k + middle_bw(bc, j, :)))
-end
-
-"""
-    function lower_inband_els_range(
-      bc::AbstractBandColumn,
-      ::Colon,
-      k::Int,
-    )
-
-Range of inband lower elements in column ``k``.
-"""
-@propagate_inbounds @inline function lower_inband_els_range(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-)
-  (m, _) = size(bc)
-  j = first_super(bc, :, k) + middle_bw(bc, :, k)
-  (1:m) ∩ ((j + 1):(j + lower_bw(bc, :, k)))
-end
-
-"""
-    function lower_inband_els_range(
-      bc::AbstractBandColumn,
-      j::Int,
-      ::Colon,
-    )
-
-Range of inband elements in row ``j``.
-"""
-@propagate_inbounds @inline function lower_inband_els_range(
-  bc::AbstractBandColumn,
-  j::Int,
-  ::Colon,
-)
-  (_, n) = size(bc)
-  (1:n) ∩ (first_inband_el(bc, j, :):first_sub(bc,j,:))
-end
-
-"""
-    inband_els_range_storage(
-       bc::AbstractBandColumn,
-       k::Int,
-    )
-
-Compute the range of inband elements in column ``k`` of
-`bc.band_elements`.
-"""
-@propagate_inbounds @inline function inband_els_range_storage(
-  bc::AbstractBandColumn,
-  k::Int,
-)
-    (1:get_m_els(bc)) ∩
-      (first_inband_el_storage(bc, k):last_inband_el_storage(bc, k))
-end
-
-"""
-    storable_els_range(
-      bc::AbstractBandColumn,
-      ::Colon,
-      k::Int,
-    )
-
-The range of elements in column ``k`` of `bc` for which storage is
-available.
-"""
-@propagate_inbounds @inline function storable_els_range(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-)
-  (1:get_m(bc)) ∩ (first_storable_el(bc, :, k):last_storable_el(bc, :, k))
-end
-
-"""
-    upper_inband_els_range_storage(
-       bc::AbstractBandColumn,
-       k::Int)
-
-Compute the range of upper inband elements in column ``k`` of
-`bc.band_elements`.
-"""
-@propagate_inbounds @inline function upper_inband_els_range_storage(
-  bc::AbstractBandColumn,
-  k::Int,
-)
-  m = bc.m_els
-  j = first_inband_el_storage(bc, k)
-  (1:m) ∩ (j:(j + upper_bw(bc, :, k) - 1))
-end
-
-"""
-    middle_inband_els_range_storage(
-       bc::AbstractBandColumn,
-       k::Int,
-    )
-
-Compute the range of middle inband elements in column ``k`` of
-`bc.band_elements`.
-"""
-@propagate_inbounds @inline function middle_inband_els_range_storage(
-  bc::AbstractBandColumn,
-  k::Int,
-)
-  m = bc.m_els
-  j = first_inband_el_storage(bc, k) + upper_bw(bc, :, k)
-  (1:m) ∩ (j:(j + middle_bw(bc, :, k) - 1))
-end
-
-"""
-    lower_inband_els_range_storage(
-       bc::AbstractBandColumn,
-       k::Int,
-    )
-
-Compute the range of lower inband elements in column ``k`` of
-`bc.band_elements`.
-"""
-@propagate_inbounds @inline function lower_inband_els_range_storage(
-  bc::AbstractBandColumn,
-  k::Int,
-)
-  m = bc.m_els
-  j = first_inband_el_storage(bc, k) + upper_bw(bc, :, k) + middle_bw(bc, :, k)
-  (1:m) ∩ (j:(j + lower_bw(bc, :, k) - 1))
-end
-
-"""
-    bc_index_stored(
-      bc::AbstractBandColumn,
+    bulge_upper!(
+      bc::BandColumn,
       j::Int,
       k::Int,
     )
-Test if `bc[j,k]` is an inband element.
+
+Given ``j`` and ``k`` in the storable upper triangular part of a
+`BandColumn` matrix `bc`, extend the upper bandwidth so that all
+elements in the upper triangular part below and to the left of
+`bc[j,k]` are inband.
+
+This includes a ``@boundscheck`` block with some more extensive error
+checking.  However, if this block is elided, then the function
+operates appropriately so long as ``(j,k)`` is storable index in ``bc``.
+
 """
-@propagate_inbounds @inline function bc_index_stored(
+@inline function bulge_upper!(
   bc::AbstractBandColumn,
   j::Int,
   k::Int,
 )
-  j1 = j - storage_offset(bc, k)
-  j1 >= first_inband_el_storage(bc, k) && j1 <= last_inband_el_storage(bc, k)
-end
-
-"""
-  hull(a :: UnitRange, b :: UnitRange)
-
-Return the convex hull of two closed intervals, with
-the intervals represented by a `UnitRange`.
-"""
-@inline function hull(a :: UnitRange, b :: UnitRange)
-  isempty(a) ? b :
-  (isempty(b) ? a : UnitRange(min(a.start, b.start), max(a.stop, b.stop)))
-end
-
-
-##
-## Index operations
-##
-
-@propagate_inbounds @inline function Base.getindex(
-  bc::AbstractBandColumn{E},
-  j::Int,
-  k::Int,
-) where {E}
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
-    bc_index_stored(bc, j, k) || return zero(E)
+    is_upper(bc, j, k) || throw(IndexNotUpper(j, k))
+    is_upper_bulgeable_with_no_well(bc, j, k) || throw(WellError())
   end
-  j1 = j - storage_offset(bc,k)
-  @inbounds getindex(get_band_elements(bc), j1, k)
+  @inbounds begin
+    j_first = first_inband_index(bc, :, k)
+    k_last = last_inband_index(bc, j, :)
+    # Does nothing if (j,k) is not above the diagonal.
+    # j >= j_first ⟹ j:(j_first - 1) is empty.
+    unsafe_set_last_inband_index!(bc, j:(j_first - 1), :, k)
+    # j >= j_first ⟹ k <= k_last ⟹ (k_last+1):k is empty.
+    unsafe_set_first_inband_index!(bc, :, (k_last + 1):k, j)
+    nothing
+  end
 end
 
-@propagate_inbounds @inline function Base.setindex!(
-  bc::AbstractBandColumn{E},
+"""
+    bulge_lower!(
+      bc::BandColumn,
+      j::Int,
+      k::Int,
+    )
+
+Given ``j`` and ``k`` in the storable lower triangular part of a
+`BandColumn` matrix `bc`, extend the lower bandwidth so that all
+elements in the lower triangular part above and to the right of
+`bc[j,k]` are inband.
+
+This includes a ``@boundscheck`` block with some more extensive error
+checking.  However, if this block is elided, then the function
+operates appropriately so long as ``(j,k)`` is storable index in ``bc``.
+"""
+@inline function bulge_lower!(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+    is_lower(bc, j, k) || throw(IndexNotLower(j, k))
+    is_lower_bulgeable_with_no_well(bc, j, k) || throw(WellError())
+  end
+  @inbounds begin
+    j_last = last_inband_index(bc, :, k)
+    k_first = first_inband_index(bc, j, :)
+    # Does nothing if (j,k) is not below the diagonal.
+    # j <= j_last ⟹ (j_last+1):j is empty.
+    unsafe_set_first_inband_index!(bc, (j_last+1):j, :, k)
+    # j <= j_last ⟹ k >= k_first ⟹ k:(k_first - 1) is empty.
+    unsafe_set_last_inband_index!(bc, :, k:(k_first - 1), j) 
+    nothing
+  end
+end
+
+@inline function unsafe_set_first_inband_index!(
+  bc::BandColumn,
+  js::AbstractUnitRange{Int},
+  ::Colon,
+  k_first::Int,
+) 
+  bc.rows_first_last[first(js):last(js), 1] .= k_first + col_offset(bc)
+  nothing
+end
+
+@inline function unsafe_set_first_inband_index!(
+  bc::BandColumn,
+  ::Colon,
+  ks::AbstractUnitRange{Int},
+  j_first::Int,
+) 
+  bc.cols_first_last[1, first(ks):last(ks)] .= j_first + row_offset(bc)
+  nothing
+end
+
+@inline function unsafe_set_last_inband_index!(
+  bc::BandColumn,
+  js::AbstractUnitRange{Int},
+  ::Colon,
+  k_last::Int,
+) 
+  bc.rows_first_last[first(js):last(js), 4] .= k_last + col_offset(bc)
+  nothing
+end
+
+@inline function unsafe_set_last_inband_index!(
+  bc::BandColumn,
+  ::Colon,
+  ks::AbstractUnitRange{Int},
+  j_last::Int,
+) 
+  bc.cols_first_last[4, first(ks):last(ks)] .= j_last + row_offset(bc)
+  nothing
+end
+
+"""
+    bulge!(
+      bc::AbstractBandColumn,
+      j::Int,
+      k::Int,
+    )
+
+Given ``j`` and ``k`` in the storable part of a `BandColumn` matrix
+`bc`, extend the lower or upper bandwidth so that `bc[j,k]` is
+inband.
+"""
+@propagate_inbounds @inline function bulge!(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+    is_upper(bc, j, k) && bulge_upper!(bc, j, k)
+    is_lower(bc, j, k) && bulge_lower!(bc, j, k)
+end
+
+"""
+    bulge!(
+      bc::AbstractBandColumn,
+      j_u::Int,
+      k_u::Int,
+      j_l::Int,
+      k_l::Int,
+    )
+
+Extends band structure to include a rectangle with a corner ``(j_l,
+k_l)`` in the lower triangular part and a corner ``(j_u, k_u)`` in the
+upper triangular part.  This function does not check that ``j_u <=
+j_l`` or ``k_u <= k_l``.  As a consequence, it can extend the
+bandwidth even if the rectangle has no rows or now columns, so long as
+``(j_u,k_u)`` is an upper index or ``(j_l, k_l)`` is a lower index.
+This might not be what is desired.  As an alternative, the
+``bulge!`` methods that take one or more ``AbstractUnitRange``
+parameters check for empty ranges.
+"""
+@propagate_inbounds @inline function bulge!(
+  bc::AbstractBandColumn,
+  j_u::Int,
+  k_u::Int,
+  j_l::Int,
+  k_l::Int,
+)
+  bulge_upper!(bc, j_u, k_u)
+  bulge_lower!(bc, j_l, k_l)
+end
+
+"""
+    bulge!(
+      bc::AbstractBandColumn,
+      js::AbstractUnitRange{Int},
+      ks::AbstractUnitRange{Int},
+    )
+
+Given ``j`` and ``k`` in the storable part of a `BandColumn` matrix
+`bc`, extend the lower or upper bandwidth so that `bc[j,k]` is
+inband.
+"""
+@propagate_inbounds @inline function bulge!(
+  bc::AbstractBandColumn,
+  js::AbstractUnitRange{Int},
+  ks::AbstractUnitRange{Int},
+)
+  j_u=first(js)
+  k_u=last(ks)
+  j_l=last(js)
+  k_l=first(ks)
+  if !isempty(js) && !isempty(ks)
+    bulge_upper!(bc, j_u, k_u)
+    bulge_lower!(bc, j_l, k_l)
+  end
+end
+
+"""
+    bulge!(
+      bc::AbstractBandColumn,
+      js::AbstractUnitRange{Int},
+      ::Colon,
+    )
+
+Given ``js`` extend the band so that every row in ``js`` has the
+minimum first index and maximum last index of any row in the range.
+"""
+@propagate_inbounds @inline function bulge!(
+  bc::AbstractBandColumn,
+  js::AbstractUnitRange{Int},
+  ::Colon,
+)
+  j_u = first(js)
+  j_l = last(js)
+  k_l = first_inband_index(bc, j_u, :)
+  k_u = last_inband_index(bc, j_l, :)
+  @boundscheck begin
+    checkbounds(bc, j_u, k_u)
+    checkbounds(bc, j_l, k_l)
+    check_bc_storage_bounds(bc, j_u, k_u)
+    check_bc_storage_bounds(bc, j_l, k_l)
+    is_lower_bulgeable_with_no_well(bc, j_l, k_l) || throw(WellError())
+    is_upper_bulgeable_with_no_well(bc, j_u, k_u) || throw(WellError())
+  end
+  @inbounds if !isempty(j_u:j_l)  && !isempty(k_l:k_u)
+    bulge_upper!(bc, j_u, k_u)
+    bulge_lower!(bc, j_l, k_l)
+  end
+end
+
+"""
+    bulge!(
+      bc::AbstractBandColumn,
+      ::Colon,
+      ks::AbstractUnitRange{Int},
+    )
+
+Given ``ks`` extend the band so that every column in ``ks`` has the
+minimum first index and maximum last index of any column in the range.
+"""
+@propagate_inbounds @inline function bulge!(
+  bc::AbstractBandColumn,
+  ::Colon,
+  ks::AbstractUnitRange{Int},
+)
+  k_l = first(ks)
+  k_u = last(ks)
+  j_l = last_inband_index(bc, :, k_u)
+  j_u = first_inband_index(bc, :, k_l)
+  @boundscheck begin
+    checkbounds(bc, j_u, k_u)
+    checkbounds(bc, j_l, k_l)
+    check_bc_storage_bounds(bc, j_u, k_u)
+    check_bc_storage_bounds(bc, j_l, k_l)
+    is_lower_bulgeable_with_no_well(bc, j_l, k_l) || throw(WellError())
+    is_upper_bulgeable_with_no_well(bc, j_u, k_u) || throw(WellError())
+  end
+  @inbounds if !isempty(j_u:j_l)  && !isempty(k_l:k_u)
+    bulge_upper!(bc, j_u, k_u)
+    bulge_lower!(bc, j_l, k_l)
+  end
+end
+
+#=
+
+Notch Operations
+
+=#
+
+@inline is_upper_notchable_with_no_well(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  k::Int,
+) = true
+
+@inline @propagate_inbounds function is_upper_notchable_with_no_well(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  (first_inband_index(NonSub, bc, :, k) - row_offset(bc) ==
+   first_inband_index(bc, :, k)) &&
+   (last_inband_index(NonSub, bc, j, :) - col_offset(bc) ==
+    last_inband_index(bc, j, :))
+end
+
+@inline is_lower_notchable_with_no_well(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  k::Int,
+) = true
+
+@inline @propagate_inbounds function is_lower_notchable_with_no_well(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  (first_inband_index(NonSub, bc, j, :) - col_offset(bc) ==
+   first_inband_index(bc, j, :)) &&
+   (last_inband_index(NonSub, bc, :, k) - row_offset(bc) ==
+    last_inband_index(bc, :, k))
+end
+
+"""
+    notch_upper!(bc :: AbstractBandColumn, j::Int, k::Int)
+
+Create a notch in the upper triangular part with corner at ``(j,k)``.
+
+Example: if
+
+    A = X U U O O O O
+        L X U U O O O
+        L X U U U O O
+        O L X X X U O
+        N O O O L U U
+        N N O O L U U
+        N N O O O L X
+        N N N N N L X
+
+then ``notch_upper!(A, 2, 3)`` results in
+
+    A = X U O O O O O
+        L X O O O O O
+        L X U U U O O
+        O L X X X U O
+        N O O O L U U
+        N N O O L U U
+        N N O O O L X
+        N N N N N L X
+"""
+@inline function notch_upper!(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  @boundscheck begin
+    (m, n) = size(bc)
+    checkbounds(bc, j, k)
+    is_upper(bc, j, k) || throw(IndexNotUpper(j, k))
+    is_inband(bc, j, k) || throw(IndexNotInband(j, k))
+    is_upper_notchable_with_no_well(bc, j, k) || throw(WellError())
+  end
+  @inbounds begin
+    j_first = first_inband_index(bc, :, k)
+    k_last = last_inband_index(bc, j, :)
+    unsafe_set_last_inband_index!(bc, j_first:j, :, k - 1)
+    unsafe_set_first_inband_index!(bc, :, k:k_last, j + 1)
+  end
+  nothing
+end
+
+"""
+    notch_lower!(bc :: AbstractBandColumn, j::Int, k::Int)
+
+Create a notch in the lower triangular part with corner at ``(j,k)``.
+
+Example: if
+
+    A = X U U O O O O
+        L X U U O O O
+        L X U U U O O
+        L L X X X U O
+        N O L L L U U
+        N N O L L U U
+        N N O O O L X
+        N N N N N L X
+
+then ``notch_lower!(A, 5, 4)`` results in
+
+    A = X U U O O O O
+        L X U U O O O
+        L X U U U O O
+        L L X X X U O
+        N O O O L U U
+        N N O O L U U
+        N N O O O L X
+        N N N N N L X
+"""
+@inline function notch_lower!(
+  bc::AbstractBandColumn,
+  j::Int,
+  k::Int,
+)
+  @boundscheck begin
+    (m, n) = size(bc)
+    checkbounds(bc, j, k)
+    is_lower(bc, j, k) || throw(IndexNotLower(j, k))
+    is_inband(bc, j, k) || throw(IndexNotInband(j, k))
+    is_lower_notchable_with_no_well(bc, j, k) || throw(WellError())
+  end
+  @inbounds begin
+    j_last = last_inband_index(bc, :, k)
+    k_first = first_inband_index(bc, j, :)
+    unsafe_set_first_inband_index!(bc, j:j_last, :, k + 1)
+    unsafe_set_last_inband_index!(bc, :, k_first:k, j - 1)
+  end
+  nothing
+end
+
+#=
+
+Operations for validating and computing rows_first_last.
+
+=#
+
+"""
+    compute_rows_first_last!(
+      bc::AbstractBandColumn{NonSub},
+      first_last::AbstractArray{Int,2},
+    )
+
+Compute row first and last elements, filling them into a separate
+array.  This is not intended to work on submatrices.
+"""
+function compute_rows_first_last!(
+  bc::AbstractBandColumn{NonSub},
+  first_last::AbstractArray{Int,2},
+)
+  (m, n) = size(bc)
+  first_last[:, 1] .= zero(Int)
+  first_last[:, 4] .= zero(Int)
+  coffs = col_offset(bc)
+  for k ∈ n:-1:1
+    jrange = inband_index_range(bc, :, k) ∩ (1:m)
+    first_last[jrange, 1] .= k+coffs
+  end
+  for k ∈ 1:n
+    jrange = inband_index_range(bc, :, k) ∩ (1:m)
+    first_last[jrange, 4] .= k+coffs
+  end
+end
+
+"""
+    compute_rows_first_last!(bc::BandColumn{NonSub})
+
+Compute row first and last elements, filling them into `bc.rows_first_last`.
+
+"""
+function compute_rows_first_last!(bc::BandColumn{NonSub})
+  compute_rows_first_last!(bc, bc.rows_first_last)
+end
+
+"""
+    compute_rows_first_last(bc::AbstractBandColumn{NonSub})
+
+Compute row upper and lower bandwidths from column bandwidths, filling
+them into a newly allocated array.
+"""
+function compute_rows_first_last(bc::AbstractBandColumn{NonSub})
+  (m, n) = size(bc)
+  first_last_arr = zeros(Int,m,4)
+  compute_rows_first_last!(bc, first_last_arr)
+  first_last_arr
+end
+
+"""
+    validate_rows_first_last(bc::BandColumn{NonSub})
+
+Check that the upper and lower first and last elements are consistent.
+"""
+function validate_rows_first_last(bc::BandColumn{NonSub})
+  rfl = compute_rows_first_last(bc)
+  @views rfl[:,1] == bc.rows_first_last[:,1]
+  @views rfl[:,4] == bc.rows_first_last[:,4]
+end
+
+#=
+
+Index operations
+
+=#
+
+@inline function Base.getindex(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  k::Int,
+) where {S, E<:Number}
+  @boundscheck begin
+    checkbounds(bc, j, k)
+    check_bc_storage_bounds(bc, j, k)
+    is_inband(bc, j, k) || return zero(E)
+  end
+  @inbounds begin
+    j1 = (j - storage_offset(bc,k))
+    getindex(band_elements(bc), j1, k)
+  end
+end
+
+@inline function Base.setindex!(
+  bc::AbstractBandColumn{S,E},
   x::E,
   j::Int,
   k::Int,
-) where {E<:Number}
+) where {S,E<:Number}
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
   end
-  extend_upper_band!(bc, j, k)
-  extend_lower_band!(bc, j, k)
-  j1 = j - storage_offset(bc, k)
-  @inbounds (get_band_elements(bc))[j1,k]=x
+  @inbounds begin
+    bulge_upper!(bc, j, k)
+    bulge_lower!(bc, j, k)
+    j1 = j - storage_offset(bc, k)
+    band_elements(bc)[j1, k] = x
+  end
 end
 
 """
-    setindex_noext!(
-      bc::AbstractBandColumn{E},
+    setindex_no_bulge!(
+      bc::AbstractBandColumn{S,E},
       x::E,
       j::Int,
       k::Int,
-    ) where {E<:Number}
+    ) where {S,E<:Number}
 
 A version of `setindex!` that does not extend bandwidth.  This is
 useful in loops where the bandwidth extension can be done outside
 the loop for efficiency.
 """
-@propagate_inbounds @inline function setindex_noext!(
-  bc::AbstractBandColumn{E},
+@inline function setindex_no_bulge!(
+  bc::AbstractBandColumn{S, E},
   x::E,
   j::Int,
   k::Int,
-) where {E<:Number}
+) where {S,E<:Number}
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
   end
-  j1 = j - storage_offset(bc, k)
-  @inbounds get_band_elements(bc)[j1,k]=x
-end
-
-"""
-    trim_upper!(bc :: AbstractBandColumn, ::Colon, k::Int)
-    trim_upper!(bc :: AbstractBandColumn, j::Int, ::Colon)
-
-Remove one upper element from column k or row j.
-"""
-@propagate_inbounds @inline function trim_upper!(
-  bc::AbstractBandColumn{E},
-  ::Colon,
-  k::Int,
-) where {E<:Number}
-  jrange = upper_inband_els_range(bc, :, k)
-  j = jrange.start
-  @boundscheck begin
-    (m, n) = size(bc)
-    !isempty(jrange) || throw(EmptyUpperRange())
-    checkbounds(bc, j, k)
-    k == n || first_inband_el(bc, :, k + 1) > j || throw(WellError())
+  @inbounds begin
+    j1 = j - storage_offset(bc, k)
+    band_elements(bc)[j1,k]=x
   end
-  rbws=get_rbws(bc)
-  cbws=get_cbws(bc)
-  setindex_noext!(bc,zero(E),j,k)
-  rbws[j,3] -= 1
-  cbws[1,k] -= 1
-  nothing
 end
 
-@propagate_inbounds @inline function trim_upper!(
-  bc::AbstractBandColumn{E},
-  j::Int,
-  ::Colon,
-) where{E<:Number}
-  krange = upper_inband_els_range(bc, j, :)
-  k = krange.stop
-  @boundscheck begin
-    (m, n) = size(bc)
-    !isempty(krange) || throw(EmptyUpperRange())
-    checkbounds(bc, j, k)
-    j == 1 || last_inband_el(bc, j - 1, :) < krange.stop || throw(WellError())
-  end
-  rbws=get_rbws(bc)
-  cbws=get_cbws(bc)
-  setindex_noext!(bc,zero(E),j,k)
-  rbws[j,3] -= 1
-  cbws[1,k] -= 1
-  nothing
-end
-
-"""
-    trim_lower!(bc :: AbstractBandColumn, ::Colon, k::Int)
-    trim_lower!(bc :: AbstractBandColumn, j::Int, ::Colon)
-
-Remove one upper element from row j or column k.
-"""
-@propagate_inbounds @inline function trim_lower!(
-  bc::AbstractBandColumn{E},
-  ::Colon,
-  k::Int,
-) where {E<:Number}
-  jrange = lower_inband_els_range(bc, :, k)
-  j = jrange.stop
-  @boundscheck begin
-    (m, n) = size(bc)
-    !isempty(jrange) || throw(EmptyLowerRange())
-    checkbounds(bc, j, k)
-    k == 1 || last_inband_el(bc, :, k-1) < j || throw(WellError())
-  end
-  rbws=get_rbws(bc)
-  cbws=get_cbws(bc)
-  setindex_noext!(bc,zero(E),j,k)
-  rbws[j,1] -= 1
-  cbws[3,k] -= 1
-  nothing
-end
-
-@propagate_inbounds @inline function trim_lower!(
-  bc::AbstractBandColumn{E},
-  j::Int,
-  ::Colon,
-) where {E}
-  krange = lower_inband_els_range(bc, j, :)
-  k = krange.start
-  @boundscheck begin
-    (m, n) = size(bc)
-    !isempty(krange) || throw(EmptyUpperRange())
-    checkbounds(bc, j, k)
-    j == m || first_inband_el(bc, j + 1, :) > krange.start || throw(WellError())
-  end
-  rbws=get_rbws(bc)
-  cbws=get_cbws(bc)
-  setindex_noext!(bc,zero(E),j,k)
-  rbws[j,1] -= 1
-  cbws[3,k] -= 1
-  nothing
-end
-
-@inline function Base.view(bc::AbstractBandColumn, I::Vararg{Any,N}) where {N}
+@propagate_inbounds @inline function Base.view(
+  bc::AbstractBandColumn,
+  I::Vararg{Any,2},
+)
   viewbc(bc, I)
 end
 
 """
-    viewbc(bc::BandColumn, i::Tuple{UnitRange{Int},UnitRange{Int}})
+    viewbc(bc::BandColumn, i::Tuple{AbstractUnitRange{Int},
+           AbstractUnitRange{Int}})
 
 Return a bandcolumn submatrix with views of the relevant arrays
 wrapped into a BandColumn.
 """
-@inline function viewbc(bc::BandColumn, i::Tuple{UnitRange{Int},UnitRange{Int}})
+@inline function viewbc(
+  bc::BandColumn,
+  i::Tuple{AbstractUnitRange{Int},AbstractUnitRange{Int}},
+)
   (rows, cols) = i
-  j0 = rows.start
-  j1 = rows.stop
-  k0 = cols.start
-  k1 = cols.stop
+  j0 = first(rows)
+  j1 = last(rows)
+  k0 = first(cols)
+  k1 = last(cols)
 
   @boundscheck begin
     checkbounds(bc, j0, k0)
     checkbounds(bc, j1, k1)
   end
-  BandColumn(
+  @inbounds BandColumn(
+    Sub(),
+    bc.m_nonsub,
+    bc.n_nonsub,
     max(j1 - j0 + 1, 0),
     max(k1 - k0 + 1, 0),
-    bc.m_els,
     bc.roffset + j0 - 1,
     bc.coffset + k0 - 1,
+    bc.bw_max,
     bc.upper_bw_max,
-    bc.middle_bw_max,
-    bc.lower_bw_max,
-    view(bc.rbws, rows, 1:4),
-    view(bc.cbws, 1:4, cols),
-    view(bc.band_elements, 1:4, cols),
+    bc.middle_lower_bw_max,
+    view(bc.rows_first_last, rows, 1:4),
+    view(bc.cols_first_last, 1:4, cols),
+    view(bc.band_elements, :, cols),
   )
 end
 
 @inline function Base.getindex(
   bc::BandColumn,
-  rows::UnitRange{Int},
-  cols::UnitRange{Int},
+  rows::AbstractUnitRange{Int},
+  cols::AbstractUnitRange{Int},
 )
 
-  j0 = rows.start
-  j1 = rows.stop
-  k0 = cols.start
-  k1 = cols.stop
+  j0 = first(rows)
+  j1 = last(rows)
+  k0 = first(cols)
+  k1 = last(cols)
 
   @boundscheck begin
     checkbounds(bc, j0, k0)
     checkbounds(bc, j1, k1)
   end
-  BandColumn(
+  @inbounds BandColumn(
+    Sub(),
+    bc.m_nonsub,
+    bc.n_nonsub,
     max(j1 - j0 + 1, 0),
     max(k1 - k0 + 1, 0),
-    bc.m_els,
     bc.roffset + j0 - 1,
     bc.coffset + k0 - 1,
+    bc.bw_max,
     bc.upper_bw_max,
-    bc.middle_bw_max,
-    bc.lower_bw_max,
-    bc.rbws[rows, :],
-    bc.cbws[:, cols],
+    bc.middle_lower_bw_max,
+    bc.rows_first_last[rows, :],
+    bc.cols_first_last[:, cols],
     bc.band_elements[:, cols],
   )
 end
 
-@inline Base.getindex(bc::AbstractBandColumn, ::Colon, cols::UnitRange{Int}) =
-  getindex(bc, 1:get_m(bc), cols)
+@propagate_inbounds @inline Base.getindex(
+  bc::AbstractBandColumn,
+  ::Colon,
+  cols::AbstractUnitRange{Int},
+) = getindex(bc, 1:row_size(bc), cols)
 
-@inline Base.getindex(bc::AbstractBandColumn, rows::UnitRange{Int}, ::Colon) =
-  getindex(bc, rows, 1:get_n(bc))
+@propagate_inbounds @inline Base.getindex(
+  bc::AbstractBandColumn,
+  rows::AbstractUnitRange{Int},
+  ::Colon,
+) = getindex(bc, rows, 1:col_size(bc))
 
 @inline Base.getindex(bc::AbstractBandColumn, ::Colon, ::Colon) = bc
 
-@inline function viewbc(
+@propagate_inbounds @inline function viewbc(
   bc::AbstractBandColumn,
-  i::Tuple{Colon,UnitRange{Int}}
+  i::Tuple{Colon,AbstractUnitRange{Int}}
 )
   (_, cols) = i
-  viewbc(bc, (1:get_m(bc), cols))
+  viewbc(bc, (1:row_size(bc), cols))
 end
 
-@inline function viewbc(bc::AbstractBandColumn, i::Tuple{UnitRange{Int},Colon})
+@propagate_inbounds @inline function viewbc(
+  bc::AbstractBandColumn,
+  i::Tuple{AbstractUnitRange{Int},Colon},
+)
   (rows, _) = i
-  viewbc(bc, (rows, 1:get_n(bc)))
+  viewbc(bc, (rows, 1:col_size(bc)))
 end
 
-@inline function viewbc(bc::AbstractBandColumn, ::Tuple{Colon,Colon})
-  viewbc(bc, (1:get_m(bc), 1:get_n(bc)))
+@propagate_inbounds @inline function viewbc(
+  bc::AbstractBandColumn,
+  ::Tuple{Colon,Colon},
+)
+  viewbc(bc, (1:row_size(bc), 1:col_size(bc)))
 end
 
-function LinearAlgebra.Matrix(bc::AbstractBandColumn{E}) where {E<:Number}
+function LinearAlgebra.Matrix(bc::AbstractBandColumn{S,E}) where {S,E<:Number}
   (m, n) = size(bc)
   a = zeros(E, m, n)
   for k = 1:n
-    for j in inband_els_range(bc, :, k)
+    for j in inband_index_range(bc, :, k)
       a[j, k] = bc[j, k]
     end
   end
   a
 end
 
-# TODO: This should probably return CartesianIndices.
 function Base.eachindex(bc::AbstractBandColumn)
   (_, n) = size(bc)
-  (CartesianIndex(j, k) for k = 1:n for j ∈ inband_els_range(bc, :, k))
+  (CartesianIndex(j, k) for k = 1:n for j ∈ inband_index_range(bc, :, k))
 end
 
 """
@@ -1334,46 +1766,62 @@ Get all the stored elements of `bc` in a generator.
 """
 function get_elements(bc::AbstractBandColumn)
   (_, n) = size(bc)
-  (bc[j, k] for k = 1:n for j ∈ inband_els_range(bc, :, k))
+  @inbounds (bc[j, k] for k = 1:n for j ∈ inband_index_range(bc, :, k))
 end
 
-# Copying
+#=
+
+ Copying
+
+=#
 
 function Base.copy(bc::BandColumn)
   BandColumn(
+    bc.sub,
+    bc.m_nonsub,
+    bc.n_nonsub,
     bc.m,
     bc.n,
-    bc.m_els,
     bc.roffset,
     bc.coffset,
+    bc.bw_max,
     bc.upper_bw_max,
-    bc.middle_bw_max,
-    bc.lower_bw_max,
-    copy(bc.rbws),
-    copy(bc.cbws),
+    bc.middle_lower_bw_max,
+    copy(bc.rows_first_last),
+    copy(bc.cols_first_last),
     copy(bc.band_elements),
   )
 end
 
-##
-## Print and show.
-##
+#=
 
-# The method show for BandColumn matrices represents elements for
-# which there is no storage with `N`.  Elements that have available
-# storage but are not actually stored are represented by `O`.  These
-# are elements that are outside the current bandwidth but not outside
-# the maximum bandwidth.
+Print and show.
+
+=#
+
+#=
+
+The method show for BandColumn matrices represents elements for which
+there is no storage with `N`.  Elements that have available storage
+but are not actually stored are represented by `O`.  These are
+elements that are outside the current bandwidth but not outside the
+maximum bandwidth.
+
+=#
 function Base.show(io::IO, bc::BandColumn)
   print(
     io,
     typeof(bc),
     "(",
+    bc.m_nonsub,
+    ", ",
+    bc.n_nonsub,
+    ", ",
     bc.m,
     ", ",
     bc.n,
     ", ",
-    bc.m_els,
+    bc.bw_max,
     ", ",
     bc.roffset,
     ", ",
@@ -1381,20 +1829,18 @@ function Base.show(io::IO, bc::BandColumn)
     ", ",
     bc.upper_bw_max,
     ", ",
-    bc.middle_bw_max,
+    bc.middle_lower_bw_max,
     ", ",
-    bc.lower_bw_max,
+    bc.rows_first_last,
     ", ",
-    bc.rbws,
-    ", ",
-    bc.cbws,
+    bc.cols_first_last,
     "): ",
   )
   for j ∈ 1:(bc.m)
     println()
     for k ∈ 1:(bc.n)
       if check_bc_storage_bounds(Bool, bc, j, k)
-        if bc_index_stored(bc, j, k)
+        if is_inband(bc, j, k)
           @printf("%10.2e", bc[j, k])
         else
           print("         O")
@@ -1412,11 +1858,15 @@ Base.print(io::IO, bc::BandColumn) = print(
     io,
     typeof(bc),
     "(",
+    bc.m_nonsub,
+    ", ",
+    bc.n_nonsub,
+    ", ",
     bc.m,
     ", ",
     bc.n,
     ", ",
-    bc.m_els,
+    bc.bw_max,
     ", ",
     bc.roffset,
     ", ",
@@ -1424,13 +1874,11 @@ Base.print(io::IO, bc::BandColumn) = print(
     ", ",
     bc.upper_bw_max,
     ", ",
-    bc.middle_bw_max,
+    bc.middle_lower_bw_max,
     ", ",
-    bc.lower_bw_max,
+    bc.rows_first_last,
     ", ",
-    bc.rbws,
-    ", ",
-    bc.cbws,
+    bc.cols_first_last,
     ", ",
     bc.band_elements,
     ")",
@@ -1463,19 +1911,19 @@ function Base.show(w::Wilk)
 end
 
 """
-    wilk(bc :: BandColumn)
+    wilk(bc :: AbstractBandColumn)
 
 Generate a Wilkinson diagram for bc.
 
 """
-@views function wilk(bc :: BandColumn)
+@views function wilk(bc :: AbstractBandColumn)
   (m,n) = size(bc)
   a = fill('N', (m, n))
   for k ∈ 1:n
-    fill!(a[storable_els_range(bc, :, k), k], 'O')
-    fill!(a[upper_inband_els_range(bc, :, k), k], 'U')
-    fill!(a[middle_inband_els_range(bc, :, k), k], 'X')
-    fill!(a[lower_inband_els_range(bc, :, k), k], 'L')
+    fill!(a[storable_index_range(bc, :, k), k], 'O')
+    fill!(a[upper_inband_index_range(bc, :, k), k], 'U')
+    fill!(a[middle_inband_index_range(bc, :, k), k], 'X')
+    fill!(a[lower_inband_index_range(bc, :, k), k], 'L')
   end
   Wilk(a)
 end
