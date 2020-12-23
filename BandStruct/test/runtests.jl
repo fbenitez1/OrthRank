@@ -31,20 +31,19 @@ lbc0 = LeadingBandColumn(
   [1, 1, 1, 1],
 )
 
-
 println("Testing BandStruct operations for a matrix with structure:")
 println()
 
 
 show(wilk(lbc0))
 
-bc0 = lbc0[1:end, 1:end]
+bc0 = copy(toBandColumn(lbc0))
 mx_bc0 = Matrix(bc0)
 
 
 include("index.jl")
 include("submatrix.jl")
 include("range.jl")
-include("extend.jl")
-include("trim.jl")
-include("rotations.jl")
+include("bulge.jl")
+include("notch.jl")
+# include("rotations.jl")

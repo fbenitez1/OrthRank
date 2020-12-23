@@ -32,8 +32,8 @@ for ix in (ix for ix ∈ eachindex(bc) if rand() > 0.75)
   bc[ix] = x
   lbc[ix] = x
   mx_bc[ix] = x
-  resbc = resbc && validate_rbws(bc)
-  reslbc = reslbc && validate_rbws(lbc)
+  resbc = resbc && validate_rows_first_last(bc)
+  reslbc = reslbc && validate_rows_first_last(lbc)
 end
 show_bool_result("Validate BC bandwidths after setindex", resbc)
 show_bool_result("Validate LBC bandwidths after setindex", reslbc)

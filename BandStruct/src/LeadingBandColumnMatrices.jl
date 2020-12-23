@@ -6,12 +6,12 @@ using Base: @propagate_inbounds
 using BandStruct.BandColumnMatrices
 
 export LeadingBandColumn,
-  leading_lower_ranks_to_cbws!,
-  leading_upper_ranks_to_cbws!,
+  leading_lower_ranks_to_cols_first_last!,
+  leading_upper_ranks_to_cols_first_last!,
   leading_constrain_lower_ranks,
   leading_constrain_upper_ranks,
-  get_lower_block_ranges,
-  get_upper_block_ranges,
+  lower_block_ranges,
+  upper_block_ranges,
   size_lower_block,
   size_upper_block,
   intersect_lower_block,
@@ -26,7 +26,7 @@ export LeadingBandColumn,
       E<:Number,
       AE<:AbstractArray{E,2},
       AI<:AbstractArray{Int,2},
-    } <: AbstractBandColumn{E,AE,AI}
+    } <: AbstractBandColumn{NonSub,E,AE,AI}
 
 A banded matrix with structure defined by leading blocks and stored in
 a compressed column-wise format.  This is basically a `BandColumn`
@@ -158,19 +158,20 @@ struct LeadingBandColumn{
   E<:Number,
   AE<:AbstractArray{E,2},
   AI<:AbstractArray{Int,2},
-} <: AbstractBandColumn{E,AE,AI}
+} <: AbstractBandColumn{NonSub,E,AE,AI}
+  # Fields for the BandColumn structure.
   m::Int
   n::Int
-  m_els::Int
-  num_blocks::Int
+  bw_max::Int
   upper_bw_max::Int
-  middle_bw_max::Int
-  lower_bw_max::Int
-  rbws::AI
-  cbws::AI
+  middle_lower_bw_max::Int
+  rows_first_last :: AI
+  cols_first_last :: AI
+  band_elements::AE
+  # Fields for the leading block structure
+  num_blocks::Int
   upper_blocks::AI
   lower_blocks::AI
-  band_elements::AE
 end
 
 """
@@ -180,7 +181,8 @@ end
       n::Int,
       upper_bw_max::Int,
       lower_bw_max::Int,
-      leading_blocks::Array{Int,2},
+      upper_blocks::Array{Int,2},
+      lower_blocks::Array{Int,2},
     ) where {E<:Number}
 
 Construct an empty (all zero) `LeadingBandColumn` structure from the
@@ -197,11 +199,12 @@ function LeadingBandColumn(
 ) where {E<:Number}
 
   num_blocks = size(lower_blocks,2)
-  cbws = zeros(Int, 4, n)
-  rbws = zeros(Int, m, 4)
+  cols_first_last = zeros(Int, 4, n)
+  rows_first_last = zeros(Int, m, 4)
   lb=0
   ub=0
-  for k=1:n
+  middle_bw_max=0
+  for k ∈ 1:n
     # If column k intersects with a new upper block, increment.
     while intersect_upper_block(upper_blocks, m, n, ub + 1, :, k)
       ub += 1
@@ -211,14 +214,13 @@ function LeadingBandColumn(
     while !intersect_lower_block(lower_blocks, m, n, lb, :, k)
       lb += 1
     end
-    (rows_lb, _) = get_lower_block_ranges(lower_blocks, m, n, lb)
-    (rows_ub, _) = get_upper_block_ranges(upper_blocks, m, n, ub)
-    println(k, " ", lb, " ", ub, " ", rows_ub, " ", rows_lb)
-    start = rows_ub.stop+1
-    stop = rows_lb.start-1
-    println(stop, " ", start)
-    cbws[2,k] = max(stop - start + 1,0)
-    cbws[4,k] = rows_ub.stop
+    (rows_lb, _) = lower_block_ranges(lower_blocks, m, n, lb)
+    (rows_ub, _) = upper_block_ranges(upper_blocks, m, n, ub)
+    cols_first_last[1,k] = last(rows_ub) + 1
+    cols_first_last[2,k] = last(rows_ub)
+    cols_first_last[3,k] = first(rows_lb)
+    cols_first_last[4,k] = first(rows_lb) - 1
+    middle_bw_max = max(first(rows_lb) - last(rows_ub) - 1, middle_bw_max)
   end
 
   lb=0
@@ -233,31 +235,30 @@ function LeadingBandColumn(
     while !intersect_upper_block(upper_blocks, m, n, ub, j, :)
       ub += 1
     end
-    (_, cols_lb) = get_lower_block_ranges(lower_blocks, m, n, lb)
-    (_, cols_ub) = get_upper_block_ranges(upper_blocks, m, n, ub)
-    start = cols_lb.stop+1
-    stop = cols_ub.start-1
-    rbws[j,2] = max(stop - start + 1,0)
-    rbws[j,4] = cols_lb.stop
+    (_, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
+    (_, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
+    rows_first_last[j,1] = last(cols_lb) + 1
+    rows_first_last[j,2] = last(cols_lb)
+    rows_first_last[j,3] = first(cols_ub)
+    rows_first_last[j,4] = first(cols_ub) - 1
   end
-
-  middle_bw_max = @views maximum(cbws[2, :])
-  m_els = upper_bw_max + middle_bw_max + lower_bw_max
-  band_elements = zeros(E, m_els, n)
+  
+  bw_max = upper_bw_max + middle_bw_max + lower_bw_max
+  middle_lower_bw_max = middle_bw_max + lower_bw_max
+  band_elements = zeros(E, bw_max, n)
 
   LeadingBandColumn(
     m,
     n,
-    m_els,
-    num_blocks,
+    bw_max,
     upper_bw_max,
-    middle_bw_max,
-    lower_bw_max,
-    rbws,
-    cbws,
+    middle_lower_bw_max,
+    rows_first_last,
+    cols_first_last,
+    band_elements,
+    num_blocks,
     upper_blocks,
     lower_blocks,
-    band_elements,
   )
 end
 
@@ -276,7 +277,7 @@ function rand!(
 ) where {E}
 
   for k = 1:lbc.n
-    for j = first_inband_el_storage(lbc, k):last_inband_el_storage(lbc, k)
+    for j = first_inband_index_storage(lbc, k):last_inband_index_storage(lbc, k)
       lbc.band_elements[j, k] = rand(rng, E)
     end
   end
@@ -290,7 +291,8 @@ end
       n::Int,
       upper_bw_max::Int,
       lower_bw_max::Int,
-      leading_blocks::Array{Int,2},
+      upper_blocks::Array{Int,2},
+      lower_blocks::Array{Int,2},
       upper_ranks::Array{Int,1},
       lower_ranks::Array{Int,1},
     ) where {E<:Number}
@@ -319,70 +321,165 @@ function LeadingBandColumn(
     upper_blocks,
     lower_blocks,
   )
-
-  leading_lower_ranks_to_cbws!(lbc, lower_ranks)
-  leading_upper_ranks_to_cbws!(lbc, upper_ranks)
-  compute_rbws!(lbc)
+  leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+  leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  compute_rows_first_last!(lbc)
   rand!(rng,lbc)
   lbc
 end
 
-##
-## Functions implementing AbstractBandColumn.
-##
+@inline BandColumnMatrices.toBandColumn(lbc::LeadingBandColumn) = BandColumn(
+  NonSub(),
+  lbc.m,
+  lbc.n,
+  lbc.m,
+  lbc.n,
+  0,
+  0,
+  lbc.bw_max,
+  lbc.upper_bw_max,
+  lbc.middle_lower_bw_max,
+  lbc.rows_first_last,
+  lbc.cols_first_last,
+  lbc.band_elements,
+)
 
-@inline BandColumnMatrices.get_m_els(lbc::LeadingBandColumn) = lbc.m_els
+#=
 
-@inline BandColumnMatrices.get_m(lbc::LeadingBandColumn) = lbc.m
-@inline BandColumnMatrices.get_n(lbc::LeadingBandColumn) = lbc.n
+Bandwidth functions required by AbstractBandColumn.
 
-@inline BandColumnMatrices.get_roffset(lbc::LeadingBandColumn) = 0
-@inline BandColumnMatrices.get_coffset(lbc::LeadingBandColumn) = 0
+=#
 
-@inline BandColumnMatrices.get_rbws(lbc::LeadingBandColumn) = lbc.rbws
-@inline BandColumnMatrices.get_cbws(lbc::LeadingBandColumn) = lbc.cbws
-
-@inline BandColumnMatrices.get_upper_bw_max(lbc::LeadingBandColumn) =
+@inline BandColumnMatrices.bw_max(lbc::LeadingBandColumn) =
+  lbc.bw_max
+@inline BandColumnMatrices.upper_bw_max(lbc::LeadingBandColumn) =
   lbc.upper_bw_max
-@inline BandColumnMatrices.get_middle_bw_max(lbc::LeadingBandColumn) =
-  lbc.middle_bw_max
-@inline BandColumnMatrices.get_lower_bw_max(lbc::LeadingBandColumn) =
-  lbc.lower_bw_max
-@inline BandColumnMatrices.get_band_elements(lbc::LeadingBandColumn) =
+@inline BandColumnMatrices.middle_lower_bw_max(lbc::LeadingBandColumn) =
+  lbc.middle_lower_bw_max
+@inline BandColumnMatrices.band_elements(lbc::LeadingBandColumn) =
   lbc.band_elements
 
-@propagate_inbounds @inline BandColumnMatrices.upper_bw(
-  lbc::LeadingBandColumn,
-  ::Colon,
-  k::Int,
-) = lbc.cbws[1, k]
-@propagate_inbounds @inline BandColumnMatrices.middle_bw(
-  lbc::LeadingBandColumn,
-  ::Colon,
-  k::Int,
-) = lbc.cbws[2, k]
-@propagate_inbounds @inline BandColumnMatrices.lower_bw(
-  lbc::LeadingBandColumn,
-  ::Colon,
-  k::Int,
-) = lbc.cbws[3, k]
-@propagate_inbounds @inline BandColumnMatrices.upper_bw(
-  lbc::LeadingBandColumn,
-  j::Int,
-  ::Colon,
-) = lbc.rbws[j, 3]
-@propagate_inbounds @inline BandColumnMatrices.middle_bw(
-  lbc::LeadingBandColumn,
-  j::Int,
-  ::Colon,
-) = lbc.rbws[j, 2]
-@propagate_inbounds @inline BandColumnMatrices.lower_bw(
-  lbc::LeadingBandColumn,
-  j::Int,
-  ::Colon,
-) = lbc.rbws[j, 1]
+#=
 
-@inline Base.size(lbc::LeadingBandColumn) = (lbc.m, lbc.n)
+Index functions required by AbstractBandColumn
+
+=#
+
+@propagate_inbounds @inline BandColumnMatrices.first_inband_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cols_first_last[1,k]
+
+@propagate_inbounds @inline BandColumnMatrices.first_inband_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rows_first_last[j,1]
+
+@propagate_inbounds @inline BandColumnMatrices.last_inband_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cols_first_last[4,k]
+
+@propagate_inbounds @inline BandColumnMatrices.last_inband_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rows_first_last[j,4]
+
+@propagate_inbounds @inline BandColumnMatrices.first_lower_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cols_first_last[3,k]
+
+@propagate_inbounds @inline BandColumnMatrices.last_lower_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rows_first_last[j,2]
+
+@propagate_inbounds @inline BandColumnMatrices.first_upper_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+) = lbc.rows_first_last[j,3]
+
+@propagate_inbounds @inline BandColumnMatrices.last_upper_index(
+  ::Type{NonSub},
+  lbc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+) = lbc.cols_first_last[2,k]
+
+@inline function BandColumnMatrices.unsafe_set_first_inband_index!(
+  lbc::LeadingBandColumn,
+  js::AbstractUnitRange{Int},
+  ::Colon,
+  k_first::Int,
+) 
+  lbc.rows_first_last[first(js):last(js), 1] .= k_first + col_offset(lbc)
+  nothing
+end
+
+@inline function BandColumnMatrices.unsafe_set_first_inband_index!(
+  lbc::LeadingBandColumn,
+  ::Colon,
+  ks::AbstractUnitRange{Int},
+  j_first::Int,
+) 
+  lbc.cols_first_last[1, first(ks):last(ks)] .= j_first + row_offset(lbc)
+  nothing
+end
+
+@inline function BandColumnMatrices.unsafe_set_last_inband_index!(
+  lbc::LeadingBandColumn,
+  js::AbstractUnitRange{Int},
+  ::Colon,
+  k_last::Int,
+) 
+  lbc.rows_first_last[first(js):last(js), 4] .= k_last + col_offset(lbc)
+  nothing
+end
+
+@inline function BandColumnMatrices.unsafe_set_last_inband_index!(
+  lbc::LeadingBandColumn,
+  ::Colon,
+  ks::AbstractUnitRange{Int},
+  j_last::Int,
+) 
+  lbc.cols_first_last[4, first(ks):last(ks)] .= j_last + row_offset(lbc)
+  nothing
+end
+
+@inline BandColumnMatrices.row_size(lbc::LeadingBandColumn) = lbc.m
+@inline BandColumnMatrices.col_size(lbc::LeadingBandColumn) = lbc.n
+@inline BandColumnMatrices.row_size(::Type{NonSub}, lbc::LeadingBandColumn) =
+  lbc.m
+@inline BandColumnMatrices.col_size(::Type{NonSub}, lbc::LeadingBandColumn) =
+  lbc.n
+
+function BandColumnMatrices.compute_rows_first_last!(lbc::LeadingBandColumn)
+  compute_rows_first_last!(lbc, lbc.rows_first_last)
+end
+
+function BandColumnMatrices.validate_rows_first_last(
+  lbc::LeadingBandColumn,
+)
+  rfl = compute_rows_first_last(lbc)
+  @views rfl[:,1] == lbc.rows_first_last[:,1]
+  @views rfl[:,4] == lbc.rows_first_last[:,4]
+end
+
 
 function Base.show(io::IO, lbc::LeadingBandColumn)
   print(
@@ -393,19 +490,17 @@ function Base.show(io::IO, lbc::LeadingBandColumn)
     ", ",
     lbc.n,
     ", ",
-    lbc.m_els,
-    ", ",
-    lbc.num_blocks,
+    lbc.bw_max,
     ", ",
     lbc.upper_bw_max,
     ", ",
-    lbc.middle_bw_max,
+    lbc.middle_lower_bw_max,
     ", ",
-    lbc.lower_bw_max,
+    lbc.rows_first_last,
     ", ",
-    lbc.rbws,
+    lbc.cols_first_last,
     ", ",
-    lbc.cbws,
+    lbc.num_blocks,
     ", ",
     lbc.lower_blocks,
     ", ",
@@ -416,7 +511,7 @@ function Base.show(io::IO, lbc::LeadingBandColumn)
     println()
     for k = 1:lbc.n
       if check_bc_storage_bounds(Bool, lbc, j, k)
-        if bc_index_stored(lbc, j, k)
+        if is_inband(lbc, j, k)
           @printf("%10.2e", lbc[j, k])
         else
           print("         O")
@@ -438,21 +533,23 @@ Base.print(io::IO, lbc::LeadingBandColumn) = print(
   ", ",
   lbc.n,
   ", ",
-  lbc.m_els,
-  ", ",
-  lbc.num_blocks,
+  lbc.bw_max,
   ", ",
   lbc.upper_bw_max,
   ", ",
-  lbc.middle_bw_max,
+  lbc.middle_lower_bw_max,
   ", ",
-  lbc.lower_bw_max,
+  lbc.rows_first_last,
   ", ",
-  lbc.rbws,
-  ", ",
-  lbc.cbws,
+  lbc.cols_first_last,
   ", ",
   lbc.band_elements,
+  ", ",
+  lbc.num_blocks,
+  ", ",
+  lbc.upper_blocks,
+  ", ",
+  lbc.lower_blocks,
   ")",
 )
 
@@ -465,81 +562,85 @@ Base.print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
 
 @inline function BandColumnMatrices.viewbc(
   lbc::LeadingBandColumn,
-  i::Tuple{UnitRange{Int},UnitRange{Int}},
+  i::Tuple{AbstractUnitRange{Int},AbstractUnitRange{Int}},
 )
   (rows, cols) = i
-  j0 = rows.start
-  j1 = rows.stop
-  k0 = cols.start
-  k1 = cols.stop
+  j0 = first(rows)
+  j1 = last(rows)
+  k0 = first(cols)
+  k1 = last(cols)
 
   @boundscheck begin
     checkbounds(lbc, j0, k0)
     checkbounds(lbc, j1, k1)
   end
   BandColumn(
+    Sub(),
+    lbc.m,
+    lbc.n,
     max(j1 - j0 + 1, 0),
     max(k1 - k0 + 1, 0),
-    lbc.m_els,
     j0 - 1,
     k0 - 1,
+    lbc.bw_max,
     lbc.upper_bw_max,
-    lbc.middle_bw_max,
-    lbc.lower_bw_max,
-    view(lbc.rbws, rows, 1:4),
-    view(lbc.cbws, 1:4, cols),
-    view(lbc.band_elements, 1:4, cols),
+    lbc.middle_lower_bw_max,
+    view(lbc.rows_first_last, rows, 1:4),
+    view(lbc.cols_first_last, 1:4, cols),
+    view(lbc.band_elements, :, cols),
   )
 end
 
 @inline function Base.getindex(
   lbc::LeadingBandColumn,
-  rows::UnitRange{Int},
-  cols::UnitRange{Int},
+  rows::AbstractUnitRange{Int},
+  cols::AbstractUnitRange{Int},
 )
-  j0 = rows.start
-  j1 = rows.stop
-  k0 = cols.start
-  k1 = cols.stop
+  j0 = first(rows)
+  j1 = last(rows)
+  k0 = first(cols)
+  k1 = last(cols)
 
   @boundscheck begin
     checkbounds(lbc, j0, k0)
     checkbounds(lbc, j1, k1)
   end
   BandColumn(
+    Sub(),
+    lbc.m,
+    lbc.n,
     max(j1 - j0 + 1, 0),
     max(k1 - k0 + 1, 0),
-    lbc.m_els,
     j0 - 1,
     k0 - 1,
+    lbc.bw_max,
     lbc.upper_bw_max,
-    lbc.middle_bw_max,
-    lbc.lower_bw_max,
-    lbc.rbws[rows, :],
-    lbc.cbws[:, cols],
+    lbc.middle_lower_bw_max,
+    lbc.rows_first_last[rows, 1:4],
+    lbc.cols_first_last[1:4, cols],
     lbc.band_elements[:, cols],
   )
 end
 
 """
-    function get_lower_block_ranges(
+    function lower_block_ranges(
       lbc::LeadingBandColumn,
       l::Integer,
     )
 
 Get ranges for lower block ``l``.
 """
-@inline function get_lower_block_ranges(
+@inline function lower_block_ranges(
   lbc::LeadingBandColumn,
   l::Int,
 )
   
   (m, n) = size(lbc)
-  get_lower_block_ranges(lbc.lower_blocks, m, n, l)
+  lower_block_ranges(lbc.lower_blocks, m, n, l)
 end
 
 """
-    get_lower_block_ranges(
+    lower_block_ranges(
       lower_blocks::Array{Int,2},
       m :: Int,
       n :: Int,
@@ -549,7 +650,7 @@ end
 For lower blocks and a given matrix size m×n, compute ranges for lower
 block ``l``.
 """
-@inline function get_lower_block_ranges(
+@inline function lower_block_ranges(
   lower_blocks::Array{Int,2},
   m :: Int,
   n :: Int,
@@ -560,9 +661,9 @@ block ``l``.
   elseif l > size(lower_blocks,2)
     (UnitRange(m+1,m), UnitRange(1,n))
   else
-    j1 = lower_blocks[1, l] + 1
-    k2 = lower_blocks[2, l]
-    (UnitRange(j1, m), UnitRange(1, k2))
+    j_first = lower_blocks[1, l] + 1
+    k_last = lower_blocks[2, l]
+    (UnitRange(j_first, m), UnitRange(1, k_last))
   end
 end
 
@@ -583,8 +684,8 @@ lower_block sequence `lower_blocks`.
   n::Int,
   l::Int,
 )
-  (rows, cols) = get_lower_block_ranges(lower_blocks, m, n, l)
-  (rows.stop - rows.start + 1, cols.stop - cols.start + 1)
+  (rows, cols) = lower_block_ranges(lower_blocks, m, n, l)
+  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
 
 """
@@ -599,8 +700,8 @@ Compute the size of lower block ``l`` for a `LeadingBandColumn.
   lbc::LeadingBandColumn,
   l::Int,
 )
-  (rows, cols) = get_lower_block_ranges(lbc, l)
-  (rows.stop - rows.start + 1, cols.stop - cols.start + 1)
+  (rows, cols) = lower_block_ranges(lbc, l)
+  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
 
 """
@@ -613,7 +714,6 @@ end
 
 Determine if column ``k`` intersects with lower block ``l``
 in a `LeadingBandColumn`.
-
 """
 @inline function intersect_lower_block(
   lbc::LeadingBandColumn,
@@ -621,9 +721,9 @@ in a `LeadingBandColumn`.
   ::Colon,
   k::Int
 )
-  (_, cols) = get_lower_block_ranges(lbc, l)
+  (_, cols) = lower_block_ranges(lbc, l)
   k ∈ cols
- end
+end
 
 """
     intersect_lower_block(
@@ -646,9 +746,9 @@ in a matrix of size ``m×n``.
   ::Colon,
   k::Int
 )
-  (_, cols) = get_lower_block_ranges(lower_blocks, m, n, l)
+  (_, cols) = lower_block_ranges(lower_blocks, m, n, l)
   k ∈ cols
- end
+end
 
 """
     intersect_lower_block(
@@ -667,7 +767,7 @@ in a `LeadingBandColumn`.
   j::Int,
   ::Colon,
 )
-  (rows, _) = get_lower_block_ranges(lbc, l)
+  (rows, _) = lower_block_ranges(lbc, l)
   j ∈ rows
  end
 
@@ -692,25 +792,25 @@ in a matrix of size ``m×n``.
   j::Int,
   ::Colon,
 )
-  (rows, _) = get_lower_block_ranges(lower_blocks, m, n, l)
+  (rows, _) = lower_block_ranges(lower_blocks, m, n, l)
   j ∈ rows
  end
 
 """
-    function get_upper_block_ranges(
+    function upper_block_ranges(
       lbc::LeadingBandColumn,
       l::Integer,
     )
 
 Get ranges for upper block ``l``.
 """
-@inline function get_upper_block_ranges(lbc::LeadingBandColumn, l::Integer)
+@inline function upper_block_ranges(lbc::LeadingBandColumn, l::Integer)
   (m, n) = size(lbc)
-  get_upper_block_ranges(lbc.upper_blocks, m, n, l)
+  upper_block_ranges(lbc.upper_blocks, m, n, l)
 end
 
 """
-    get_upper_block_ranges(
+    upper_block_ranges(
       upper_blocks::Array{Int,2},
       m :: Int,
       n :: Int,
@@ -720,7 +820,7 @@ end
 For upper blocks and a given matrix size m×n, compute ranges for upper
 block ``l``.
 """
-@inline function get_upper_block_ranges(
+@inline function upper_block_ranges(
   upper_blocks::Array{Int,2},
   m::Int,
   n::Int,
@@ -731,9 +831,9 @@ block ``l``.
   elseif l > size(upper_blocks, 2)
     (UnitRange(1, m), UnitRange((n + 1):n))
   else
-    j2 = upper_blocks[1, l]
-    k1 = upper_blocks[2, l] + 1
-    (UnitRange(1, j2), UnitRange(k1, n))
+    j_last = upper_blocks[1, l]
+    k_first = upper_blocks[2, l] + 1
+    (UnitRange(1, j_last), UnitRange(k_first, n))
   end
 end
 
@@ -754,8 +854,8 @@ upper_block sequence `upper_blocks`.
   n::Int,
   l::Int,
 )
-  (rows, cols) = get_upper_block_ranges(upper_blocks, m, n, l)
-  (rows.stop - rows.start + 1, cols.stop - cols.start + 1)
+  (rows, cols) = upper_block_ranges(upper_blocks, m, n, l)
+  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
 
 """
@@ -770,8 +870,8 @@ Compute the size of lower block ``l`` for a `LeadingBandColumn.
   lbc::LeadingBandColumn,
   l::Int,
 )
-  (rows, cols) = get_upper_block_ranges(lbc, l)
-  (rows.stop - rows.start + 1, cols.stop - cols.start + 1)
+  (rows, cols) = upper_block_ranges(lbc, l)
+  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
 
 """
@@ -791,7 +891,7 @@ in a `LeadingBandColumn`.
   ::Colon,
   k::Int
 )
-  (_, cols) = get_upper_block_ranges(lbc, l)
+  (_, cols) = upper_block_ranges(lbc, l)
   k ∈ cols
  end
 
@@ -816,7 +916,7 @@ in a matrix of size ``m×n``.
   ::Colon,
   k::Int
 )
-  (_, cols) = get_upper_block_ranges(upper_blocks, m, n, l)
+  (_, cols) = upper_block_ranges(upper_blocks, m, n, l)
   k ∈ cols
  end
 
@@ -837,7 +937,7 @@ in a `LeadingBandColumn`.
   j::Int,
   ::Colon,
 )
-  (rows, _) = get_upper_block_ranges(lbc, l)
+  (rows, _) = upper_block_ranges(lbc, l)
   j ∈ rows
  end
 
@@ -862,7 +962,7 @@ in a matrix of size ``m×n``.
   j::Int,
   ::Colon,
 )
-  (rows, _) = get_upper_block_ranges(upper_blocks, m, n, l)
+  (rows, _) = upper_block_ranges(upper_blocks, m, n, l)
   j ∈ rows
  end
 
@@ -949,26 +1049,24 @@ end
       rs::AbstractArray{Int},
     )
 
-Set lower bandwidth appropriate for a given lower rank sequence.
+Set lower bandwidth appropriate for a leading decomposition associated
+with a given lower rank sequence.
 """
-function leading_lower_ranks_to_cbws!(
+function leading_lower_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
 )
 
   (m, n) = size(lbc)
-  lbc.cbws[3, :] .= 0
   rs1 = leading_constrain_lower_ranks(lbc.lower_blocks, m, n, rs)
 
   for l = 1:lbc.num_blocks
-    (rows0, cols0) = get_lower_block_ranges(lbc, l)
-    j0=rows0.start
-    k0=cols0.stop
-    (rows1, cols1) = get_lower_block_ranges(lbc, l + 1)
-    j1=rows1.start
-    k1=cols1.stop
-    d = j1 - j0
-    lbc.cbws[3, (k0 - rs1[l] + 1):k0] .+= d
+    (rows0, cols0) = lower_block_ranges(lbc, l)
+    j0=first(rows0)
+    k0=last(cols0)
+    (rows1, _) = lower_block_ranges(lbc, l+1)
+    j1=first(rows1)
+    lbc.cols_first_last[4, (k0 - rs1[l] + 1):k0] .= j1-1
   end
 end
 
@@ -978,47 +1076,64 @@ end
       rs::AbstractArray{Int},
     )
 
-Set upper bandwidth appropriate for a given upper rank sequence.
+Set upper bandwidth appropriate for a leading decomposition associated
+with a given upper rank sequence
 """
-function leading_upper_ranks_to_cbws!(
+function leading_upper_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
 )
 
   (m, n) = size(lbc)
-  lbc.cbws[1, :] .= 0
   rs1 = leading_constrain_upper_ranks(lbc.upper_blocks, m, n, rs)
 
   for l = 1:lbc.num_blocks
-    (_, cols0) = get_upper_block_ranges(lbc, l)
-    k0 = cols0.start
-    (_, cols1) = get_upper_block_ranges(lbc, l + 1)
-    k1 = cols1.start
-    lbc.cbws[1, k0:(k1 - 1)] .= rs1[l]
+    (rows0, cols0) = upper_block_ranges(lbc, l)
+    j0 = last(rows0)
+    k0 = first(cols0)
+    (_, cols1) = upper_block_ranges(lbc, l + 1)
+    k1 = first(cols1)
+    lbc.cols_first_last[1, k0:(k1 - 1)] .= j0 - rs1[l] + 1
   end
 end
 
 @views function BandColumnMatrices.wilk(lbc::LeadingBandColumn)
   (m, n) = size(lbc)
-  num_blocks = lbc.num_blocks - 1 # leave off the full matrix.
   a = fill('N', (2 * m, 2 * n))
   # insert spaces
   fill!(a[2:2:(2 * m), :], ' ')
   fill!(a[:, 2:2:(2 * n)], ' ')
-  # insert boundaries for leading blocks.
-  # for j = 1:num_blocks
-  #   row = lbc.leading_blocks[1, j]
-  #   col = lbc.leading_blocks[2, j]
-  #   fill!(a[1:(2 * row - 1), 2 * col], '|')
-  #   a[2 * row, 2 * col] = '⌋'
-  #   fill!(a[2 * row, 1:(2 * col - 1)], '_')
-  # end
+  #insert boundaries for lower and upper blocks.
+  for i = 1:lbc.num_blocks
+    jl = lbc.lower_blocks[1, i]
+    kl = lbc.lower_blocks[2, i]
+    fill!(a[(2 * jl + 1):(2 * m - 1), 2 * kl], '|')
+    a[2 * jl, 2 * kl] = '+'
+    fill!(a[2 * jl, 1:(2 * kl - 1)], '-')
+    for kk = 1:(2 * n)
+      if a[2 * jl, kk] == '-' && a[2 * jl - 1, kk] == '|'
+        a[2 * jl, kk] = '+'
+      end
+    end
+
+    ju = lbc.upper_blocks[1, i]
+    ku = lbc.upper_blocks[2, i]
+    # fill!(a[(2 * ju + 1):(2 * m), 2 * ku], '|')
+    fill!(a[1:(2 * ju - 1), 2 * ku], '|')
+    a[2 * ju, 2 * ku] = '+'
+    fill!(a[2 * ju, (2 * ku + 1):2*n], '-')
+    for jj = 1:(2 * m)
+      if a[jj, 2 * ku] == '|' && a[jj, 2 * ku - 1] == '-'
+        a[jj, 2 * ku] = '+'
+      end
+    end
+  end
   for k = 1:n
     kk = 2 * k - 1
-    fill!(a[2 .* storable_els_range(lbc, :, k) .- 1, kk], 'O')
-    fill!(a[2 .* upper_inband_els_range(lbc, :, k) .- 1, kk], 'U')
-    fill!(a[2 .* middle_inband_els_range(lbc, :, k) .- 1, kk], 'X')
-    fill!(a[2 .* lower_inband_els_range(lbc, :, k) .- 1, kk], 'L')
+    fill!(a[2 .* storable_index_range(lbc, :, k) .- 1, kk], 'O')
+    fill!(a[2 .* upper_inband_index_range(lbc, :, k) .- 1, kk], 'U')
+    fill!(a[2 .* middle_inband_index_range(lbc, :, k) .- 1, kk], 'X')
+    fill!(a[2 .* lower_inband_index_range(lbc, :, k) .- 1, kk], 'L')
   end
   Wilk(a)
 end
@@ -1027,16 +1142,15 @@ function Base.copy(lbc::LeadingBandColumn)
   LeadingBandColumn(
     lbc.m,
     lbc.n,
-    lbc.m_els,
-    lbc.num_blocks,
+    lbc.bw_max,
     lbc.upper_bw_max,
-    lbc.middle_bw_max,
-    lbc.lower_bw_max,
-    copy(lbc.rbws),
-    copy(lbc.cbws),
+    lbc.middle_lower_bw_max,
+    copy(lbc.rows_first_last),
+    copy(lbc.cols_first_last),
+    copy(lbc.band_elements),
+    lbc.num_blocks,
     lbc.upper_blocks,
     lbc.lower_blocks,
-    copy(lbc.band_elements),
   )
 end
 
