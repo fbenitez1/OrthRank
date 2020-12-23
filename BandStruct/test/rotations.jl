@@ -50,10 +50,10 @@ show_equality_result(
 )
 
 mx_bcr26[2,6]=0.0
-bcr26[2,6]=1.0 # This shouldn't matter after the trim_upper!.
-trim_upper!(bcr26,:,6)
+bcr26[2,6]=0.0
+notch_upper!(bcr26,2,6)
 show_equality_result(
-  "trim_upper! equality test, element (2,6)",
+  "notch_upper! equality test, element (2,6)",
   Matrix(bcr26),
   mx_bcr26,
 )
@@ -97,9 +97,9 @@ show_equality_result(
 )
 
 # mx_bcl74[7,4]=0.0
-trim_lower!(bcl74,7,:)
+notch_lower!(bcl74,7,4)
 show_equality_result(
-  "trim_upper! equality test, element (7,4)",
+  "notch_lower! equality test, element (7,4)",
   Matrix(bcl74),
   mx_bcl74,
 )

@@ -2,7 +2,7 @@ module BandStruct
 
 using Reexport
 
-export BandColumnMatrices, LeadingBandColumnMatrices, HouseholderWeight
+export BandColumnMatrices, LeadingBandColumnMatrices #, HouseholderWeight
 
 include("BandColumnMatrices.jl")
 @reexport using .BandColumnMatrices
