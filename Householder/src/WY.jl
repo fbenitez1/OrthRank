@@ -3,7 +3,7 @@ module WY
 using LinearAlgebra
 import InPlace
 
-using Householder.Compute
+using ..Compute
 
 export WYTrans, resetWY!, reworkWY!, WYIndexSubsetError
 

@@ -5,9 +5,8 @@ using Base: @propagate_inbounds
 
 using Rotations.Givens
 
-using BandStruct
-using BandStruct.BandColumnMatrices
-using BandStruct.LeadingBandColumnMatrices
+using ..BandColumnMatrices
+using ..LeadingBandColumnMatrices
 using InPlace
 
 @propagate_inbounds @inline function InPlace.:⊛(

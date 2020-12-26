@@ -3,7 +3,7 @@ using Printf
 using Random
 using Base: @propagate_inbounds
 
-using BandStruct.BandColumnMatrices
+using ..BandColumnMatrices
 
 export HouseholderWeightMatrix
   # size,
