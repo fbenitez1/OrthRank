@@ -80,22 +80,20 @@ show_error_result(
   tol,
 )
 
-function qrH(A::AbstractArray{E,2}, bs::Int64) where {E<:Number}
-  m, n = size(A)
-  blocks, rem = divrem(n, bs)
-  blocks = rem > 0 ? blocks + 1 : blocks
+function qrH(A::AbstractArray{E,2}) where {E<:Number}
+  (m, n) = size(A)
+  # blocks, rem = divrem(n, bs)
+  # blocks = rem > 0 ? blocks + 1 : blocks
   Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
   work = zeros(E, m)
-  for b ∈ 1:blocks
-    for k ∈ ((b - 1) * bs + 1):min(b * bs, n)
-      vk = view(v, 1:(m - k + 1))
-      vk[:] = A[k:m, k]
-      local h = lhouseholder(vk, 1, k - 1, work)
-      h ⊘ view(A, :, k:n)
-      A[(k + 1):m, k] .= zero(E)
-      Q ⊛ h
-    end
+  @views for k ∈ 1:n
+    vk = v[1:(m - k + 1)]
+    vk[:] = A[k:m, k]
+    local h = lhouseholder(vk, 1, k - 1, work)
+    h ⊘ A[:, k:n]
+    A[(k + 1):m, k] .= zero(E)
+    Q ⊛ h
   end
   (Q, A)
 end
@@ -108,20 +106,20 @@ end
   v = zeros(E, m)
   wy=WYTrans(E,m,m,bs+2)
   workh = zeros(E, m)
-  for b ∈ 1:blocks
+  @views for b ∈ 1:blocks
     offs = (b-1)*bs
     resetWY!(offs,m-offs,wy)
     block_end = min(b*bs,n)
     for k ∈ ((b - 1) * bs + 1):block_end
-      vk = view(v, 1:(m - k + 1))
-      vk[:] = view(A, k:m, k)
+      vk = v[1:(m - k + 1)]
+      vk[:] = A[k:m, k]
       local h = lhouseholder(vk, 1, k - 1, workh)
-      h ⊘ view(A, :, k:block_end)
+      h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
       wy ⊛ h
     end
     Q ⊛ wy
-    wy ⊘ view(A,:,block_end+1:n)
+    wy ⊘ A[:,block_end+1:n]
   end
   (Q, A)
 end
@@ -136,8 +134,8 @@ function qrLA(A::AbstractArray{E,2}) where {E<:Number}
   (Q,R)
 end
 
-m=2000
-n=1800
+m=500
+n=400
 E=Float64
 A=randn(E,m,n)
 A0=copy(A)
@@ -145,20 +143,35 @@ print("""
 
 Benchmarking basic Householder QR:
 """)
-@time (Q,R) = qrH(A,64)
+A[:,:]=A0
+(Q,R) = qrH(A)
 println("Backward error: ", norm(Q*R-A0))
+@btime begin
+  A[:,:]=A0
+  (Q,R) = qrH(A)
+end
+
 print("""
 
 Benchmarking LAPACK QR:
 """)
 A[:,:]=A0
-@time (Q,R) = qrLA(A)
+(Q,R) = qrLA(A)
 println("Backward error: ", norm(Q*R-A0))
+@btime begin
+  A[:,:]=A0
+  (Q,R) = qrLA(A)
+end
 
 print("""
 
 Benchmarking WY QR:
 """)
 A[:,:]=A0
-@time (Q,R) = qrWY(A,60)
+(Q,R) = qrWY(A,32)
 println("Backward error: ", norm(Q*R-A0))
+@btime begin
+  A[:,:]=A0
+  (Q,R) = qrWY(A,32)
+end
+

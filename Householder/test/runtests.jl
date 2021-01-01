@@ -6,6 +6,7 @@ using Random
 using InPlace
 using ShowTests
 using Profile
+using BenchmarkTools
 
 tol = 1e-14
 l=2
