@@ -82,12 +82,10 @@ show_error_result(
 
 function qrH(A::AbstractArray{E,2}) where {E<:Number}
   (m, n) = size(A)
-  # blocks, rem = divrem(n, bs)
-  # blocks = rem > 0 ? blocks + 1 : blocks
   Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
   work = zeros(E, m)
-  @views for k ∈ 1:n
+  @inbounds @views for k ∈ 1:n
     vk = v[1:(m - k + 1)]
     vk[:] = A[k:m, k]
     local h = lhouseholder(vk, 1, k - 1, work)
@@ -98,7 +96,7 @@ function qrH(A::AbstractArray{E,2}) where {E<:Number}
   (Q, A)
 end
 
-@inbounds function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
+function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
   m, n = size(A)
   blocks, rem = divrem(n, bs)
   blocks = rem > 0 ? blocks + 1 : blocks
@@ -106,7 +104,7 @@ end
   v = zeros(E, m)
   wy=WYTrans(E,m,m,bs+2)
   workh = zeros(E, m)
-  @views for b ∈ 1:blocks
+  @inbounds @views for b ∈ 1:blocks
     offs = (b-1)*bs
     resetWY!(offs,m-offs,wy)
     block_end = min(b*bs,n)
@@ -134,8 +132,8 @@ function qrLA(A::AbstractArray{E,2}) where {E<:Number}
   (Q,R)
 end
 
-m=500
-n=400
+m=1000
+n=900
 E=Float64
 A=randn(E,m,n)
 A0=copy(A)
@@ -173,5 +171,5 @@ println("Backward error: ", norm(Q*R-A0))
 @btime begin
   A[:,:]=A0
   (Q,R) = qrWY(A,32)
+  nothing
 end
-

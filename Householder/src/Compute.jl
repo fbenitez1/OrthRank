@@ -1,5 +1,6 @@
 module Compute
 
+using Printf
 
 using LinearAlgebra
 import InPlace
@@ -9,9 +10,35 @@ export HouseholderTrans,
 
 """
 
-A Householder data structure: h ⊛ A is equivalent to
+# HouseholderTrans
 
-  A[h.j:h.j+h.size] = A[h.j:h.j+h.size] - h.beta * h.v * (h.v' * A[h.j:h.j+h.size])
+    HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}} 
+
+A Householder data structure.
+
+## `h ⊛ A` is equivalent to
+
+    v = reshape(h.v, h.size, 1)
+    A₁ = A[(h.offs + 1) : (h.offs+h.size), :]
+    A₁ = A₁ - h.β * v[1:h.size,1] * ( v[1:h.size,1]' * A₁ )
+
+## `h ⊘ A` is equivalent to
+
+    v = reshape(h.v, h.size, 1)
+    A₁ = A[(h.offs + 1) : (h.offs+h.size), :]
+    A₁ = A₁ - conj(h.β) * v[1:h.size,1] * ( v[1:h.size,1]' * A₁ )
+
+## `A ⊛ h` is equivalent to
+
+    v = reshape(h.v, h.size, 1)
+    A₁ = A[:, (h.offs + 1) : (h.offs+h.size)]
+    A₁ = A₁ - h.β * ( A₁ * v[1:h.size,1] ) * v[1:h.size,1]'
+
+## `A ⊘ h` is equivalent to
+
+    v = reshape(h.v, h.size, 1)
+    A₁ = A[:, (h.offs + 1) : (h.offs+h.size)]
+    A₁ = A₁ - conj(h.β) * ( A₁ * v[1:h.size,1] ) * v[1:h.size,1]'
 
 """
 struct HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}}
@@ -38,7 +65,7 @@ end
 end
 
 
-@inline function maybe_complex(::Type{E}, a::E, b::E) where {E<:Real}
+@inline function maybe_complex(::Type{E}, a::E, ::E) where {E<:Real}
   a
 end
 
@@ -153,38 +180,47 @@ function rhouseholder(
 end
 
 @inline function column_nonzero!(
-  a::AbstractArray{E,2},
+  A::AbstractArray{E,2},
   l::Int,
   k::Int,
 ) where {E<:Number}
-  a[1:(l - 1), k] .= zero(E)
-  a[(l + 1):end, k] .= zero(E)
+  A[1:(l - 1), k] .= zero(E)
+  A[(l + 1):end, k] .= zero(E)
 end
 
 @inline function row_nonzero!(
-  a::AbstractArray{E,2},
+  A::AbstractArray{E,2},
   j::Int,
   l::Int,
 ) where {E<:Number}
-  a[j, 1:(l - 1)] .= zero(E)
-  a[j, (l + 1):end] .= zero(E)
+  A[j, 1:(l - 1)] .= zero(E)
+  A[j, (l + 1):end] .= zero(E)
 end
   
 @inline function InPlace.:⊛(
   h::HouseholderTrans{E},
-  a::AbstractArray{E,2},
+  A::AbstractArray{E,2},
 ) where {E<:Number}
   m = h.size
-  na = size(a,2)
-  v = reshape(h.v, m, 1)
+  (ma, na) = size(A)
   offs = h.offs
-  for k ∈ 1:na
+  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:ma)
+    throw(DimensionMismatch(@sprintf(
+      "In h ⊛ A, A is of dimension %d×%d and h acts on rows %d:%d",
+      ma,
+      na,
+      offs + 1,
+      offs + m
+    )))
+  end
+  v = reshape(h.v, m, 1)
+  @inbounds for k ∈ 1:na
     x = zero(E)
-    for j ∈ 1:m
-      x = x + conj(v[j]) * a[offs+j,k]
+    @simd for j ∈ 1:m
+      x = x + conj(v[j]) * A[offs+j,k]
     end
-    for j ∈ 1:m
-      a[offs+j,k] -= h.β * v[j] * x
+    @simd for j ∈ 1:m
+      A[offs+j,k] -= h.β * v[j] * x
     end
   end
   nothing
@@ -192,19 +228,29 @@ end
 
 @inline function InPlace.:⊘(
   h :: HouseholderTrans{E},
-  a::AbstractArray{E,2},
+  A::AbstractArray{E,2},
 ) where {E<:Number}
   m = h.size
-  na = size(a,2)
-  v = reshape(h.v, m, 1)
+  (ma,na) = size(A)
   offs = h.offs
-  for k ∈ 1:na
+  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:ma)
+    throw(DimensionMismatch(@sprintf(
+      "In h ⊘ A, A is of dimension %d×%d and h acts on rows %d:%d",
+      ma,
+      na,
+      offs + 1,
+      offs + m
+    )))
+  end
+  v = reshape(h.v, m, 1)
+  α = conj(h.β)
+  @inbounds for k ∈ 1:na
     x = zero(E)
-    for j ∈ 1:m
-      x = x + conj(v[j]) * a[offs+j,k]
+    @simd for j ∈ 1:m
+      x = x + conj(v[j]) * A[offs+j,k]
     end
-    for j ∈ 1:m
-      a[offs+j,k] -= conj(h.β) * v[j] * x
+    @simd for j ∈ 1:m
+      A[offs+j,k] -= α * v[j] * x
     end
   end
   nothing
@@ -212,46 +258,96 @@ end
 
 
 @inline function InPlace.:⊛(
-  a::AbstractArray{E,2},
+  A::AbstractArray{E,2},
   h::HouseholderTrans{E},
 ) where {E<:Number}
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
   work = h.work
-  ma = size(a,1)
-  work[1:ma] .= zero(E)
-  for k ∈ 1:m
-    for j ∈ 1:ma
-      work[j] += a[j,k+offs] * v[k]
+  (ma,na) = size(A)
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:na)
+      throw(DimensionMismatch(@sprintf(
+        "In A ⊛ h, A is of dimension %d×%d and h acts on columns %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
     end
+    lw = length(h.work)
+    (lw >= ma) || throw(DimensionMismatch(@sprintf(
+      """
+      In A ⊛ h, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of rows of A).
+      """,
+      lw,
+      ma,
+      na,
+      ma
+    )))
   end
-  for k ∈ 1:m
-    for j ∈ 1:ma
-      a[j,k+offs] -= h.β * work[j] * conj(v[k])
+
+  work[1:ma] .= zero(E)
+  β = h.β
+  @inbounds begin
+    for k ∈ 1:m
+      @simd for j ∈ 1:ma
+        work[j] += A[j,k+offs] * v[k]
+      end
+    end
+    for k ∈ 1:m
+      @simd for j ∈ 1:ma
+        A[j,k+offs] -= β * work[j] * conj(v[k])
+      end
     end
   end
   nothing
 end
 
 @inline function InPlace.:⊘(
-  a::AbstractArray{E,2},
+  A::AbstractArray{E,2},
   h::HouseholderTrans{E},
 ) where {E<:Number}
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
   work = h.work
-  ma = size(a,1)
-  work[1:ma] .= zero(E)
-  for k ∈ 1:m
-    for j ∈ 1:ma
-      work[j] += a[j,k+offs] * v[k]
+  (ma, na) = size(A)
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:na)
+      throw(DimensionMismatch(@sprintf(
+        "In A ⊘ h, A is of dimension %d×%d and h acts on columns %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
     end
+    lw=length(h.work)
+    (lw >= ma) || throw(DimensionMismatch(@sprintf(
+      """
+      In A ⊘ h, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of rows of A).
+      """,
+      lw,
+      ma,
+      na,
+      ma
+    )))
   end
-  for k ∈ 1:m
-    for j ∈ 1:ma
-      a[j,k+offs] -= conj(h.β) * work[j] * conj(v[k])
+  work[1:ma] .= zero(E)
+  @inbounds begin
+    for k ∈ 1:m
+      @simd for j ∈ 1:ma
+        work[j] += A[j,k+offs] * v[k]
+      end
+    end
+    for k ∈ 1:m
+      @simd for j ∈ 1:ma
+        A[j,k+offs] -= conj(h.β) * work[j] * conj(v[k])
+      end
     end
   end
   nothing
@@ -259,27 +355,49 @@ end
 
 # Adjoint operations.
 
-# A - β v vᴴ A
-
 @inline function InPlace.:⊛(
   h::HouseholderTrans{E},
-  a::Adjoint{E,<:AbstractArray{E,2}},
+  Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
 ) where {E<:Number}
   m = h.size
-  na = size(a,2)
+  na = size(Aᴴ,2)
   v = reshape(h.v, m, 1)
   offs = h.offs
   work = h.work
-  na = size(a,2)
-  work[1:na] .= zero(E)
-  for j ∈ 1:m
-    for k ∈ 1:na
-      work[k] += a[j+offs,k] * conj(v[j])
+  (ma, na) = size(Aᴴ)
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:ma)
+      throw(DimensionMismatch(@sprintf(
+        "In h ⊛ A, A is of dimension %d×%d and h acts on rows %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
     end
+    lw = length(h.work)
+    (lw >= na) || throw(DimensionMismatch(@sprintf(
+      """
+      In h ⊛ A, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of columns of A).
+      """,
+      lw,
+      ma,
+      na,
+      na
+    )))
   end
-  for j ∈ 1:m
-    for k ∈ 1:na
-      a[j+offs,k] -= h.β * work[k] * v[j]
+  work[1:na] .= zero(E)
+  @inbounds begin
+    for j ∈ 1:m
+      @simd for k ∈ 1:na
+        work[k] += Aᴴ[j + offs, k] * conj(v[j])
+      end
+    end
+    for j ∈ 1:m
+      @simd for k ∈ 1:na
+        Aᴴ[j + offs, k] -= h.β * work[k] * v[j]
+      end
     end
   end
   nothing
@@ -287,65 +405,106 @@ end
 
 @inline function InPlace.:⊘(
   h::HouseholderTrans{E},
-  a::Adjoint{E,<:AbstractArray{E,2}},
+  Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
 ) where {E<:Number}
   m = h.size
-  na = size(a,2)
+  na = size(Aᴴ,2)
   v = reshape(h.v, m, 1)
   offs = h.offs
   work = h.work
-  na = size(a,2)
-  work[1:na] .= zero(E)
-  for j ∈ 1:m
-    for k ∈ 1:na
-      work[k] += a[j+offs,k] * conj(v[j])
+  (ma,na) = size(Aᴴ)
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:ma)
+      throw(DimensionMismatch(@sprintf(
+        "In h ⊘ A, A is of dimension %d×%d and h acts on rows %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
     end
+    lw = length(h.work)
+    (lw >= na) || throw(DimensionMismatch(@sprintf(
+      """
+      In h ⊘ A, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of columns of A).
+      """,
+      lw,
+      ma,
+      na,
+      na
+    )))
   end
-  for j ∈ 1:m
-    for k ∈ 1:na
-      a[j+offs,k] -= conj(h.β) * work[k] * v[j]
+  work[1:na] .= zero(E)
+  @inbounds begin
+    for j ∈ 1:m
+      @simd for k ∈ 1:na
+        work[k] += Aᴴ[j + offs, k] * conj(v[j])
+      end
+    end
+    for j ∈ 1:m
+      @simd for k ∈ 1:na
+        Aᴴ[j + offs, k] -= conj(h.β) * work[k] * v[j]
+      end
     end
   end
   nothing
 end
 
 @inline function InPlace.:⊛(
-  a::Adjoint{E,<:AbstractArray{E,2}},
+  Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
-  work = h.work
-  ma = size(a,1)
-  for j ∈ 1:ma
+  (ma, na) = size(Aᴴ)
+  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:na)
+    throw(DimensionMismatch(@sprintf(
+      "In A ⊛ h, A is of dimension %d×%d and h acts on columns %d:%d",
+      ma,
+      na,
+      offs + 1,
+      offs + m
+    )))
+  end
+  @inbounds for j ∈ 1:ma
     x = zero(E)
-    for k ∈ 1:m
-      x = x + a[j,k+offs] * v[k]
+    @simd for k ∈ 1:m
+      x = x + Aᴴ[j,k+offs] * v[k]
     end
-    for k ∈ 1:m
-      a[j,k+offs] -= h.β * conj(v[k]) * x
+    @simd for k ∈ 1:m
+      Aᴴ[j,k+offs] -= h.β * conj(v[k]) * x
     end
   end
   nothing
 end
 
 @inline function InPlace.:⊘(
-  a::Adjoint{E,<:AbstractArray{E,2}},
+  Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
   work = h.work
-  ma = size(a,1)
-  for j ∈ 1:ma
+  (ma,na) = size(Aᴴ)
+  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:na)
+    throw(DimensionMismatch(@sprintf(
+      "In A ⊘ h, A is of dimension %d×%d and h acts on columns %d:%d",
+      ma,
+      na,
+      offs + 1,
+      offs + m
+    )))
+  end
+  @inbounds for j ∈ 1:ma
     x = zero(E)
-    for k ∈ 1:m
-      x = x + a[j,k+offs] * v[k]
+    @simd for k ∈ 1:m
+      x = x + Aᴴ[j, k + offs] * v[k]
     end
-    for k ∈ 1:m
-      a[j,k+offs] -= conj(h.β) * conj(v[k]) * x
+    @simd for k ∈ 1:m
+      Aᴴ[j, k + offs] -= conj(h.β) * conj(v[k]) * x
     end
   end
   nothing
