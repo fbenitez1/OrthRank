@@ -1,5 +1,7 @@
 module WY
 
+using Base: @propagate_inbounds
+
 using LinearAlgebra
 import InPlace
 
@@ -9,7 +11,35 @@ export WYTrans, resetWY!, reworkWY!, WYIndexSubsetError
 
 """
 
-  I - W Yᴴ
+# WYTrans
+
+## `wy ⊛ A` is equivalent to
+
+    A₁=A[wy.offs+1:wy.offs+wy.sizeWY, :]
+    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁ = A₁ - W₁ Y₁ᴴ A₁
+
+## `wy ⊘ A` is equivalent to
+
+    A₁=A[wy.offs+1:wy.offs+wy.sizeWY, :]
+    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁ = A₁ - Y₁ W₁ᴴ A₁
+
+## `A ⊛ wy` is equivalent to
+
+    A₁=A[:, wy.offs+1:wy.offs+wy.sizeWY]
+    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁ = A₁ - A₁ W₁ Y₁ᴴ
+
+## `A ⊘ wy` is equivalent to
+
+    A₁=A[:, wy.offs+1:wy.offs+wy.sizeWY]
+    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁ = A₁ - A₁ Y₁ W₁ᴴ
 
 """
 mutable struct WYTrans{
@@ -18,18 +48,37 @@ mutable struct WYTrans{
   AEY<:AbstractArray{E,2},
   AEWork<:AbstractArray{E,1},
 }
-  offs::Int # Offset
-  sizeWY::Int # Size of the individual block transformation
-  num_h::Int # Number of Householders.
-  sizeA_h::Int # Size of the full matrix transformed on the
-  # side of the transformation.
-  sizeA_other::Int # Other dimension of a.
-  max_k::Int # maximum number of Householders.
-  W::AEW # sizeA_h×max_k array.
-  Y::AEY # sizeA_h×max_k array.
-  work::AEWork # sizeA_other*max_k work array.
+  # Offset
+  offs::Int
+  # Size of the individual block transformation
+  sizeWY::Int
+  # Number of Householders.
+  num_h::Int
+  # Size of the full matrix transformed on the side of the
+  # transformation.
+  sizeA_h::Int
+  # Other dimension of a.
+  sizeA_other::Int
+  # maximum number of Householders.
+  max_k::Int
+  # sizeA_h×max_k array.
+  W::AEW
+  # sizeA_h×max_k array.
+  Y::AEY
+  # sizeA_other*max_k work array.
+  work::AEWork
 end
 
+"""
+    WYTrans(
+      ::Type{E},
+      sizeA_h::Int,
+      sizeA_other::Int,
+      max_k::Int,
+    ) where {E}
+
+Create a new, empty WYTrans with element type `E`.
+"""
 function WYTrans(
   ::Type{E},
   sizeA_h::Int,
@@ -49,6 +98,15 @@ function WYTrans(
   )
 end
 
+"""
+    resetWY!(
+      offs::Int,
+      sizeWY::Int,
+      wy::WYTrans{E},
+    ) where {E<:Number}
+
+Return a WYTrans to an empty state, with an given offset and block size.
+"""
 @inline function resetWY!(
   offs::Int,
   sizeWY::Int,
@@ -61,7 +119,12 @@ end
 end
 
 """
-allocate a new work space
+    reworkWY!(
+      sizeA_other,
+      wy::WYTrans{E},
+    ) where {E<:Number}
+
+Allocate a new work space for a WYTrans.
 """
 @inline function reworkWY!(
   sizeA_other,
@@ -74,7 +137,7 @@ end
 
 # Array Updates
 
-@inline function InPlace.:⊛(
+@propagate_inbounds @inline function InPlace.:⊛(
   A::AE2,
   wy::WYTrans{E},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
@@ -90,7 +153,7 @@ end
   mul!(A0, work, Y', -oneE, oneE)
 end
 
-@inline function InPlace.:⊘(
+@propagate_inbounds @inline function InPlace.:⊘(
   A::AE2,
   wy::WYTrans{E},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
@@ -122,7 +185,7 @@ end
   mul!(A0, W, work, -oneE, oneE)
 end
 
-@inline function InPlace.:⊘(
+@propagate_inbounds @inline function InPlace.:⊘(
   wy::WYTrans{E},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
@@ -143,7 +206,7 @@ end
 
 struct WYIndexSubsetError <: Exception end
 
-@inline function InPlace.:⊛(
+@propagate_inbounds @inline function InPlace.:⊛(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -175,7 +238,7 @@ struct WYIndexSubsetError <: Exception end
   wy.num_h = wy.num_h + 1
 end
 
-@inline function InPlace.:⊘(
+@propagate_inbounds @inline function InPlace.:⊘(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -207,7 +270,7 @@ end
   wy.num_h = wy.num_h + 1
 end
 
-@inline function InPlace.:⊛(
+@propagate_inbounds @inline function InPlace.:⊛(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -239,7 +302,7 @@ end
   wy.num_h = wy.num_h + 1
 end
 
-@inline function InPlace.:⊘(
+@propagate_inbounds @inline function InPlace.:⊘(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
