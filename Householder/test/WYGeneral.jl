@@ -6,17 +6,17 @@ Testing Real WY Transformations
 
 
 tol = 1e-14
-maxk=3
+max_num_hs=3
 m=10
 n=10
 
 E=Float64
 A=randn(E,m,n)
 A0=copy(A)
-wy1=WYTrans(E,m,n,maxk)
-resetWY!(0,m,wy1)
-wy2=WYTrans(E,m,n,maxk)
-resetWY!(0,m,wy2)
+wy1=WYTrans(E,1,m,n,max_num_hs)
+resetWYBlock!(1,0,m,wy1)
+wy2=WYTrans(E,1,m,n,max_num_hs)
+resetWYBlock!(1,0,m,wy2)
 Im=Matrix{E}(I,m,m)
 Q=copy(Im)
 work=zeros(E,m)
@@ -24,13 +24,13 @@ for j=1:3
   local h = lhouseholder(A[j:m,j],1,j-1,work)
   h ⊘ A
   Q ⊛ h
-  wy1 ⊛ h
-  h ⊘ wy2 
+  SelectBlock(wy1,1) ⊛ h
+  h ⊘ SelectBlock(wy2, 1)
 end
 Q1 = Matrix{E}(I,m,m)
-Q1 ⊛ wy1
+Q1 ⊛ SelectBlock(wy1,1)
 Q2 = Matrix{E}(I,m,m)
-Q2 ⊘ wy2
+Q2 ⊘ SelectBlock(wy2,1)
 show_error_result(
   "WY factorization error using ⊛, Real",
   norm(Q1*A-A0),
@@ -42,19 +42,19 @@ show_error_result(
   tol,
 )
 
-print("""
+# print("""
 
-Testing Complex WY Transformations
+# Testing Complex WY Transformations
 
-""")
+# """)
 
 E=Complex{Float64}
 A=randn(E,m,n)
 A0=copy(A)
-wy1=WYTrans(E,m,n,maxk)
-resetWY!(0,m,wy1)
-wy2=WYTrans(E,m,n,maxk)
-resetWY!(0,m,wy2)
+wy1=WYTrans(E,1,m,n,max_num_hs)
+resetWYBlock!(1,0,m,wy1)
+wy2=WYTrans(E,1,m,n,max_num_hs)
+resetWYBlock!(1,0,m,wy2)
 Im=Matrix{E}(I,m,m)
 Q=copy(Im)
 work=zeros(E,m)
@@ -62,13 +62,13 @@ for j=1:3
   local h = lhouseholder(A[j:m,j],1,j-1,work)
   h ⊘ A
   Q ⊛ h
-  wy1 ⊛ h
-  h ⊘ wy2 
+  SelectBlock(wy1,1) ⊛ h
+  h ⊘ SelectBlock(wy2,1)
 end
 Q1 = Matrix{E}(I,m,m)
-Q1 ⊛ wy1
+Q1 ⊛ SelectBlock(wy1,1)
 Q2 = Matrix{E}(I,m,m)
-Q2 ⊘ wy2
+Q2 ⊘ SelectBlock(wy2,1)
 show_error_result(
   "WY factorization error using ⊛, Complex",
   norm(Q1*A-A0),
@@ -102,11 +102,11 @@ function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
   blocks = rem > 0 ? blocks + 1 : blocks
   Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
-  wy=WYTrans(E,m,m,bs+2)
+  wy=WYTrans(E,1,m,m,bs+2)
   workh = zeros(E, m)
   @inbounds @views for b ∈ 1:blocks
     offs = (b-1)*bs
-    resetWY!(offs,m-offs,wy)
+    resetWYBlock!(1,offs,m-offs,wy)
     block_end = min(b*bs,n)
     for k ∈ ((b - 1) * bs + 1):block_end
       vk = v[1:(m - k + 1)]
@@ -114,10 +114,10 @@ function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
       local h = lhouseholder(vk, 1, k - 1, workh)
       h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
-      wy ⊛ h
+      SelectBlock(wy,1) ⊛ h
     end
-    Q ⊛ wy
-    wy ⊘ A[:,block_end+1:n]
+    Q ⊛ SelectBlock(wy,1)
+    SelectBlock(wy,1) ⊘ A[:,block_end+1:n]
   end
   (Q, A)
 end
