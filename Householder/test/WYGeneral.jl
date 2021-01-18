@@ -24,13 +24,13 @@ for j=1:3
   local h = lhouseholder(A[j:m,j],1,j-1,work)
   h ⊘ A
   Q ⊛ h
-  SelectBlock(wy1,1) ⊛ h
-  h ⊘ SelectBlock(wy2, 1)
+  SelectWY(wy1,1) ⊛ h
+  h ⊘ SelectWY(wy2, 1)
 end
 Q1 = Matrix{E}(I,m,m)
-Q1 ⊛ SelectBlock(wy1,1)
+Q1 ⊛ SelectWY(wy1,1)
 Q2 = Matrix{E}(I,m,m)
-Q2 ⊘ SelectBlock(wy2,1)
+Q2 ⊘ SelectWY(wy2,1)
 show_error_result(
   "WY factorization error using ⊛, Real",
   norm(Q1*A-A0),
@@ -62,13 +62,13 @@ for j=1:3
   local h = lhouseholder(A[j:m,j],1,j-1,work)
   h ⊘ A
   Q ⊛ h
-  SelectBlock(wy1,1) ⊛ h
-  h ⊘ SelectBlock(wy2,1)
+  SelectWY(wy1,1) ⊛ h
+  h ⊘ SelectWY(wy2,1)
 end
 Q1 = Matrix{E}(I,m,m)
-Q1 ⊛ SelectBlock(wy1,1)
+Q1 ⊛ SelectWY(wy1,1)
 Q2 = Matrix{E}(I,m,m)
-Q2 ⊘ SelectBlock(wy2,1)
+Q2 ⊘ SelectWY(wy2,1)
 show_error_result(
   "WY factorization error using ⊛, Complex",
   norm(Q1*A-A0),
@@ -114,10 +114,10 @@ function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
       local h = lhouseholder(vk, 1, k - 1, workh)
       h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
-      SelectBlock(wy,1) ⊛ h
+      SelectWY(wy,1) ⊛ h
     end
-    Q ⊛ SelectBlock(wy,1)
-    SelectBlock(wy,1) ⊘ A[:,block_end+1:n]
+    Q ⊛ SelectWY(wy,1)
+    SelectWY(wy,1) ⊘ A[:,block_end+1:n]
   end
   (Q, A)
 end

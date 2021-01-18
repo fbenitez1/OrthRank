@@ -9,38 +9,83 @@ import InPlace
 using ..Compute
 
 export WYTrans,
-  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectBlock
+  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectWY
 
 """
 
 # WYTrans
 
-## `wy ⊛ A` is equivalent to
+    WYTrans{
+      E<:Number,
+      AEW<:AbstractArray{E,3},
+      AEY<:AbstractArray{E,3},
+      AEWork<:AbstractArray{E,1},
+      AI<:AbstractArray{Int,1}
+    }
 
-    A₁=A[wy.offs+1:wy.offs+wy.sizeWY, :]
-    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
-    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+A struct for storing multiple WY transformations.
+
+## Fields
+
+  - `max_num_WY::Int`: Maximum storable number of transformations.
+
+  - `max_WY_size::Int`: Maximum number of transformations.
+
+  - `A_other_dim::Int`: Other dimension of A (determines the size of
+    the workspace).
+
+  - `max_num_hs::Int`: maximum number of Householders in each
+    transformation.
+
+  - `num_WY::Ref{Int}`: Actual number of blocks currently stored.
+
+  - `offsets::AI`: Array of length `max_num_WY` giving
+    multiplcation offsets for each WY transformation.
+
+  - `sizes::AI`: Array of length `max_num_WY` giving the size of
+    each WY transformation.
+
+  - `num_hs::AI`: Array of length `max_num_WY` giving the number
+    of Householders in each WY.
+
+  - `W::AEW`: Element array of size `max_WY_size × max_num_hs ×
+    max_num_WY`.  This stores `W` for the different
+    transformations.
+
+  - `Y::AEW`: Element array of size `max_WY_size × max_num_hs ×
+    max_num_WY`.  This stores `Y` for the different
+    transformations.
+
+  - `work:AEWork`: Element array of length `A_other_dim * max_num_hs`.
+
+## Application of WY Transformations
+
+### `SelectWY(wy,k) ⊛ A` is equivalent to
+
+    A₁=A[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], :]
+    W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
+    Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - W₁ Y₁ᴴ A₁
 
-## `wy ⊘ A` is equivalent to
+### `SelectWY(wy,k) ⊘ A` is equivalent to
 
-    A₁=A[wy.offs+1:wy.offs+wy.sizeWY, :]
-    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
-    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁=A[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], :]
+    W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
+    Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - Y₁ W₁ᴴ A₁
 
-## `A ⊛ wy` is equivalent to
+### `A ⊛ SelectWY(wy,k)` is equivalent to
 
-    A₁=A[:, wy.offs+1:wy.offs+wy.sizeWY]
-    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
-    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁=A[:, wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k]]
+    W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
+    Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - A₁ W₁ Y₁ᴴ
 
-## `A ⊘ wy` is equivalent to
+### `A ⊘ SelectWY(wy,k)` is equivalent to
 
-    A₁=A[:, wy.offs+1:wy.offs+wy.sizeWY]
-    W₁=W[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
-    Y₁=Y[wy.offs+1:wy.offs+wy.sizeWY, 1:wy.num_h]
+    A₁=A[:, wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k]]
+    W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
+    Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - A₁ Y₁ W₁ᴴ
 
 """
@@ -52,19 +97,18 @@ struct WYTrans{
   AI<:AbstractArray{Int,1}
 }
   # Maximum number of blocks.
-  max_num_blocks::Int
+  max_num_WY::Int
   # Maximum block size.
-  max_block_size::Int
+  max_WY_size::Int
   # Other dimension of A (determines the size of the workspace).
   A_other_dim::Int
   # maximum number of Householders.
   max_num_hs::Int
   # Number of blocks
-  num_blocks::Ref{Int}
-  # Offset into A.
-  offs::AI
+  num_WY::Ref{Int}
+  offsets::AI
   # Size of the individual block transformations
-  sizeWYs::AI
+  sizes::AI
   # Number of Householders in each WY.
   num_hs::AI
   # sizeA_h×max_k array.
@@ -75,17 +119,17 @@ struct WYTrans{
   work::AEWork
 end
 
-struct SelectBlock{T}
+struct SelectWY{T}
   wy::T
   block::Int
 end
-  
+
 
 """
     WYTrans(
       ::Type{E},
-      max_num_blocks::Int,
-      max_block_size::Int,
+      max_num_WY::Int,
+      max_WY_size::Int,
       A_other_dim::Int,
       max_num_hs::Int,
     ) where {E}
@@ -96,22 +140,22 @@ all blocks.
 """
 function WYTrans(
   ::Type{E},
-  max_num_blocks::Int,
-  max_block_size::Int,
+  max_num_WY::Int,
+  max_WY_size::Int,
   A_other_dim::Int,
   max_num_hs::Int,
 ) where {E<:Number}
   WYTrans(
-    max_num_blocks,
-    max_block_size,
+    max_num_WY,
+    max_WY_size,
     A_other_dim,
     max_num_hs,
-    Ref(max_num_blocks), # include all possible blocks.
-    zeros(Int,max_num_blocks),
-    zeros(Int,max_num_blocks),
-    zeros(Int,max_num_blocks),
-    zeros(E, max_block_size, max_num_hs, max_num_blocks),
-    zeros(E, max_block_size, max_num_hs, max_num_blocks),
+    Ref(max_num_WY), # include all possible blocks.
+    zeros(Int,max_num_WY),
+    zeros(Int,max_num_WY),
+    zeros(Int,max_num_WY),
+    zeros(E, max_WY_size, max_num_hs, max_num_WY),
+    zeros(E, max_WY_size, max_num_hs, max_num_WY),
     zeros(E, A_other_dim * max_num_hs),
   )
 end
@@ -120,69 +164,69 @@ struct WYBlockNotAvailable <: Exception
   message::String
 end
 
-throw_WYBlockNotAvailable(block, num_blocks) = 
+throw_WYBlockNotAvailable(block, num_WY) =
   throw(WYBlockNotAvailable(@sprintf(
-    "Block %d is not available in WYTrans with num_blocks = %d",
+    "Block %d is not available in WYTrans with num_WY = %d",
     block,
-    num_blocks
+    num_WY
   )))
 
 """
     resetWYBlock!(
       k::Int
-      offs::Int,
+      offsets::Int,
       sizeWY::Int,
       wy::WYTrans{E},
     ) where {E<:Number}
 
-Return a block of a WYTrans to an empty state, with an given offset
-and block size.
+Return a block of a WYTrans to an empty state, with an given
+offsetset and block size.
 
 """
 @inline function resetWYBlock!(
   k::Int,
-  offs::Int,
+  offsets::Int,
   sizeWY::Int,
   wy::WYTrans,
 )
   @boundscheck begin
-    k ∈ 1:wy.num_blocks[] || throw_WYBlockNotAvailable(k, wy.num_blocks[])
-    sizeWY <= wy.max_block_size || throw(DimensionMismatch(@sprintf(
+    k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
+    sizeWY <= wy.max_WY_size || throw(DimensionMismatch(@sprintf(
       "Requested dimension %d of a WY block exceeds the maximum block size %d.",
       sizeWY,
-      wy.max_block_size
+      wy.max_WY_size
     )))
  end
-  wy.offs[k] = offs
-  wy.sizeWYs[k] = sizeWY
+  wy.offsets[k] = offsets
+  wy.sizes[k] = sizeWY
   wy.num_hs[k] = 0
   nothing
 end
 
 @inline function resetWYBlocks!(
-  offs_sizes,
+  offsets_sizes,
   wy::WYTrans,
 )
-  num_blocks = length(offs_sizes)
-  @boundscheck num_blocks <= wy.max_num_blocks ||
+  num_WY = length(offsets_sizes)
+  @boundscheck num_WY <= wy.max_num_WY ||
                throw(WYBlockNotAvailable(@sprintf(
-    "Block %d is not available in WYTrans with max_num_blocks = %d",
-    num_blocks,
-    wy.max_num_blocks
+    "Block %d is not available in WYTrans with max_num_WY = %d",
+    num_WY,
+    wy.max_num_WY
   )))
 
-  wy.num_blocks[]=num_blocks
+  wy.num_WY[]=num_WY
   k=1
-  for (offs,sizeWY) ∈ offs_sizes
+  for (offsets, sizeWY) ∈ offsets_sizes
     @boundscheck(
-      sizeWY <= wy.max_block_size || throw(DimensionMismatch(@sprintf(
+      sizeWY <= wy.max_WY_size || throw(DimensionMismatch(@sprintf(
         "Requested dimension %d of a WY block exceeds the maximum block size %d.",
         sizeWY,
-        wy.max_block_size
+        wy.max_WY_size
       )))
     )
-    wy.offs[k] = offs
-    wy.sizeWYs[k] = sizeWY
+    wy.offsets[k] = offsets
+    wy.sizes[k] = sizeWY
     wy.num_hs[k] = 0
     k += 1
   end
@@ -200,13 +244,13 @@ matrix of a different (larger) opposite side size.
 """
 @inline function reworkWY!(A_other_dim::Int, wy::WYTrans{E}) where {E<:Number}
   WYTrans(
-    wy.max_num_blocks,
-    wy.max_block_size,
+    wy.max_num_WY,
+    wy.max_WY_size,
     A_other_dim,
     wy.max_num_hs,
-    wy.num_blocks,
-    wy.offs,
-    wy.sizeWYs,
+    wy.num_WY,
+    wy.offsets,
+    wy.sizes,
     wy.num_hs,
     wy.W,
     wy.Y,
@@ -220,7 +264,7 @@ struct WorkSizeError <: Exception
   message::String
 end
 
-throw_WorkSizeError(ma, na, required, provided) = 
+throw_WorkSizeError(ma, na, required, provided) =
   throw(WYBlockNotAvailable(@sprintf(
     """
     An operation on a matrix of dimension %d×%d requires a work space of
@@ -252,20 +296,21 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
 
 @inline function InPlace.:⊛(
   A::AE2,
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
-  inds = 1:wy.sizeWYs[k]
-  offs = wy.offs[k]
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
+  inds = 1:wy.sizes[k]
+  offsets = wy.offsets[k]
   (ma,na) = size(A)
   num_hs= wy.num_hs[k]
 
   @boundscheck begin
 
-    inds .+ offs ⊆ 1:na || throw_ColumnRange_DimensionMismatch(ma, na, inds)
+    inds .+ offsets ⊆ 1:na ||
+      throw_ColumnRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= ma * num_hs ||
       throw_WorkSizeError(ma, na, ma * num_hs, length(wy.work))
@@ -277,7 +322,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
       work = reshape(wy.work[1:ma*num_hs], ma, num_hs)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[:,inds .+ offs]
+      A0 = A[:,inds .+ offsets]
     end
     oneE = one(E)
     mul!(work, A0, W)
@@ -289,27 +334,28 @@ end
   A::AE2,
   wy::WYTrans{E},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_blocks[]
-    A ⊛ SelectBlock(wy, k)
+  for k ∈ 1:wy.num_WY[]
+    A ⊛ SelectWY(wy, k)
   end
 end
 
 @inline function InPlace.:⊘(
   A::AE2,
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   num_hs = wy.num_hs[k]
-  offs = wy.offs[k]
-  inds = 1:wy.sizeWYs[k]
+  offsets = wy.offsets[k]
+  inds = 1:wy.sizes[k]
   (ma,na) = size(A)
 
   @boundscheck begin
 
-    inds .+ offs ⊆ 1:na || throw_ColumnRange_DimensionMismatch(ma, na, inds)
+    inds .+ offsets ⊆ 1:na ||
+      throw_ColumnRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= ma * num_hs ||
       throw_WorkSizeError(ma, na, ma * num_hs, length(wy.work))
@@ -321,7 +367,7 @@ end
       work = reshape(wy.work[1:ma*num_hs], ma, num_hs)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[:, inds .+ offs]
+      A0 = A[:, inds .+ offsets]
     end
     oneE = one(E)
     mul!(work, A0, Y)
@@ -333,27 +379,28 @@ end
   A::AE2,
   wy::WYTrans{E},
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_blocks[]
-    A ⊘ SelectBlock(wy, k)
+  for k ∈ 1:wy.num_WY[]
+    A ⊘ SelectWY(wy, k)
   end
 end
 
 @inline function InPlace.:⊛(
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   num_hs = wy.num_hs[k]
-  offs = wy.offs[k]
-  inds = 1:wy.sizeWYs[k]
+  offsets = wy.offsets[k]
+  inds = 1:wy.sizes[k]
   (ma, na) = size(A)
 
   @boundscheck begin
 
-    inds .+ offs ⊆ 1:ma || throw_RowRange_DimensionMismatch(ma, na, inds)
+    inds .+ offsets ⊆ 1:ma ||
+      throw_RowRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= na * num_hs ||
       throw_WorkSizeError(ma, na, na * num_hs, length(wy.work))
@@ -365,7 +412,7 @@ end
       work = reshape(wy.work[1:na*num_hs],num_hs,na)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[inds .+ offs, :]
+      A0 = A[inds .+ offsets, :]
     end
     oneE = one(E)
     mul!(work, Y', A0)
@@ -377,27 +424,28 @@ end
   wy::WYTrans{E},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_blocks[]
-    SelectBlock(wy,k) ⊛ A
+  for k ∈ 1:wy.num_WY[]
+    SelectWY(wy,k) ⊛ A
   end
 end
 
 @inline function InPlace.:⊘(
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   num_hs = wy.num_hs[k]
-  offs = wy.offs[k]
-  inds = 1:wy.sizeWYs[k]
+  offsets = wy.offsets[k]
+  inds = 1:wy.sizes[k]
   (ma, na) = size(A)
 
   @boundscheck begin
 
-    inds .+ offs ⊆ 1:ma || throw_RowRange_DimensionMismatch(ma, na, inds)
+    inds .+ offsets ⊆ 1:ma ||
+      throw_RowRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= na * num_hs ||
       throw_WorkSizeError(ma, na, na * num_hs, length(wy.work))
@@ -409,7 +457,7 @@ end
       work = reshape(wy.work[1:na*num_hs],num_hs,na)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[inds .+ offs, :]
+      A0 = A[inds .+ offsets, :]
     end
     oneE = one(E)
     mul!(work, W', A0)
@@ -421,8 +469,8 @@ end
   wy::WYTrans{E},
   A::AE2,
 ) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_blocks[]
-    SelectBlock(wy,k) ⊘ A
+  for k ∈ 1:wy.num_WY[]
+    SelectWY(wy,k) ⊘ A
   end
 end
 
@@ -442,24 +490,24 @@ throw_WYMaxHouseholderError(block) =
 
 
 @inline function InPlace.:⊛(
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
   num_hs = wy.num_hs[k]
-  wy_offs=wy.offs[k]
+  wy_offsets=wy.offsets[k]
   v=reshape(h.v,length(h.v),1)
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizeWYs[k]
-  indshwy = (h.offs - wy_offs + 1):(h.offs - wy_offs + h.size)
+  indswy = 1:wy.sizes[k]
+  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offs) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
@@ -485,26 +533,26 @@ throw_WYMaxHouseholderError(block) =
 end
 
 @inline function InPlace.:⊘(
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
   num_hs = wy.num_hs[k]
-  wy_offs=wy.offs[k]
+  wy_offsets=wy.offsets[k]
 
   v=reshape(h.v,length(h.v),1)
-  
+
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizeWYs[k]
-  indshwy = (h.offs - wy_offs + 1):(h.offs - wy_offs + h.size)
+  indswy = 1:wy.sizes[k]
+  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offs) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
@@ -530,25 +578,25 @@ end
 
 @inline function InPlace.:⊛(
   h::HouseholderTrans{E},
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
   num_hs = wy.num_hs[k]
-  wy_offs = wy.offs[k]
+  wy_offsets = wy.offsets[k]
 
   v=reshape(h.v,length(h.v),1)
-  
+
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizeWYs[k]
-  indshwy = (h.offs - wy_offs + 1):(h.offs - wy_offs + h.size)
+  indswy = 1:wy.sizes[k]
+  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offs) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
@@ -576,25 +624,25 @@ end
 
 @inline function InPlace.:⊘(
   h::HouseholderTrans{E},
-  wyk::SelectBlock{<:WYTrans{E}},
+  wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
-  num_blocks = wy.num_blocks[]
-  @boundscheck k ∈ 1:num_blocks || throw_WYBlockNotAvailable(k, num_blocks)
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
   num_hs = wy.num_hs[k]
-  wy_offs = wy.offs[k]
+  wy_offsets = wy.offsets[k]
 
   v=reshape(h.v,length(h.v),1)
-  
+
   indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizeWYs[k]
-  indshwy = (h.offs - wy_offs + 1):(h.offs - wy_offs + h.size)
+  indswy = 1:wy.sizes[k]
+  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offs) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
