@@ -104,6 +104,7 @@ function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
   v = zeros(E, m)
   wy=WYTrans(E,1,m,m,bs+2)
   workh = zeros(E, m)
+  selectWY!(wy,1)
   @inbounds @views for b ∈ 1:blocks
     offs = (b-1)*bs
     resetWYBlock!(1,offs,m-offs,wy)
@@ -114,10 +115,10 @@ function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
       local h = lhouseholder(vk, 1, k - 1, workh)
       h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
-      SelectWY(wy,1) ⊛ h
+      wy ⊛ h
     end
-    Q ⊛ SelectWY(wy,1)
-    SelectWY(wy,1) ⊘ A[:,block_end+1:n]
+    Q ⊛ wy
+    wy ⊘ A[:,block_end+1:n]
   end
   (Q, A)
 end
@@ -173,3 +174,5 @@ println("Backward error: ", norm(Q*R-A0))
   (Q,R) = qrWY(A,32)
   nothing
 end
+
+

@@ -9,7 +9,7 @@ import InPlace
 using ..Compute
 
 export WYTrans,
-  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectWY
+  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectWY, apply!, selectWY!
 
 """
 
@@ -39,6 +39,8 @@ A struct for storing multiple WY transformations.
 
   - `num_WY::Ref{Int}`: Actual number of blocks currently stored.
 
+  - `active_WY::Ref{Int}`: Active block.  Zero if no active block.
+
   - `offsets::AI`: Array of length `max_num_WY` giving
     multiplcation offsets for each WY transformation.
 
@@ -60,28 +62,28 @@ A struct for storing multiple WY transformations.
 
 ## Application of WY Transformations
 
-### `SelectWY(wy,k) ⊛ A` is equivalent to
+### `selectWY(wy,k) ⊛ A` is equivalent to
 
     A₁=A[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], :]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - W₁ Y₁ᴴ A₁
 
-### `SelectWY(wy,k) ⊘ A` is equivalent to
+### `selectWY(wy,k) ⊘ A` is equivalent to
 
     A₁=A[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], :]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - Y₁ W₁ᴴ A₁
 
-### `A ⊛ SelectWY(wy,k)` is equivalent to
+### `A ⊛ selectWY(wy,k)` is equivalent to
 
     A₁=A[:, wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k]]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - A₁ W₁ Y₁ᴴ
 
-### `A ⊘ SelectWY(wy,k)` is equivalent to
+### `A ⊘ selectWY(wy,k)` is equivalent to
 
     A₁=A[:, wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k]]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
@@ -106,6 +108,8 @@ struct WYTrans{
   max_num_hs::Int
   # Number of blocks
   num_WY::Ref{Int}
+  # Active block
+  active_WY::Ref{Int}
   offsets::AI
   # Size of the individual block transformations
   sizes::AI
@@ -122,6 +126,10 @@ end
 struct SelectWY{T}
   wy::T
   block::Int
+end
+
+@inline function selectWY!(wy,k)
+  wy.active_WY[]=k
 end
 
 
@@ -151,6 +159,7 @@ function WYTrans(
     A_other_dim,
     max_num_hs,
     Ref(max_num_WY), # include all possible blocks.
+    Ref(0),
     zeros(Int,max_num_WY),
     zeros(Int,max_num_WY),
     zeros(Int,max_num_WY),
@@ -196,10 +205,12 @@ offsetset and block size.
       sizeWY,
       wy.max_WY_size
     )))
- end
-  wy.offsets[k] = offsets
-  wy.sizes[k] = sizeWY
-  wy.num_hs[k] = 0
+  end
+  @inbounds begin
+    wy.offsets[k] = offsets
+    wy.sizes[k] = sizeWY
+    wy.num_hs[k] = 0
+  end
   nothing
 end
 
@@ -225,10 +236,12 @@ end
         wy.max_WY_size
       )))
     )
-    wy.offsets[k] = offsets
-    wy.sizes[k] = sizeWY
-    wy.num_hs[k] = 0
-    k += 1
+    @inbounds begin
+      wy.offsets[k] = offsets
+      wy.sizes[k] = sizeWY
+      wy.num_hs[k] = 0
+      k += 1
+    end
   end
   nothing
 end
@@ -249,6 +262,7 @@ matrix of a different (larger) opposite side size.
     A_other_dim,
     wy.max_num_hs,
     wy.num_WY,
+    wy.active_WY,
     wy.offsets,
     wy.sizes,
     wy.num_hs,
@@ -294,18 +308,20 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
       last(inds)
     )))
 
-@inline function InPlace.:⊛(
-  A::AE2,
-  wyk::SelectWY{<:WYTrans{E}},
-) where {E<:Number,AE2<:AbstractArray{E,2}}
-  k=wyk.block
-  wy=wyk.wy
+@inline function apply!(
+  A::AbstractArray{E,2},
+  wy::WYTrans{E},
+  k::Int,
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
-  inds = 1:wy.sizes[k]
-  offsets = wy.offsets[k]
-  (ma,na) = size(A)
-  num_hs= wy.num_hs[k]
+  @inbounds begin
+    inds = 1:wy.sizes[k]
+    offsets = wy.offsets[k]
+    (ma,na) = size(A)
+    num_hs= wy.num_hs[k]
+  end
 
   @boundscheck begin
 
@@ -328,29 +344,39 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
     mul!(work, A0, W)
     mul!(A0, work, Y', -oneE, oneE)
   end
+  nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊛(
-  A::AE2,
-  wy::WYTrans{E},
-) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_WY[]
-    A ⊛ SelectWY(wy, k)
-  end
-end
-
-@inline function InPlace.:⊘(
-  A::AE2,
+@propagate_inbounds function InPlace.:⊛(
+  A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
-) where {E<:Number,AE2<:AbstractArray{E,2}}
+) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
+  apply!(A, wy, k)
+end
+
+@propagate_inbounds function InPlace.:⊛(
+  A::AbstractArray{E,2},
+  wy::WYTrans{E},
+) where {E<:Number}
+  apply!(A, wy, wy.active_WY[])
+end
+
+@inline function apply_inv!(
+  A::AbstractArray{E,2},
+  wy::WYTrans{E},
+  k::Int
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
-  num_hs = wy.num_hs[k]
-  offsets = wy.offsets[k]
-  inds = 1:wy.sizes[k]
-  (ma,na) = size(A)
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    offsets = wy.offsets[k]
+    inds = 1:wy.sizes[k]
+    (ma,na) = size(A)
+  end
 
   @boundscheck begin
 
@@ -373,29 +399,39 @@ end
     mul!(work, A0, Y)
     mul!(A0, work, W', -oneE, oneE)
   end
+  nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊘(
-  A::AE2,
-  wy::WYTrans{E},
-) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_WY[]
-    A ⊘ SelectWY(wy, k)
-  end
-end
-
-@inline function InPlace.:⊛(
+@propagate_inbounds function InPlace.:⊘(
+  A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
-  A::AE2,
-) where {E<:Number,AE2<:AbstractArray{E,2}}
+) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
+  apply_inv!(A, wy, k)
+end
+
+@propagate_inbounds function InPlace.:⊘(
+  A::AbstractArray{E,2},
+  wy::WYTrans{E},
+) where {E<:Number}
+  apply_inv!(A, wy, wy.active_WY[])
+end
+
+@inline function apply!(
+  wy::WYTrans{E},
+  k::Int,
+  A::AbstractArray{E,2},
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
-  num_hs = wy.num_hs[k]
-  offsets = wy.offsets[k]
-  inds = 1:wy.sizes[k]
-  (ma, na) = size(A)
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    offsets = wy.offsets[k]
+    inds = 1:wy.sizes[k]
+    (ma, na) = size(A)
+  end
 
   @boundscheck begin
 
@@ -418,30 +454,40 @@ end
     mul!(work, Y', A0)
     mul!(A0, W, work, -oneE, oneE)
   end
+  nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊛(
-  wy::WYTrans{E},
-  A::AE2,
-) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_WY[]
-    SelectWY(wy,k) ⊛ A
-  end
-end
-
-@inline function InPlace.:⊘(
+@propagate_inbounds function InPlace.:⊛(
   wyk::SelectWY{<:WYTrans{E}},
-  A::AE2,
-) where {E<:Number,AE2<:AbstractArray{E,2}}
+  A::AbstractArray{E,2},
+) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
+  apply!(wy, k, A)
+end
+
+@propagate_inbounds function InPlace.:⊛(
+  wy::WYTrans{E},
+  A::AbstractArray{E,2},
+) where {E<:Number}
+  apply!(wy, wy.active_WY[], A)
+end
+
+@inline function apply_inv!(
+  wy::WYTrans{E},
+  k::Int,
+  A::AbstractArray{E,2},
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
-  num_hs = wy.num_hs[k]
-  offsets = wy.offsets[k]
-  inds = 1:wy.sizes[k]
-  (ma, na) = size(A)
 
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    offsets = wy.offsets[k]
+    inds = 1:wy.sizes[k]
+    (ma, na) = size(A)
+  end
   @boundscheck begin
 
     inds .+ offsets ⊆ 1:ma ||
@@ -463,15 +509,23 @@ end
     mul!(work, W', A0)
     mul!(A0, Y, work, -oneE, oneE)
   end
+  nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊘(
+@propagate_inbounds function InPlace.:⊘(
+  wyk::SelectWY{<:WYTrans{E}},
+  A::AbstractArray{E,2},
+) where {E<:Number}
+  k=wyk.block
+  wy=wyk.wy
+  apply_inv!(wy, k, A)
+end
+
+@propagate_inbounds function InPlace.:⊘(
   wy::WYTrans{E},
-  A::AE2,
-) where {E<:Number,AE2<:AbstractArray{E,2}}
-  for k ∈ 1:wy.num_WY[]
-    SelectWY(wy,k) ⊘ A
-  end
+  A::AbstractArray{E,2},
+) where {E<:Number}
+  apply_inv!(wy, wy.active_WY[], A)
 end
 
 # Updating functions for adding a Householder.
@@ -488,23 +542,22 @@ throw_WYMaxHouseholderError(block) =
     block
   )))
 
-
-@inline function InPlace.:⊛(
-  wyk::SelectWY{<:WYTrans{E}},
+@inline function apply!(
+  wy::WYTrans{E},
+  k::Int,
   h::HouseholderTrans{E},
 ) where {E<:Number}
-
-  k=wyk.block
-  wy=wyk.wy
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
-
-  num_hs = wy.num_hs[k]
-  wy_offsets=wy.offsets[k]
-  v=reshape(h.v,length(h.v),1)
-  indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizes[k]
-  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+  
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    wy_offsets=wy.offsets[k]
+    v=reshape(h.v,length(h.v),1)
+    indsh = (h.offs + 1):(h.offs + h.size)
+    indswy = 1:wy.sizes[k]
+    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+  end
 
   @boundscheck begin
     indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
@@ -530,26 +583,46 @@ throw_WYMaxHouseholderError(block) =
 
     wy.num_hs[k] += 1
   end
+  nothing
 end
 
-@inline function InPlace.:⊘(
+@propagate_inbounds function InPlace.:⊛(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
+  apply!(wy, k, h)
+end
+
+@propagate_inbounds function InPlace.:⊛(
+  wy::WYTrans{E},
+  h::HouseholderTrans{E},
+) where {E<:Number}
+
+  apply!(wy, wy.active_WY[], h)
+end
+
+@inline function apply_inv(
+  wy::WYTrans{E},
+  k::Int,
+  h::HouseholderTrans{E},
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
-  num_hs = wy.num_hs[k]
-  wy_offsets=wy.offsets[k]
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    wy_offsets=wy.offsets[k]
 
-  v=reshape(h.v,length(h.v),1)
+    v=reshape(h.v,length(h.v),1)
 
-  indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizes[k]
-  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indsh = (h.offs + 1):(h.offs + h.size)
+    indswy = 1:wy.sizes[k]
+    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+  end
 
   @boundscheck begin
     indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
@@ -574,26 +647,46 @@ end
     mul!(W1, W0, work, -conj(h.β), conj(h.β))
     wy.num_hs[k] += 1
   end
+  nothing
 end
 
-@inline function InPlace.:⊛(
-  h::HouseholderTrans{E},
+@propagate_inbounds function InPlace.:⊘(
   wyk::SelectWY{<:WYTrans{E}},
+  h::HouseholderTrans{E},
 ) where {E<:Number}
-
+  
   k=wyk.block
   wy=wyk.wy
+  apply_inv!(wy, k, h)
+end
+
+@propagate_inbounds function InPlace.:⊘(
+  wy::WYTrans{E},
+  h::HouseholderTrans{E},
+) where {E<:Number}
+  
+  apply_inv!(wy, wy.active_WY[], h)
+end
+
+@inline function apply!(
+  h::HouseholderTrans{E},
+  wy::WYTrans{E},
+  k::Int,
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
-  num_hs = wy.num_hs[k]
-  wy_offsets = wy.offsets[k]
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    wy_offsets = wy.offsets[k]
 
-  v=reshape(h.v,length(h.v),1)
+    v=reshape(h.v,length(h.v),1)
 
-  indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizes[k]
-  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indsh = (h.offs + 1):(h.offs + h.size)
+    indswy = 1:wy.sizes[k]
+    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+  end
 
   @boundscheck begin
     indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
@@ -620,26 +713,47 @@ end
 
     wy.num_hs[k] += 1
   end
+  nothing
 end
 
-@inline function InPlace.:⊘(
+@propagate_inbounds function InPlace.:⊛(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
+
+  apply!(h, wy, k)
+end
+
+@propagate_inbounds function InPlace.:⊛(
+  h::HouseholderTrans{E},
+  wy::WYTrans{E},
+) where {E<:Number}
+
+  apply!(h, wy, wy.active_WY[])
+end
+
+@inline function apply_inv!(
+  h::HouseholderTrans{E},
+  wy::WYTrans{E},
+  k::Int,
+) where {E<:Number}
+
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
 
-  num_hs = wy.num_hs[k]
-  wy_offsets = wy.offsets[k]
+  @inbounds begin
+    num_hs = wy.num_hs[k]
+    wy_offsets = wy.offsets[k]
 
-  v=reshape(h.v,length(h.v),1)
+    v=reshape(h.v,length(h.v),1)
 
-  indsh = (h.offs + 1):(h.offs + h.size)
-  indswy = 1:wy.sizes[k]
-  indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indsh = (h.offs + 1):(h.offs + h.size)
+    indswy = 1:wy.sizes[k]
+    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+  end
 
   @boundscheck begin
     indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
@@ -665,6 +779,26 @@ end
 
     wy.num_hs[k] += 1
   end
+  nothing
+
+end
+
+@propagate_inbounds function InPlace.:⊘(
+  h::HouseholderTrans{E},
+  wyk::SelectWY{<:WYTrans{E}},
+) where {E<:Number}
+
+  k=wyk.block
+  wy=wyk.wy
+  apply_inv!(h, wy, k)
+end
+
+@propagate_inbounds function InPlace.:⊘(
+  h::HouseholderTrans{E},
+  wy::WYTrans{E},
+) where {E<:Number}
+
+  apply_inv!(h, wy, wy.active_WY[])
 end
 
 end # module
