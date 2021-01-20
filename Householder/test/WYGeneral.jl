@@ -174,5 +174,3 @@ println("Backward error: ", norm(Q*R-A0))
   (Q,R) = qrWY(A)
   nothing
 end
-
-

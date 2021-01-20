@@ -37,9 +37,9 @@ A struct for storing multiple WY transformations.
   - `max_num_hs::Int`: maximum number of Householders in each
     transformation.
 
-  - `num_WY::Ref{Int}`: Actual number of blocks currently stored.
+  - `num_WY::Base.RefValue{Int}`: Actual number of blocks currently stored.
 
-  - `active_WY::Ref{Int}`: Active block.  Zero if no active block.
+  - `active_WY::Base.RefValue{Int}`: Active block.  Zero if no active block.
 
   - `offsets::AI`: Array of length `max_num_WY` giving
     multiplcation offsets for each WY transformation.
@@ -107,9 +107,9 @@ struct WYTrans{
   # maximum number of Householders.
   max_num_hs::Int
   # Number of blocks
-  num_WY::Ref{Int}
+  num_WY::Base.RefValue{Int}
   # Active block
-  active_WY::Ref{Int}
+  active_WY::Base.RefValue{Int}
   offsets::AI
   # Size of the individual block transformations
   sizes::AI
@@ -548,8 +548,11 @@ throw_WYMaxHouseholderError(block) =
   k::Int,
   h::HouseholderTrans{E},
 ) where {E<:Number}
+  
+  num_WY = wy.num_WY[]
+  active_WY = wy.active_WY[]
 
-  @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
+  # @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
   
   @inbounds begin
     num_hs = wy.num_hs[k]
