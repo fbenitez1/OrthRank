@@ -96,20 +96,20 @@ function qrH(A::AbstractArray{E,2}) where {E<:Number}
   (Q, A)
 end
 
-function qrWY(A::Array{E,2}, bs::Int64) where {E<:Number}
+function qrWY(A::Array{E,2}; block_size=32) where {E<:Number}
   m, n = size(A)
-  blocks, rem = divrem(n, bs)
+  blocks, rem = divrem(n, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
   Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
-  wy=WYTrans(E,1,m,m,bs+2)
+  wy=WYTrans(E,1,m,m,block_size+2)
   workh = zeros(E, m)
   selectWY!(wy,1)
   @inbounds @views for b ∈ 1:blocks
-    offs = (b-1)*bs
+    offs = (b-1)*block_size
     resetWYBlock!(1,offs,m-offs,wy)
-    block_end = min(b*bs,n)
-    for k ∈ ((b - 1) * bs + 1):block_end
+    block_end = min(b*block_size,n)
+    for k ∈ ((b - 1) * block_size + 1):block_end
       vk = v[1:(m - k + 1)]
       vk[:] = A[k:m, k]
       local h = lhouseholder(vk, 1, k - 1, workh)
@@ -167,11 +167,11 @@ print("""
 Benchmarking WY QR:
 """)
 A[:,:]=A0
-(Q,R) = qrWY(A,32)
+(Q,R) = qrWY(A)
 println("Backward error: ", norm(Q*R-A0))
 @btime begin
   A[:,:]=A0
-  (Q,R) = qrWY(A,32)
+  (Q,R) = qrWY(A)
   nothing
 end
 

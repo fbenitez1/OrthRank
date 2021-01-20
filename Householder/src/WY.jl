@@ -129,6 +129,7 @@ struct SelectWY{T}
 end
 
 @inline function selectWY!(wy,k)
+  @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
   wy.active_WY[]=k
 end
 
@@ -547,13 +548,13 @@ throw_WYMaxHouseholderError(block) =
   k::Int,
   h::HouseholderTrans{E},
 ) where {E<:Number}
-  num_WY = wy.num_WY[]
-  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
+
+  @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
   
   @inbounds begin
     num_hs = wy.num_hs[k]
     wy_offsets=wy.offsets[k]
-    v=reshape(h.v,length(h.v),1)
+    v = reshape(h.v, length(h.v), 1)
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
     indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
@@ -576,10 +577,10 @@ throw_WYMaxHouseholderError(block) =
 
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
-    W1[indshwy,:] = v
+    W1[indshwy,:] .= h.β .* v
     Y1[indshwy,:] = v
     mul!(work, Y0', W1)
-    mul!(W1, W0, work, -h.β, h.β)
+    mul!(W1, W0, work, -one(E), one(E))
 
     wy.num_hs[k] += 1
   end
@@ -641,10 +642,10 @@ end
 
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
-    W1[indshwy,:] = v
+    W1[indshwy,:] .= conj(h.β) .* v
     Y1[indshwy,:] = v
     mul!(work, Y0', W1)
-    mul!(W1, W0, work, -conj(h.β), conj(h.β))
+    mul!(W1, W0, work, -one(E), one(E))
     wy.num_hs[k] += 1
   end
   nothing
@@ -706,10 +707,10 @@ end
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
     W1[indshwy,:] = v
-    Y1[indshwy,:] = v
+    Y1[indshwy,:] .= conj(h.β) .* v
 
     mul!(work, W0', Y1)
-    mul!(Y1, Y0, work, -conj(h.β), conj(h.β))
+    mul!(Y1, Y0, work, -one(E), one(E))
 
     wy.num_hs[k] += 1
   end
@@ -772,10 +773,10 @@ end
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
     W1[indshwy,:] = v
-    Y1[indshwy,:] = v
+    Y1[indshwy,:] .= h.β .* v
 
     mul!(work, W0', Y1)
-    mul!(Y1, Y0, work, -h.β, h.β)
+    mul!(Y1, Y0, work, -one(E), one(E))
 
     wy.num_hs[k] += 1
   end
