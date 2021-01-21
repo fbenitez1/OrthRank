@@ -22,5 +22,21 @@ b=copy(b0)
 b ⊘ Linear(a)
 show_equality_result("InPlace General Right Inverse", b0/a0, b)
 
+b=copy(b0)
+apply!(Linear(a), b)
+show_equality_result("InPlace General Left apply!", a0*b0, b)
+
+b=copy(b0)
+apply!(b, Linear(a))
+show_equality_result("InPlace General Right apply!", b0*a0, b)
+
+b=copy(b0)
+apply_inv!(Linear(a), b)
+show_equality_result("InPlace General Left apply_inv!", a0\b0, b)
+
+b=copy(b0)
+apply_inv!(b, Linear(a))
+show_equality_result("InPlace General Right apply_inv!", b0/a0, b)
+
 
 

@@ -96,7 +96,7 @@ function qrH(A::AbstractArray{E,2}) where {E<:Number}
   (Q, A)
 end
 
-function qrWY(A::Array{E,2}; block_size=32) where {E<:Number}
+function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
   m, n = size(A)
   blocks, rem = divrem(n, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks

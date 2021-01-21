@@ -5,11 +5,12 @@ using Printf
 
 using LinearAlgebra
 import InPlace
+using InPlace
 
 using ..Compute
 
 export WYTrans,
-  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectWY, apply!, selectWY!
+  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectWY, selectWY!
 
 """
 
@@ -309,7 +310,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
       last(inds)
     )))
 
-@inline function apply!(
+@inline function InPlace.apply!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
   k::Int,
@@ -364,7 +365,7 @@ end
   apply!(A, wy, wy.active_WY[])
 end
 
-@inline function apply_inv!(
+@inline function InPlace.apply_inv!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
   k::Int
@@ -419,7 +420,7 @@ end
   apply_inv!(A, wy, wy.active_WY[])
 end
 
-@inline function apply!(
+@inline function InPlace.apply!(
   wy::WYTrans{E},
   k::Int,
   A::AbstractArray{E,2},
@@ -474,7 +475,7 @@ end
   apply!(wy, wy.active_WY[], A)
 end
 
-@inline function apply_inv!(
+@inline function InPlace.apply_inv!(
   wy::WYTrans{E},
   k::Int,
   A::AbstractArray{E,2},
@@ -543,7 +544,7 @@ throw_WYMaxHouseholderError(block) =
     block
   )))
 
-@inline function apply!(
+@inline function InPlace.apply!(
   wy::WYTrans{E},
   k::Int,
   h::HouseholderTrans{E},
@@ -608,7 +609,7 @@ end
   apply!(wy, wy.active_WY[], h)
 end
 
-@inline function apply_inv(
+@inline function InPlace.apply_inv!(
   wy::WYTrans{E},
   k::Int,
   h::HouseholderTrans{E},
@@ -672,7 +673,7 @@ end
   apply_inv!(wy, wy.active_WY[], h)
 end
 
-@inline function apply!(
+@inline function InPlace.apply!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
   k::Int,
@@ -739,7 +740,7 @@ end
   apply!(h, wy, wy.active_WY[])
 end
 
-@inline function apply_inv!(
+@inline function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
   k::Int,
