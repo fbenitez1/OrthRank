@@ -88,7 +88,7 @@ function lhouseholder(
   l::Int64,
   offs::Int64,
   work::AbstractArray{E,1}
-) where {R<:Real,E<:Union{R,Complex{R}}}
+) where {E<:Number}
   m = length(a)
   a1 = a[l]
   if m == 1
@@ -122,7 +122,7 @@ function lhouseholder(
   l::Int64,
   offs::Int64,
   work_size::Int64,
-) where {R<:Real,E<:Union{R,Complex{R}}}
+) where {E<:Number}
   work = zeros(E, work_size)
   lhouseholder(a,l,offs,work)
 end
@@ -138,7 +138,7 @@ function rhouseholder(
   l::Int64,
   offs::Int64,
   work::AbstractArray{E,1},
-) where {R<:Real,E<:Union{R,Complex{R}}}
+) where {E<:Number}
   m = length(a)
   a1 = a[l]
   if m == 1
@@ -174,7 +174,7 @@ function rhouseholder(
   l::Int64,
   offs::Int64,
   work_size::Int64,
-) where {R<:Real,E<:Union{R,Complex{R}}}
+) where {E<:Number}
   work = zeros(E, work_size)
   rhouseholder(a,l,offs,work)
 end
