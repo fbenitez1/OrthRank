@@ -6,7 +6,12 @@ using LinearAlgebra
 import InPlace
 
 export HouseholderTrans,
-  update_norm, lhouseholder, rhouseholder, column_nonzero!, row_nonzero!
+  update_norm,
+  lhouseholder,
+  rhouseholder,
+  householder,
+  column_nonzero!,
+  row_nonzero!
 
 """
 
@@ -177,6 +182,84 @@ function rhouseholder(
 ) where {E<:Number}
   work = zeros(E, work_size)
   rhouseholder(a,l,offs,work)
+end
+
+function householder(
+  a::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  l::Int64,
+  offs::Int64,
+  work_size::Int64,
+) where {E<:Number}
+  work = zeros(E, work_size)
+  @views lhouseholder(a[js,k],l,offs,work)
+end
+
+function householder(
+  a::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  l::Int64,
+  offs::Int64,
+  work_size::Int64,
+) where {E<:Number}
+  work = zeros(E, work_size)
+  @views rhouseholder(a[j,ks],l,offs,work)
+end
+
+function householder(
+  a::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  l::Int64,
+  offs::Int64,
+  v::AbstractArray{E,1},
+  work_size::Int64,
+) where {E<:Number}
+  work = zeros(E, work_size)
+  @views v[1:length(js)] = a[js,k]
+  lhouseholder(v,l,offs,work)
+end
+
+function householder(
+  a::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  l::Int64,
+  offs::Int64,
+  v::AbstractArray{E,1},
+  work_size::Int64,
+) where {E<:Number}
+  work = zeros(E, work_size)
+  @views v[1:length(ks)] = a[j,ks]
+  rhouseholder(v,l,offs,work)
+end
+
+function householder(
+  a::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  l::Int64,
+  offs::Int64,
+  v::AbstractArray{E,1},
+  work::AbstractArray{E,1},
+) where {E<:Number}
+  @views v[1:length(js)] = a[js,k]
+  lhouseholder(v,l,offs,work)
+end
+
+function householder(
+  a::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  l::Int64,
+  offs::Int64,
+  v::AbstractArray{E,1},
+  work::AbstractArray{E,1},
+) where {E<:Number}
+  @views v[1:length(ks)] = a[j,ks]
+  rhouseholder(v,l,offs,work)
 end
 
 @inline function column_nonzero!(
