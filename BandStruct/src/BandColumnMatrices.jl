@@ -35,6 +35,8 @@ export BandColumn,
   IndexNotLower,
   NoStorageForIndex,
   IndexNotInband,
+  SubcolumnIndicesNotInband,
+  SubrowIndicesNotInband,
   # Methods implemented for any AbstractBandColumn
   is_lower_notchable_with_no_well,
   is_upper_notchable_with_no_well,
@@ -116,20 +118,36 @@ end
 An exception thrown when an operation would create a well.
 """
 struct WellError <: Exception end
+
 struct EmptyUpperRange <: Exception end
+
 struct EmptyLowerRange <: Exception end
+
 struct IndexNotUpper <: Exception 
   j :: Int
   k :: Int
 end
+
 struct IndexNotLower <: Exception
   j :: Int
   k :: Int
 end
+
 struct IndexNotInband <: Exception
   j :: Int
   k :: Int
 end
+
+struct SubcolumnIndicesNotInband <: Exception
+  js :: UnitRange{Int}
+  k :: Int
+end
+
+struct SubrowIndicesNotInband <: Exception
+  j :: Int
+  ks :: UnitRange{Int}
+end
+
 struct NonSub end
 struct Sub end
 

@@ -1,6 +1,8 @@
 using BandStruct.BandColumnMatrices
 using BandStruct.LeadingBandColumnMatrices
 using BandStruct.BandRotations
+using BandStruct.BandHouseholder
+using Householder
 
 using Random
 using Rotations
@@ -47,3 +49,4 @@ include("range.jl")
 include("bulge.jl")
 include("notch.jl")
 include("rotations.jl")
+include("householder.jl")
