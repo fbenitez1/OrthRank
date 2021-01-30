@@ -732,7 +732,7 @@ end
   j::Int,
   ::Colon,
 )
-  first_inband_index(NonSub, j, :):last_inband_index(NonSub, bc, j, :)
+  first_inband_index(NonSub, bc, j, :):last_inband_index(NonSub, bc, j, :)
 end
 
 @propagate_inbounds @inline function inband_index_range(
