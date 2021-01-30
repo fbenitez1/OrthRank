@@ -17,7 +17,7 @@ export HouseholderTrans,
 
 # HouseholderTrans
 
-    HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}} 
+    HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}}
 
 A Householder data structure.
 
@@ -66,7 +66,7 @@ end
   a_abs = abs(a)
   b_abs = abs(b)
   z = max(a_abs, b_abs)
-  z * sqrt((a_abs / z)^2 + (b_abs / z)^2)
+  iszero(z) ? z : z * sqrt((a_abs / z)^2 + (b_abs / z)^2)
 end
 
 
@@ -98,27 +98,31 @@ function lhouseholder(
   a1 = a[l]
   if m == 1
     a[1] = 1
-    sign_a1 = a1 == zero(a1) ? one(a1) : sign(a1)
+    sign_a1 = iszero(a1) ? one(a1) : sign(a1)
     β = (sign_a1 - one(a1)) / sign_a1
     HouseholderTrans(conj(β), a, l, m, offs, work)
   else
-    norm_a2 = update_norm(norm(view(a, 1:(l - 1))), norm(view(a,(l + 1):m)))
+    norm_a2 = @views update_norm(norm(a[1:(l - 1)]), norm(a[(l + 1):m]))
     norm_a = update_norm(norm_a2, a1)
-    alpha = if real(a1) <= 0
-      a1 - norm_a
+    if iszero(norm_a)
+      HouseholderTrans(zero(E), a, l, m, offs, work)
     else
-      a1i = imag(a1)
-      a1r = real(a1)
-      x = update_norm(norm_a2, a1i)
-      y = a1r + norm_a
-      z = y / x
-      maybe_complex(E, -x, a1i * z) / z
+      alpha = if real(a1) <= 0
+        a1 - norm_a
+      else
+        a1i = imag(a1)
+        a1r = real(a1)
+        x = update_norm(norm_a2, a1i)
+        y = a1r + norm_a
+        z = y / x
+        maybe_complex(E, -x, a1i * z) / z
+      end
+      β = -conj(alpha) / norm_a
+      a[l] = one(a1)
+      rdiv!(view(a,1:(l-1)), alpha)
+      rdiv!(view(a,(l+1):m), alpha)
+      HouseholderTrans(conj(β), a, l, m, offs, work)
     end
-    β = -conj(alpha) / norm_a
-    a[l] = one(a1)
-    rdiv!(view(a,1:(l-1)), alpha)
-    rdiv!(view(a,(l+1):m), alpha)
-    HouseholderTrans(conj(β), a, l, m, offs, work)
   end
 end
 
@@ -148,29 +152,34 @@ function rhouseholder(
   a1 = a[l]
   if m == 1
     a[1] = 1
-    sign_a1 = a1 == zero(a1) ? one(a1) : sign(a1)
+    sign_a1 = iszero(a1) ? one(a1) : sign(a1)
     β = (sign_a1 - one(a1)) / sign_a1
     conj!(a)
     HouseholderTrans(β, a, l, m, offs, work)
   else
-    norm_a2 = update_norm(norm(view(a,1:(l - 1))), norm(view(a,(l + 1):m)))
+    norm_a2 = @views update_norm(norm(a[1:(l - 1)]), norm(a[(l + 1):m]))
     norm_a = update_norm(norm_a2, a1)
-    alpha = if real(a1) <= 0
-      a1 - norm_a
+    if iszero(norm_a)
+      HouseholderTrans(zero(E), a, l, m, offs, work)
     else
-      a1i = imag(a1)
-      a1r = real(a1)
-      x = update_norm(norm_a2, a1i)
-      y = a1r + norm_a
-      z = y / x
-      maybe_complex(E, -x, a1i * z) / z
+      alpha = if real(a1) <= 0
+        a1 - norm_a
+      else
+        a1i = imag(a1)
+        a1r = real(a1)
+        x = update_norm(norm_a2, a1i)
+        y = a1r + norm_a
+        z = y / x
+        maybe_complex(E, -x, a1i * z) / z
+      end
+
+      β = -conj(alpha) / norm_a
+      a[l] = one(a1)
+      rdiv!(view(a,1:(l-1)), alpha)
+      rdiv!(view(a,(l+1):m), alpha)
+      conj!(a)
+      HouseholderTrans(β, a, l, m, offs, work)
     end
-    β = -conj(alpha) / norm_a
-    a[l] = one(a1)
-    rdiv!(view(a,1:(l-1)), alpha)
-    rdiv!(view(a,(l+1):m), alpha)
-    conj!(a)
-    HouseholderTrans(β, a, l, m, offs, work)
   end
 end
 
@@ -279,7 +288,7 @@ end
   A[j, 1:(l - 1)] .= zero(E)
   A[j, (l + 1):end] .= zero(E)
 end
-  
+
 @inline function InPlace.:⊛(
   h::HouseholderTrans{E},
   A::AbstractArray{E,2},
