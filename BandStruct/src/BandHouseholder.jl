@@ -64,7 +64,7 @@ end
       lv,
       lks
     )))
-    ((1:lv) .+ offs) ⊆ inband_index_range(bc, j, ks) ||
+    ((1:lv) .+ offs) ⊆ inband_index_range(bc, j, :) ||
       throw(SubrowIndicesNotInband(j, ks))
   end
 
@@ -72,9 +72,8 @@ end
 
   @inbounds for k ∈ 1:lv
     storage_offs = storage_offset(bc, k + offs)
-    v[j] = bc_els[j - storage_offs, k + offs]
+    v[k] = bc_els[j - storage_offs, k + offs]
   end
-
   rhouseholder(v, l, offs, work)
 end
 
@@ -123,8 +122,8 @@ end
     # Accumulate w = bc * v in work array by a linear combination of
     # columns of bc.
     for k ∈ 1:m
-      j0 = first_inband_index(bc, :, k)
-      j1 = last_inband_index(bc, :, k)
+      j0 = first_inband_index(bc, :, k + offs)
+      j1 = last_inband_index(bc, :, k + offs)
       storage_offs = storage_offset(bc, k + offs)
       @simd for j ∈ j0:j1
         work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * v[k]
@@ -174,7 +173,7 @@ end
     jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
     # Form x = vᴴ * bc[:,k].
     @simd for j ∈ jrange
-      x = x + conj(v[j]) * bc_els[j - storage_offs, k]
+      x = x + conj(v[j - offs]) * bc_els[j - storage_offs, k]
     end
     # Subtract v * x from bc[:,k].
     x = β * x
@@ -231,8 +230,8 @@ end
     # Accumulate w = bc * v in work array by a linear combination of
     # columns of bc.
     for k ∈ 1:m
-      j0 = first_inband_index(bc, :, k)
-      j1 = last_inband_index(bc, :, k)
+      j0 = first_inband_index(bc, :, k + offs)
+      j1 = last_inband_index(bc, :, k + offs)
       storage_offs = storage_offset(bc, k + offs)
       @simd for j ∈ j0:j1
         work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * v[k]
@@ -254,13 +253,13 @@ end
 
 @inline function InPlace.:⊘(
   h::HouseholderTrans{E},
-  bc::AbstractBandColumn{E,S},
+  bc::AbstractBandColumn{S,E},
 ) where {E<:Number,S}
 
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs
-  β̄ = h.β
+  β̄ = conj(h.β)
 
   j_first = offs + 1
   j_last = offs + h.size
@@ -275,14 +274,14 @@ end
     check_bc_storage_bounds(bc, j_first, k_last)
     check_bc_storage_bounds(bc, j_last, k_first)
   end
-
+  
   @inbounds for k ∈ k_first:k_last
     x = zero(E)
     storage_offs = storage_offset(bc, k)
     jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
     # Form x = vᴴ * bc[:,k].
     @simd for j ∈ jrange
-      x = x + conj(v[j]) * bc_els[j - storage_offs, k]
+      x = x + conj(v[j-offs]) * bc_els[j - storage_offs, k]
     end
     # Subtract v * x from bc[:,k].
     x = β̄ * x
