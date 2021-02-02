@@ -10,7 +10,21 @@ using InPlace
 using ..Compute
 
 export WYTrans,
-  resetWYBlock!, resetWYBlocks!, reworkWY!, WYIndexSubsetError, SelectWY, selectWY!
+  resetWYBlock!,
+  resetWYBlocks!,
+  reworkWY!,
+  WYIndexSubsetError,
+  SelectWY,
+  selectWY!,
+  throw_WYBlockNotAvailable,
+  WYBlockNotAvailable,
+  WorkSizeError,
+  throw_WorkSizeError,
+  throw_ColumnRange_DimensionMismatch,
+  throw_RowRange_DimensionMismatch,
+  WYIndexSubsetError,
+  WYMaxHouseholderError,
+  throw_WYMaxHouseholderError
 
 """
 
@@ -553,7 +567,7 @@ throw_WYMaxHouseholderError(block) =
   num_WY = wy.num_WY[]
   active_WY = wy.active_WY[]
 
-  # @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
+  @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
   
   @inbounds begin
     num_hs = wy.num_hs[k]

@@ -1,11 +1,11 @@
 module Householder
 
-export HouseholderTrans, lhouseholder, rhouseholder, householder, WYTrans
+using Reexport
 
 include("Compute.jl")
-using .Compute
+@reexport using .Compute
 
 include("WY.jl")
-using .WY
+@reexport using .WY
 
 end # module
