@@ -4,7 +4,6 @@ using Base: @propagate_inbounds
 using Printf
 
 using LinearAlgebra
-import InPlace
 using InPlace
 
 using ..Compute
@@ -199,18 +198,18 @@ throw_WYBlockNotAvailable(block, num_WY) =
 """
     resetWYBlock!(
       k::Int
-      offsets::Int,
+      offset::Int,
       sizeWY::Int,
       wy::WYTrans{E},
     ) where {E<:Number}
 
 Return a block of a WYTrans to an empty state, with an given
-offsetset and block size.
+offset and block size.
 
 """
 @inline function resetWYBlock!(
   k::Int,
-  offsets::Int,
+  offset::Int,
   sizeWY::Int,
   wy::WYTrans,
 )
@@ -223,7 +222,7 @@ offsetset and block size.
     )))
   end
   @inbounds begin
-    wy.offsets[k] = offsets
+    wy.offsets[k] = offset
     wy.sizes[k] = sizeWY
     wy.num_hs[k] = 0
   end
@@ -244,7 +243,7 @@ end
 
   wy.num_WY[]=num_WY
   k=1
-  for (offsets, sizeWY) ∈ offsets_sizes
+  for (offset, sizeWY) ∈ offsets_sizes
     @boundscheck(
       sizeWY <= wy.max_WY_size || throw(DimensionMismatch(@sprintf(
         "Requested dimension %d of a WY block exceeds the maximum block size %d.",
@@ -253,7 +252,7 @@ end
       )))
     )
     @inbounds begin
-      wy.offsets[k] = offsets
+      wy.offsets[k] = offset
       wy.sizes[k] = sizeWY
       wy.num_hs[k] = 0
       k += 1
@@ -334,14 +333,14 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     inds = 1:wy.sizes[k]
-    offsets = wy.offsets[k]
+    offset = wy.offsets[k]
     (ma,na) = size(A)
     num_hs= wy.num_hs[k]
   end
 
   @boundscheck begin
 
-    inds .+ offsets ⊆ 1:na ||
+    inds .+ offset ⊆ 1:na ||
       throw_ColumnRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= ma * num_hs ||
@@ -354,7 +353,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
       work = reshape(wy.work[1:ma*num_hs], ma, num_hs)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[:,inds .+ offsets]
+      A0 = A[:,inds .+ offset]
     end
     oneE = one(E)
     mul!(work, A0, W)
@@ -389,14 +388,14 @@ end
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     num_hs = wy.num_hs[k]
-    offsets = wy.offsets[k]
+    offset = wy.offsets[k]
     inds = 1:wy.sizes[k]
     (ma,na) = size(A)
   end
 
   @boundscheck begin
 
-    inds .+ offsets ⊆ 1:na ||
+    inds .+ offset ⊆ 1:na ||
       throw_ColumnRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= ma * num_hs ||
@@ -409,7 +408,7 @@ end
       work = reshape(wy.work[1:ma*num_hs], ma, num_hs)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[:, inds .+ offsets]
+      A0 = A[:, inds .+ offset]
     end
     oneE = one(E)
     mul!(work, A0, Y)
@@ -444,14 +443,14 @@ end
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     num_hs = wy.num_hs[k]
-    offsets = wy.offsets[k]
+    offset = wy.offsets[k]
     inds = 1:wy.sizes[k]
     (ma, na) = size(A)
   end
 
   @boundscheck begin
 
-    inds .+ offsets ⊆ 1:ma ||
+    inds .+ offset ⊆ 1:ma ||
       throw_RowRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= na * num_hs ||
@@ -464,7 +463,7 @@ end
       work = reshape(wy.work[1:na*num_hs],num_hs,na)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[inds .+ offsets, :]
+      A0 = A[inds .+ offset, :]
     end
     oneE = one(E)
     mul!(work, Y', A0)
@@ -500,13 +499,13 @@ end
 
   @inbounds begin
     num_hs = wy.num_hs[k]
-    offsets = wy.offsets[k]
+    offset = wy.offsets[k]
     inds = 1:wy.sizes[k]
     (ma, na) = size(A)
   end
   @boundscheck begin
 
-    inds .+ offsets ⊆ 1:ma ||
+    inds .+ offset ⊆ 1:ma ||
       throw_RowRange_DimensionMismatch(ma, na, inds)
 
     length(wy.work) >= na * num_hs ||
@@ -519,7 +518,7 @@ end
       work = reshape(wy.work[1:na*num_hs],num_hs,na)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
-      A0 = A[inds .+ offsets, :]
+      A0 = A[inds .+ offset, :]
     end
     oneE = one(E)
     mul!(work, W', A0)
@@ -571,15 +570,15 @@ throw_WYMaxHouseholderError(block) =
   
   @inbounds begin
     num_hs = wy.num_hs[k]
-    wy_offsets=wy.offsets[k]
+    wy_offset=wy.offsets[k]
     v = reshape(h.v, length(h.v), 1)
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
-    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
   end
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offset) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
@@ -634,17 +633,17 @@ end
 
   @inbounds begin
     num_hs = wy.num_hs[k]
-    wy_offsets=wy.offsets[k]
+    wy_offset=wy.offsets[k]
 
     v=reshape(h.v,length(h.v),1)
 
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
-    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
   end
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offset) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
@@ -698,17 +697,17 @@ end
 
   @inbounds begin
     num_hs = wy.num_hs[k]
-    wy_offsets = wy.offsets[k]
+    wy_offset = wy.offsets[k]
 
     v=reshape(h.v,length(h.v),1)
 
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
-    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
   end
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offset) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
@@ -765,17 +764,17 @@ end
 
   @inbounds begin
     num_hs = wy.num_hs[k]
-    wy_offsets = wy.offsets[k]
+    wy_offset = wy.offsets[k]
 
     v=reshape(h.v,length(h.v),1)
 
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
-    indshwy = (h.offs - wy_offsets + 1):(h.offs - wy_offsets + h.size)
+    indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
   end
 
   @boundscheck begin
-    indsh ⊆ (indswy .+ wy_offsets) || throw(WYIndexSubsetError)
+    indsh ⊆ (indswy .+ wy_offset) || throw(WYIndexSubsetError)
     num_hs < wy.max_num_hs || throw_WYMaxHouseholderError(k)
   end
 
