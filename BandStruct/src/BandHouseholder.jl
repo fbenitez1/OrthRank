@@ -5,6 +5,7 @@ using Base: @propagate_inbounds
 using Printf
 
 using Householder.Compute
+using Householder.WY
 
 using ..BandColumnMatrices
 using ..LeadingBandColumnMatrices
@@ -167,18 +168,20 @@ end
     check_bc_storage_bounds(bc, j_last, k_first)
   end
 
-  @inbounds for k ∈ k_first:k_last
-    x = zero(E)
-    storage_offs = storage_offset(bc, k)
-    jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
-    # Form x = vᴴ * bc[:,k].
-    @simd for j ∈ jrange
-      x = x + conj(v[j - offs]) * bc_els[j - storage_offs, k]
-    end
-    # Subtract v * x from bc[:,k].
-    x = β * x
-    @simd for j ∈ 1:m
-      bc_els[offs + j - storage_offs, k] -= v[j] * x
+  @inbounds begin
+    for k ∈ k_first:k_last
+      x = zero(E)
+      storage_offs = storage_offset(bc, k)
+      jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
+      # Form x = vᴴ * bc[:,k].
+      @simd for j ∈ jrange
+        x = x + conj(v[j - offs]) * bc_els[j - storage_offs, k]
+      end
+      # Subtract v * x from bc[:,k].
+      x = β * x
+      @simd for j ∈ 1:m
+        bc_els[offs + j - storage_offs, k] -= v[j] * x
+      end
     end
     bulge_upper!(bc, j_first, k_last)
     bulge_lower!(bc, j_last, k_first)
@@ -275,18 +278,314 @@ end
     check_bc_storage_bounds(bc, j_last, k_first)
   end
   
-  @inbounds for k ∈ k_first:k_last
-    x = zero(E)
-    storage_offs = storage_offset(bc, k)
-    jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
-    # Form x = vᴴ * bc[:,k].
-    @simd for j ∈ jrange
-      x = x + conj(v[j-offs]) * bc_els[j - storage_offs, k]
+  @inbounds begin
+    for k ∈ k_first:k_last
+      x = zero(E)
+      storage_offs = storage_offset(bc, k)
+      jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
+      # Form x = vᴴ * bc[:,k].
+      @simd for j ∈ jrange
+        x = x + conj(v[j-offs]) * bc_els[j - storage_offs, k]
+      end
+      # Subtract v * x from bc[:,k].
+      x = β̄ * x
+      @simd for j ∈ 1:m
+        bc_els[offs + j - storage_offs, k] -= v[j] * x
+      end
     end
-    # Subtract v * x from bc[:,k].
-    x = β̄ * x
-    @simd for j ∈ 1:m
-      bc_els[offs + j - storage_offs, k] -= v[j] * x
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
+  end
+  nothing
+end
+
+@inline function InPlace.apply!(
+  bc::AbstractBandColumn{S,E},
+  wy::WYTrans{E},
+  k::Int
+) where {E<:Number,S}
+
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
+  @inbounds begin
+    inds = 1:wy.sizes[k]
+    offset = wy.offsets[k]
+    (mbc,nbc) = size(bc)
+    num_hs= wy.num_hs[k]
+  end
+
+  @boundscheck begin
+    inds .+ offset ⊆ 1:nbc ||
+      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds)
+  end
+
+  lw = length(wy.work)
+
+  n_bc0 = wy.sizes[k]
+  k_first = offset + 1
+  k_last = offset + n_bc0
+
+  j_first = first_inband_index(bc, :, k_first)
+  j_last = last_inband_index(bc, :, k_last)
+  m_bc0 = j_last - j_first + 1
+  bc_els = band_elements(bc)
+
+  @boundscheck begin
+    lw >= m_bc0 * num_hs ||
+      throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
+    check_bc_storage_bounds(bc, j_first, k_last)
+    check_bc_storage_bounds(bc, j_last, k_first)
+  end
+
+  @inbounds begin
+    @views begin
+      work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+    end
+    work .= zero(E)
+
+    # Accumulate work = bc * W.
+    for l ∈ 1:num_hs
+      for kk ∈ 1:n_bc0
+        j0 = first_inband_index(bc, :, kk + offset)
+        j1 = last_inband_index(bc, :, kk + offset)
+        storage_offs = storage_offset(bc, kk + offset)
+        @simd for j ∈ j0:j1
+          work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
+            W[kk, l]
+        end
+      end
+    end
+
+    # Subtract bc * W * Yᴴ = work * Yᴴ from bc.
+    for l ∈ 1:num_hs
+      for kk ∈ 1:n_bc0
+        storage_offs = storage_offset(bc, kk + offset)
+        @simd for j ∈ j_first:j_last
+          bc_els[j - storage_offs, kk + offset] -=
+            work[j - j_first + 1, l] * conj(Y[kk,l])
+        end
+      end
+    end
+  end
+  bulge_upper!(bc, j_first, k_last)
+  bulge_lower!(bc, j_last, k_first)
+  nothing
+end
+
+@inline function InPlace.apply_inv!(
+  bc::AbstractBandColumn{S,E},
+  wy::WYTrans{E},
+  k::Int
+) where {E<:Number,S}
+
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
+  @inbounds begin
+    inds = 1:wy.sizes[k]
+    offset = wy.offsets[k]
+    (mbc,nbc) = size(bc)
+    num_hs= wy.num_hs[k]
+  end
+
+  @boundscheck begin
+    inds .+ offset ⊆ 1:nbc ||
+      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds)
+  end
+
+  lw = length(wy.work)
+  n_bc0 = wy.sizes[k]
+  k_first = offset + 1
+  k_last = offset + n_bc0
+
+  j_first = first_inband_index(bc, :, k_first)
+  j_last = last_inband_index(bc, :, k_last)
+  m_bc0 = j_last - j_first + 1
+  bc_els = band_elements(bc)
+
+  @boundscheck begin
+    lw >= m_bc0 * num_hs ||
+      throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
+    check_bc_storage_bounds(bc, j_first, k_last)
+    check_bc_storage_bounds(bc, j_last, k_first)
+  end
+
+  @inbounds begin
+    @views begin
+      work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+    end
+    work .= zero(E)
+
+    # Accumulate work = bc * Y.
+    for l ∈ 1:num_hs
+      for kk ∈ 1:n_bc0
+        j0 = first_inband_index(bc, :, kk + offset)
+        j1 = last_inband_index(bc, :, kk + offset)
+        storage_offs = storage_offset(bc, kk + offset)
+        @simd for j ∈ j0:j1
+          work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
+            Y[kk, l]
+        end
+      end
+    end
+
+    # Subtract bc * Y * Wᴴ = work * Wᴴ from bc.
+    for l ∈ 1:num_hs
+      for kk ∈ 1:n_bc0
+        storage_offs = storage_offset(bc, kk + offset)
+        @simd for j ∈ j_first:j_last
+          bc_els[j - storage_offs, kk + offset] -=
+            work[j - j_first + 1, l] * conj(W[kk,l])
+        end
+      end
+    end
+  end
+  bulge_upper!(bc, j_first, k_last)
+  bulge_lower!(bc, j_last, k_first)
+  nothing
+end
+
+
+@inline function InPlace.apply!(
+  wy::WYTrans{E},
+  k::Int,
+  bc::AbstractBandColumn{S,E}
+) where {E<:Number,S}
+
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
+  @inbounds begin
+    inds = 1:wy.sizes[k]
+    offset = wy.offsets[k]
+    (mbc,nbc) = size(bc)
+    m_bc0 = wy.sizes[k]
+    num_hs= wy.num_hs[k]
+  end
+
+  @boundscheck begin
+    inds .+ offset ⊆ 1:mbc ||
+      throw_RowRange_DimensionMismatch(mbc, nbc, inds)
+  end
+
+  lw = length(wy.work)
+
+  j_first = offset + 1
+  j_last = offset + m_bc0
+
+  k_first = first_inband_index(bc, j_first, :)
+  k_last = last_inband_index(bc, j_last, :)
+  n_bc0 = k_last - k_first + 1
+  bc_els = band_elements(bc)
+
+  @boundscheck begin
+    lw >= n_bc0 * num_hs ||
+      throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
+    check_bc_storage_bounds(bc, j_first, k_last)
+    check_bc_storage_bounds(bc, j_last, k_first)
+  end
+
+  @inbounds begin
+    @views begin
+      work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+    end
+    work .= zero(E)
+    # Form work[l,kk] = Y[:,l]ᴴ * bc[:,kk].
+    for l∈1:num_hs
+      for kk ∈ k_first:k_last
+        x = zero(E)
+        storage_offs = storage_offset(bc, kk)
+        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+        @simd for j ∈ jrange
+          work[l,kk-k_first+1] += conj(Y[j - offset,l]) * bc_els[j - storage_offs, kk]
+        end
+      end
+    end
+    # Subtract  W * work from bc[j_first:j_last,k_first:k_last].
+    for l∈1:num_hs
+      for kk∈k_first:k_last
+        storage_offs = storage_offset(bc, kk)
+        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+        @simd for j ∈ jrange
+          bc_els[j - storage_offs, kk] -= W[j-offset,l] * work[l,kk-k_first+1]
+        end
+      end
+    end
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
+  end
+  nothing
+end
+
+@inline function InPlace.apply_inv!(
+  wy::WYTrans{E},
+  k::Int,
+  bc::AbstractBandColumn{S,E}
+) where {E<:Number,S}
+
+  num_WY = wy.num_WY[]
+  @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
+  @inbounds begin
+    inds = 1:wy.sizes[k]
+    offset = wy.offsets[k]
+    (mbc,nbc) = size(bc)
+    m_bc0 = wy.sizes[k]
+    num_hs= wy.num_hs[k]
+  end
+
+  @boundscheck begin
+    inds .+ offset ⊆ 1:mbc ||
+      throw_RowRange_DimensionMismatch(mbc, nbc, inds)
+  end
+
+  lw = length(wy.work)
+
+  j_first = offset + 1
+  j_last = offset + m_bc0
+
+  k_first = first_inband_index(bc, j_first, :)
+  k_last = last_inband_index(bc, j_last, :)
+  n_bc0 = k_last - k_first + 1
+  bc_els = band_elements(bc)
+
+  @boundscheck begin
+    lw >= n_bc0 * num_hs ||
+      throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
+    check_bc_storage_bounds(bc, j_first, k_last)
+    check_bc_storage_bounds(bc, j_last, k_first)
+  end
+
+  @inbounds begin
+    @views begin
+      work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+    end
+    work .= zero(E)
+    # Form work[l,kk] = W[:,l]ᴴ * bc[:,kk].
+    for l∈1:num_hs
+      for kk ∈ k_first:k_last
+        x = zero(E)
+        storage_offs = storage_offset(bc, kk)
+        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+        @simd for j ∈ jrange
+          work[l,kk-k_first+1] += conj(W[j - offset,l]) * bc_els[j - storage_offs, kk]
+        end
+      end
+    end
+    # Subtract  Y * work from bc[j_first:j_last,k_first:k_last].
+    for l∈1:num_hs
+      for kk∈k_first:k_last
+        storage_offs = storage_offset(bc, kk)
+        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+        @simd for j ∈ jrange
+          bc_els[j - storage_offs, kk] -= Y[j-offset,l] * work[l,kk-k_first+1]
+        end
+      end
     end
     bulge_upper!(bc, j_first, k_last)
     bulge_lower!(bc, j_last, k_first)
@@ -295,4 +594,3 @@ end
 end
 
 end # module
-
