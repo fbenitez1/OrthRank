@@ -10,13 +10,13 @@ max_num_hs=3
 m=10
 n=10
 
-E=Float64
-A=randn(E,m,n)
-A0=copy(A)
-wy1=WYTrans(E,1,m,n,max_num_hs)
-resetWYBlock!(1,0,m,wy1)
-wy2=WYTrans(E,1,m,n,max_num_hs)
-resetWYBlock!(1,0,m,wy2)
+E = Float64
+A = randn(E, m, n)
+A0 = copy(A)
+wy1 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+resetWYBlock!(wy1, offset=0, sizeWY=m)
+wy2 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+resetWYBlock!(wy2, offset=0, sizeWY=m)
 Im=Matrix{E}(I,m,m)
 Q=copy(Im)
 work=zeros(E,m)
@@ -51,10 +51,10 @@ show_error_result(
 E=Complex{Float64}
 A=randn(E,m,n)
 A0=copy(A)
-wy1=WYTrans(E,1,m,n,max_num_hs)
-resetWYBlock!(1,0,m,wy1)
-wy2=WYTrans(E,1,m,n,max_num_hs)
-resetWYBlock!(1,0,m,wy2)
+wy1 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+resetWYBlock!(wy1, offset = 0, sizeWY = m)
+wy2 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+resetWYBlock!(wy2, offset = 0, sizeWY = m)
 Im=Matrix{E}(I,m,m)
 Q=copy(Im)
 work=zeros(E,m)
@@ -102,23 +102,22 @@ function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
   blocks = rem > 0 ? blocks + 1 : blocks
   Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
-  wy=WYTrans(E,1,m,m,block_size+2)
+  wy = WYTrans(E, max_WY_size = m, work_size = m, max_num_hs = block_size + 2)
   workh = zeros(E, m)
-  selectWY!(wy,1)
+  selectWY!(wy, 1)
   @inbounds @views for b ∈ 1:blocks
-    offs = (b-1)*block_size
-    resetWYBlock!(1,offs,m-offs,wy)
-    block_end = min(b*block_size,n)
+    offs = (b - 1) * block_size
+    resetWYBlock!(wy, offset = offs, sizeWY = m - offs)
+    block_end = min(b * block_size, n)
     for k ∈ ((b - 1) * block_size + 1):block_end
       vk = v[1:(m - k + 1)]
-      vk[:] = A[k:m, k]
-      local h = lhouseholder(vk, 1, k - 1, workh)
+      local h = householder(A, k:m, k, vk, offset = k - 1, work = workh)
       h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
       wy ⊛ h
     end
     Q ⊛ wy
-    wy ⊘ A[:,block_end+1:n]
+    wy ⊘ A[:, (block_end + 1):n]
   end
   (Q, A)
 end

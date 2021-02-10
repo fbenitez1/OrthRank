@@ -3,6 +3,7 @@ module Compute
 using Printf
 
 using LinearAlgebra
+using Base: @propagate_inbounds
 import InPlace
 
 export HouseholderTrans,
@@ -126,7 +127,7 @@ function lhouseholder(
   end
 end
 
-function lhouseholder(
+@propagate_inbounds function lhouseholder(
   a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
@@ -183,7 +184,7 @@ function rhouseholder(
   end
 end
 
-function rhouseholder(
+@propagate_inbounds function rhouseholder(
   a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
@@ -193,82 +194,168 @@ function rhouseholder(
   rhouseholder(a,l,offs,work)
 end
 
-function householder(
-  a::AbstractArray{E,2},
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
   js::UnitRange{Int},
   k::Int,
-  l::Int64,
-  offs::Int64,
-  work_size::Int64,
-) where {E<:Number}
-  work = zeros(E, work_size)
-  @views lhouseholder(a[js,k],l,offs,work)
-end
-
-function householder(
-  a::AbstractArray{E,2},
-  j::Int,
-  ks::UnitRange{Int},
-  l::Int64,
-  offs::Int64,
-  work_size::Int64,
-) where {E<:Number}
-  work = zeros(E, work_size)
-  @views rhouseholder(a[j,ks],l,offs,work)
-end
-
-function householder(
-  a::AbstractArray{E,2},
-  js::UnitRange{Int},
-  k::Int,
-  l::Int64,
-  offs::Int64,
-  v::AbstractArray{E,1},
-  work_size::Int64,
-) where {E<:Number}
-  work = zeros(E, work_size)
-  @views v[1:length(js)] = a[js,k]
-  lhouseholder(v,l,offs,work)
-end
-
-function householder(
-  a::AbstractArray{E,2},
-  j::Int,
-  ks::UnitRange{Int},
-  l::Int64,
-  offs::Int64,
-  v::AbstractArray{E,1},
-  work_size::Int64,
-) where {E<:Number}
-  work = zeros(E, work_size)
-  @views v[1:length(ks)] = a[j,ks]
-  rhouseholder(v,l,offs,work)
-end
-
-function householder(
-  a::AbstractArray{E,2},
-  js::UnitRange{Int},
-  k::Int,
-  l::Int64,
-  offs::Int64,
-  v::AbstractArray{E,1},
+  nonzero_index::Int,
+  offset::Int,
+  vector::AbstractArray{E,1},
   work::AbstractArray{E,1},
 ) where {E<:Number}
-  @views v[1:length(js)] = a[js,k]
-  lhouseholder(v,l,offs,work)
+  ljs=length(js)
+  @views begin
+    vjs = vector[1:ljs]
+    vjs[:] = A[js,k]
+  end
+  lhouseholder(vjs, nonzero_index, offset, work)
 end
 
-function householder(
-  a::AbstractArray{E,2},
-  j::Int,
-  ks::UnitRange{Int},
-  l::Int64,
-  offs::Int64,
-  v::AbstractArray{E,1},
+# two keyword methods, with and without vector.
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  vector::AbstractArray{E,1};
+  work,
+  nonzero_index = 1,
+  offset = first(js)-1,
+) where {E<:Number}
+  householder(A, js, k, nonzero_index, offset, vector, work)
+end
+
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int;
+  work,
+  nonzero_index = 1,
+  offset = first(js) - 1,
+) where {E<:Number}
+  householder(A, js, k, nonzero_index, offset, work)
+end
+
+# vector, no work
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  nonzero_index::Int64,
+  offset::Int64,
+  vector::AbstractArray{E,1},
+  work_size::Int,
+) where {E<:Number}
+  work=zeros(E,work_size)
+  householder(A, js, k, nonzero_index, offset, vector, work)
+end
+
+# no vector, no work, 
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  nonzero_index::Int64,
+  offset::Int64,
+  work_size::Int,
+) where {E<:Number}
+  work=zeros(E,work_size)
+  vector=zeros(E,length(js))
+  householder(A, js, k, nonzero_index, offset, vector, work)
+end
+
+# no vector, work
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  js::UnitRange{Int},
+  k::Int,
+  nonzero_index::Int64,
+  offset::Int64,
   work::AbstractArray{E,1},
 ) where {E<:Number}
-  @views v[1:length(ks)] = a[j,ks]
-  rhouseholder(v,l,offs,work)
+  vector=zeros(E,length(js))
+  householder(A, js, k, nonzero_index, offset, vector, work)
+end
+
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  nonzero_index::Int,
+  offset::Int,
+  vector::AbstractArray{E,1},
+  work::AbstractArray{E,1},
+) where {E<:Number}
+  lks=length(ks)
+  @views begin
+    vks = vector[1:lks]
+    vks[:] = A[j,ks]
+  end
+  lhouseholder(vks, nonzero_index, offset, work)
+end
+
+# two keyword methods, with and without vector.
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  vector::AbstractArray{E,1};
+  work,
+  nonzero_index = 1,
+  offset = first(ks) - 1,
+) where {E<:Number}
+  householder(A, j, ks, nonzero_index, offset, vector, work)
+end
+
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int};
+  work,
+  nonzero_index = 1,
+  offset = first(ks) - 1,
+) where {E<:Number}
+  householder(A, j, ks, nonzero_index, offset, work)
+end
+
+# vector, no work
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  nonzero_index::Int64,
+  offset::Int64,
+  vector::AbstractArray{E,1},
+  work_size::Int,
+) where {E<:Number}
+  work=zeros(E,work_size)
+  householder(A, j, ks, nonzero_index, offset, vector, work)
+end
+
+# no vector, no work, 
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  nonzero_index::Int64,
+  offset::Int64,
+  work_size::Int,
+) where {E<:Number}
+  work=zeros(E,work_size)
+  vector=zeros(E,length(ks))
+  householder(A, j, ks, nonzero_index, offset, vector, work)
+end
+
+# no vector, work
+@propagate_inbounds function householder(
+  A::AbstractArray{E,2},
+  j::Int,
+  ks::UnitRange{Int},
+  nonzero_index::Int64,
+  offset::Int64,
+  work::AbstractArray{E,1},
+) where {E<:Number}
+  vector=zeros(E,length(ks))
+  householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 
 @inline function column_nonzero!(

@@ -11,7 +11,8 @@ using ..BandColumnMatrices
 using ..LeadingBandColumnMatrices
 using InPlace
 
-@inline function Compute.householder(
+# vector and work.
+@propagate_inbounds function Compute.householder(
   bc::AbstractBandColumn{S,E},
   js::UnitRange{Int},
   k::Int,
@@ -45,7 +46,7 @@ using InPlace
   lhouseholder(v, l, offs, work)
 end
 
-@inline function Compute.householder(
+@propagate_inbounds function Compute.householder(
   bc::AbstractBandColumn{S,E},
   j::Int,
   ks::UnitRange{Int},
@@ -119,6 +120,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     work[1:m_bc] .= zero(E)
     # Accumulate w = bc * v in work array by a linear combination of
     # columns of bc.
@@ -138,8 +141,6 @@ end
           β * work[j - j_first + 1] * conj(v[k])
       end
     end
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
   end
   nothing
 end
@@ -169,6 +170,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     for k ∈ k_first:k_last
       x = zero(E)
       storage_offs = storage_offset(bc, k)
@@ -183,8 +186,6 @@ end
         bc_els[offs + j - storage_offs, k] -= v[j] * x
       end
     end
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
   end
   nothing
 end
@@ -229,6 +230,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     work[1:m_bc] .= zero(E)
     # Accumulate w = bc * v in work array by a linear combination of
     # columns of bc.
@@ -248,8 +251,6 @@ end
           β̄ * work[j - j_first + 1] * conj(v[k])
       end
     end
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
   end
   nothing
 end
@@ -279,6 +280,8 @@ end
   end
   
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     for k ∈ k_first:k_last
       x = zero(E)
       storage_offs = storage_offset(bc, k)
@@ -293,8 +296,6 @@ end
         bc_els[offs + j - storage_offs, k] -= v[j] * x
       end
     end
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
   end
   nothing
 end
@@ -338,6 +339,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     @views begin
       work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
       W = wy.W[inds, 1:num_hs, k]
@@ -369,8 +372,6 @@ end
       end
     end
   end
-  bulge_upper!(bc, j_first, k_last)
-  bulge_lower!(bc, j_last, k_first)
   nothing
 end
 
@@ -412,6 +413,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     @views begin
       work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
       W = wy.W[inds, 1:num_hs, k]
@@ -443,8 +446,6 @@ end
       end
     end
   end
-  bulge_upper!(bc, j_first, k_last)
-  bulge_lower!(bc, j_last, k_first)
   nothing
 end
 
@@ -488,6 +489,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     @views begin
       work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
       W = wy.W[inds, 1:num_hs, k]
@@ -515,8 +518,6 @@ end
         end
       end
     end
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
   end
   nothing
 end
@@ -560,6 +561,8 @@ end
   end
 
   @inbounds begin
+    bulge_upper!(bc, j_first, k_last)
+    bulge_lower!(bc, j_last, k_first)
     @views begin
       work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
       W = wy.W[inds, 1:num_hs, k]
@@ -587,8 +590,6 @@ end
         end
       end
     end
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
   end
   nothing
 end

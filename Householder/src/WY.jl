@@ -45,7 +45,7 @@ A struct for storing multiple WY transformations.
 
   - `max_WY_size::Int`: Maximum number of transformations.
 
-  - `A_other_dim::Int`: Other dimension of A (determines the size of
+  - `work_size::Int`: Other dimension of A (determines the size of
     the workspace).
 
   - `max_num_hs::Int`: maximum number of Householders in each
@@ -72,7 +72,7 @@ A struct for storing multiple WY transformations.
     max_num_WY`.  This stores `Y` for the different
     transformations.
 
-  - `work:AEWork`: Element array of length `A_other_dim * max_num_hs`.
+  - `work:AEWork`: Element array of length `work_size * max_num_hs`.
 
 ## Application of WY Transformations
 
@@ -117,7 +117,7 @@ struct WYTrans{
   # Maximum block size.
   max_WY_size::Int
   # Other dimension of A (determines the size of the workspace).
-  A_other_dim::Int
+  work_size::Int
   # maximum number of Householders.
   max_num_hs::Int
   # Number of blocks
@@ -153,7 +153,7 @@ end
       ::Type{E},
       max_num_WY::Int,
       max_WY_size::Int,
-      A_other_dim::Int,
+      work_size::Int,
       max_num_hs::Int,
     ) where {E}
 
@@ -165,13 +165,13 @@ function WYTrans(
   ::Type{E},
   max_num_WY::Int,
   max_WY_size::Int,
-  A_other_dim::Int,
+  work_size::Int,
   max_num_hs::Int,
 ) where {E<:Number}
   WYTrans(
     max_num_WY,
     max_WY_size,
-    A_other_dim,
+    work_size,
     max_num_hs,
     Ref(max_num_WY), # include all possible blocks.
     Ref(0),
@@ -180,8 +180,18 @@ function WYTrans(
     zeros(Int,max_num_WY),
     zeros(E, max_WY_size, max_num_hs, max_num_WY),
     zeros(E, max_WY_size, max_num_hs, max_num_WY),
-    zeros(E, A_other_dim * max_num_hs),
+    zeros(E, work_size * max_num_hs),
   )
+end
+
+function WYTrans(
+  ::Type{E};
+  max_num_WY::Int=1,
+  max_WY_size::Int,
+  work_size::Int,
+  max_num_hs::Int,
+) where {E<:Number}
+  WYTrans(E, max_num_WY, max_WY_size, work_size, max_num_hs)
 end
 
 struct WYBlockNotAvailable <: Exception
@@ -208,10 +218,10 @@ offset and block size.
 
 """
 @inline function resetWYBlock!(
+  wy::WYTrans,
   k::Int,
   offset::Int,
   sizeWY::Int,
-  wy::WYTrans,
 )
   @boundscheck begin
     k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
@@ -227,6 +237,15 @@ offset and block size.
     wy.num_hs[k] = 0
   end
   nothing
+end
+
+@propagate_inbounds function resetWYBlock!(
+  wy::WYTrans;
+  block::Int=1,
+  offset::Int=wy.offsets[block],
+  sizeWY::Int=wy.sizes[block],
+)
+  resetWYBlock!(wy, block, offset, sizeWY)
 end
 
 @inline function resetWYBlocks!(
@@ -263,18 +282,18 @@ end
 
 """
     reworkWY!(
-      A_other_dim::Int,
+      work_size::Int,
       wy::WYTrans{E},
     ) where {E<:Number}
 
 Allocate a new work space for a WYTrans so that it can be applied to a
 matrix of a different (larger) opposite side size.
 """
-@inline function reworkWY!(A_other_dim::Int, wy::WYTrans{E}) where {E<:Number}
+@inline function reworkWY!(wy::WYTrans{E}, work_size::Int) where {E<:Number}
   WYTrans(
     wy.max_num_WY,
     wy.max_WY_size,
-    A_other_dim,
+    work_size,
     wy.max_num_hs,
     wy.num_WY,
     wy.active_WY,
@@ -283,7 +302,7 @@ matrix of a different (larger) opposite side size.
     wy.num_hs,
     wy.W,
     wy.Y,
-    zeros(E, wy.A_other_dim * wy.max_num_hs),
+    zeros(E, wy.work_size * wy.max_num_hs),
   )
 end
 
