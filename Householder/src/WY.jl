@@ -381,7 +381,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -390,7 +390,7 @@ end
   apply!(A, wy, k)
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -436,7 +436,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -445,7 +445,7 @@ end
   apply_inv!(A, wy, k)
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -491,7 +491,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   wyk::SelectWY{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -500,7 +500,7 @@ end
   apply!(wy, k, A)
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   wy::WYTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -546,7 +546,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   wyk::SelectWY{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -555,7 +555,7 @@ end
   apply_inv!(wy, k, A)
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   wy::WYTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -623,7 +623,7 @@ throw_WYMaxHouseholderError(block) =
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -633,7 +633,7 @@ end
   apply!(wy, k, h)
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -687,7 +687,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -697,7 +697,7 @@ end
   apply_inv!(wy, k, h)
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -753,7 +753,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -764,7 +764,7 @@ end
   apply!(h, wy, k)
 end
 
-@propagate_inbounds function InPlace.:⊛(
+@propagate_inbounds function InPlace.apply!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -820,7 +820,7 @@ end
 
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -830,7 +830,7 @@ end
   apply_inv!(h, wy, k)
 end
 
-@propagate_inbounds function InPlace.:⊘(
+@propagate_inbounds function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}

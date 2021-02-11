@@ -9,7 +9,7 @@ using ..BandColumnMatrices
 using ..LeadingBandColumnMatrices
 using InPlace
 
-@propagate_inbounds @inline function InPlace.:⊛(
+@propagate_inbounds @inline function InPlace.apply!(
   bc::AbstractBandColumn{S, E},
   r::AdjRot{R,E},
 ) where {S,R<:AbstractFloat,E<:Union{R,Complex{R}}}
@@ -26,7 +26,7 @@ using InPlace
   nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊘(
+@propagate_inbounds @inline function InPlace.apply_inv!(
   bc::AbstractBandColumn{S, E},
   r::AdjRot{R,E},
 ) where {S, R<:AbstractFloat,E<:Union{R,Complex{R}}}
@@ -43,7 +43,7 @@ end
   nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊛(
+@propagate_inbounds @inline function InPlace.apply!(
   r::AdjRot{R,E},
   bc::AbstractBandColumn{S, E},
 ) where {S, R<:AbstractFloat,E<:Union{R,Complex{R}}}
@@ -60,7 +60,7 @@ end
   nothing
 end
 
-@propagate_inbounds @inline function InPlace.:⊘(
+@propagate_inbounds @inline function InPlace.apply_inv!(
   r::AdjRot{R,E},
   bc::AbstractBandColumn{S, E},
 ) where {S, R<:AbstractFloat,E<:Union{R,Complex{R}}}

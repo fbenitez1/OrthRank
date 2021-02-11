@@ -24,20 +24,8 @@ end
   nothing
 end
 
-@inline function ⊛(
-  t::Linear{<:AbstractArray{E,2}},
-  b::AbstractArray{E,2}
-) where {E<:Number}
-  b[1:end,1:end] = t.a * b
-  nothing
-end
-
-@inline function ⊛(
-  b::AbstractArray{E,2},
-  t::Linear{<:AbstractArray{E,2}}
-) where {E<:Number}
-  b[1:end,1:end] = b * t.a 
-  nothing
+@inline function ⊛(a, b)
+  apply!(a, b)
 end
 
 @inline function apply_inv!(
@@ -56,20 +44,9 @@ end
   nothing
 end
 
-@inline function ⊘(
-  t::Linear{<:AbstractArray{E,2}},
-  b::AbstractArray{E,2}
-) where {E<:Number}
-  b[1:end,1:end] = t.a \ b
-  nothing
-end
 
-@inline function ⊘(
-  b::AbstractArray{E,2},
-  t::Linear{<:AbstractArray{E,2}}
-) where {E<:Number}
-  b[1:end,1:end] = b / t.a 
-  nothing
+@inline function ⊘(a, b)
+  apply_inv!(a,b)
 end
 
 end # module

@@ -376,7 +376,7 @@ end
   A[j, (l + 1):end] .= zero(E)
 end
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   h::HouseholderTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -405,7 +405,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   h :: HouseholderTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -436,7 +436,7 @@ end
 end
 
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   A::AbstractArray{E,2},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -485,7 +485,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   A::AbstractArray{E,2},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -534,7 +534,7 @@ end
 
 # Adjoint operations.
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
 ) where {E<:Number}
@@ -582,7 +582,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
 ) where {E<:Number}
@@ -630,7 +630,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -659,7 +659,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E},
 ) where {E<:Number}

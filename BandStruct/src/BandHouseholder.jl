@@ -80,7 +80,7 @@ end
 end
 
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E},
 ) where {E<:Number,S}
@@ -145,7 +145,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E},
 ) where {E<:Number,S}
@@ -190,7 +190,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E},
 ) where {E<:Number,S}
@@ -255,7 +255,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E},
 ) where {E<:Number,S}

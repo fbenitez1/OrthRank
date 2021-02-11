@@ -236,7 +236,7 @@ end
 Apply a rotation, acting in-place to modify a.
 
 """
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   r::Rot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -253,7 +253,7 @@ Apply a rotation, acting in-place to modify a.
   nothing
 end
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   a::AbstractArray{T,2},
   r::Rot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -270,7 +270,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   r::AdjRot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -286,7 +286,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊛(
+@inline function InPlace.apply!(
   a::AbstractArray{T,2},
   r::AdjRot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -307,7 +307,7 @@ end
 Apply an inverse rotation, acting in-place to modify a.
 
 """
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   r::Rot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -324,7 +324,7 @@ Apply an inverse rotation, acting in-place to modify a.
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   a::AbstractArray{T,2},
   r::Rot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -341,7 +341,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.apply_inv!(
   r::AdjRot{R,T},
   a::AbstractArray{T,2},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -357,7 +357,7 @@ end
   nothing
 end
 
-@inline function InPlace.:⊘(
+@inline function InPlace.:apply_inv!(
   a::AbstractArray{T,2},
   r::AdjRot{R,T},
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
