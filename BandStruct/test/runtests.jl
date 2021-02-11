@@ -36,7 +36,6 @@ lbc0 = LeadingBandColumn(
 println("Testing BandStruct operations for a matrix with structure:")
 println()
 
-
 show(wilk(lbc0))
 
 bc0 = copy(toBandColumn(lbc0))
@@ -50,3 +49,4 @@ include("bulge.jl")
 include("notch.jl")
 include("rotations.jl")
 include("householder.jl")
+include("wy.jl")
