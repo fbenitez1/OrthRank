@@ -24,7 +24,7 @@ using InPlace
   lv = length(v)
   ljs = length(js)
   @boundscheck begin
-    lv == ljs || throw(DimensionMismatch(@sprintf(
+    lv >= ljs || throw(DimensionMismatch(@sprintf(
       """
       In lhouseholder(bc::AbstractBandColumn{S,E}, js, k, l, offs, v, work),
       length(v) is %d and length(js) is %d.  These should be equal.
@@ -32,18 +32,18 @@ using InPlace
       lv,
       ljs
     )))
-    ((1:lv) .+ offs) ⊆ inband_index_range(bc, :, k) ||
+    ((1:ljs) .+ offs) ⊆ inband_index_range(bc, :, k) ||
       throw(SubcolumnIndicesNotInband(js, k))
   end
 
   storage_offs = storage_offset(bc, k)
   bc_els = band_elements(bc)
 
-  @inbounds for j ∈ 1:lv
+  @inbounds for j ∈ 1:ljs
     v[j] = bc_els[j + offs - storage_offs, k]
   end
 
-  lhouseholder(v, l, offs, work)
+  @views lhouseholder(v[1:ljs], l, offs, work)
 end
 
 @propagate_inbounds function Compute.householder(
@@ -58,7 +58,7 @@ end
   lv = length(v)
   lks = length(ks)
   @boundscheck begin
-    lv == lks || throw(DimensionMismatch(@sprintf(
+    lv >= lks || throw(DimensionMismatch(@sprintf(
       """
       In lhouseholder(bc::AbstractBandColumn{S,E}, j, ks, l, offs, v, work),
       length(v) is %d and length(ks) is %d.  These should be equal.
@@ -66,17 +66,17 @@ end
       lv,
       lks
     )))
-    ((1:lv) .+ offs) ⊆ inband_index_range(bc, j, :) ||
+    ((1:lks) .+ offs) ⊆ inband_index_range(bc, j, :) ||
       throw(SubrowIndicesNotInband(j, ks))
   end
 
   bc_els = band_elements(bc)
 
-  @inbounds for k ∈ 1:lv
+  @inbounds for k ∈ 1:lks
     storage_offs = storage_offset(bc, k + offs)
     v[k] = bc_els[j - storage_offs, k + offs]
   end
-  rhouseholder(v, l, offs, work)
+  @views rhouseholder(v[1:lks], l, offs, work)
 end
 
 
