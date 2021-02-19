@@ -79,13 +79,13 @@ function bandQRA(A::AbstractArray{E,2}, lbw::Int, ubw::Int) where {E<:Number}
   nothing
 end
 
-tol = 5e-14
+tol = 1e-13
 
 
 m0=100
 m=10000
-lbw=5
-ubw=5
+lbw=100
+ubw=100
 
 # The benchmarks.
 println()

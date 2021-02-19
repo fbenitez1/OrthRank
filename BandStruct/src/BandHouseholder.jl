@@ -3,6 +3,7 @@ module BandHouseholder
 using LinearAlgebra
 using Base: @propagate_inbounds
 using Printf
+using LoopVectorization
 
 using Householder.Compute
 using Householder.WY
@@ -86,7 +87,7 @@ end
 ) where {E<:Number,S}
 
   m = h.size
-  v = reshape(h.v, m, 1)
+  v = h.v
   offs = h.offs
   β = h.β
 
@@ -126,19 +127,18 @@ end
     # Accumulate w = bc * v in work array by a linear combination of
     # columns of bc.
     for k ∈ 1:m
-      j0 = first_inband_index(bc, :, k + offs)
-      j1 = last_inband_index(bc, :, k + offs)
       storage_offs = storage_offset(bc, k + offs)
-      @simd for j ∈ j0:j1
-        work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * v[k]
+      x=v[k]
+      @simd for j ∈ j_first:j_last
+        work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
       end
     end
     # Subtract β * w * vᴴ from bc.
     for k ∈ 1:m
       storage_offs = storage_offset(bc, k + offs)
+      x = β * conj(v[k])
       @simd for j ∈ j_first:j_last
-        bc_els[j - storage_offs, k + offs] -=
-          β * work[j - j_first + 1] * conj(v[k])
+        bc_els[j - storage_offs, k + offs] -= work[j - j_first + 1] * x
       end
     end
   end
@@ -151,7 +151,7 @@ end
 ) where {E<:Number,S}
 
   m = h.size
-  v = reshape(h.v, m, 1)
+  v = h.v
   offs = h.offs
   β = h.β
 
@@ -175,10 +175,9 @@ end
     for k ∈ k_first:k_last
       x = zero(E)
       storage_offs = storage_offset(bc, k)
-      jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
       # Form x = vᴴ * bc[:,k].
-      @simd for j ∈ jrange
-        x = x + conj(v[j - offs]) * bc_els[j - storage_offs, k]
+      @simd for j ∈ j_first:j_last
+        x += conj(v[j - offs]) * bc_els[j - storage_offs, k]
       end
       # Subtract v * x from bc[:,k].
       x = β * x
@@ -196,7 +195,7 @@ end
 ) where {E<:Number,S}
 
   m = h.size
-  v = reshape(h.v, m, 1)
+  v = h.v
   offs = h.offs
   β̄ = conj(h.β)
 
@@ -236,19 +235,19 @@ end
     # Accumulate w = bc * v in work array by a linear combination of
     # columns of bc.
     for k ∈ 1:m
-      j0 = first_inband_index(bc, :, k + offs)
-      j1 = last_inband_index(bc, :, k + offs)
       storage_offs = storage_offset(bc, k + offs)
-      @simd for j ∈ j0:j1
-        work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * v[k]
+      x=v[k]
+      @simd for j ∈ j_first:j_last
+        work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
       end
     end
     # Subtract β̄ * w * vᴴ from bc.
     for k ∈ 1:m
       storage_offs = storage_offset(bc, k + offs)
+      x = β̄ * conj(v[k])
       @simd for j ∈ j_first:j_last
         bc_els[j - storage_offs, k + offs] -=
-          β̄ * work[j - j_first + 1] * conj(v[k])
+          work[j - j_first + 1] * x
       end
     end
   end
@@ -261,7 +260,7 @@ end
 ) where {E<:Number,S}
 
   m = h.size
-  v = reshape(h.v, m, 1)
+  v=h.v
   offs = h.offs
   β̄ = conj(h.β)
 
@@ -278,20 +277,23 @@ end
     check_bc_storage_bounds(bc, j_first, k_last)
     check_bc_storage_bounds(bc, j_last, k_first)
   end
-  
+  work=h.work
   @inbounds begin
     bulge_upper!(bc, j_first, k_last)
     bulge_lower!(bc, j_last, k_first)
-    for k ∈ k_first:k_last
-      x = zero(E)
+    @avx for k ∈ k_first:k_last
+      x=zero(E)
       storage_offs = storage_offset(bc, k)
-      jrange = (offs .+ (1:m)) ∩ inband_index_range(bc, :, k)
       # Form x = vᴴ * bc[:,k].
-      @simd for j ∈ jrange
-        x = x + conj(v[j-offs]) * bc_els[j - storage_offs, k]
+      for j ∈ 1:m
+        x += conj(v[j]) * bc_els[j - storage_offs+offs, k]
       end
-      # Subtract v * x from bc[:,k].
-      x = β̄ * x
+      work[k-k_first+1]=x
+    end
+    # Subtract v * x from bc[:,k].
+    for k ∈ k_first:k_last
+      storage_offs = storage_offset(bc, k)
+      x = β̄ * work[k-k_first+1] 
       @simd for j ∈ 1:m
         bc_els[offs + j - storage_offs, k] -= v[j] * x
       end

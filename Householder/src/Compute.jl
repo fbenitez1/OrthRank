@@ -5,6 +5,7 @@ using Printf
 using LinearAlgebra
 using Base: @propagate_inbounds
 import InPlace
+using LoopVectorization
 
 export HouseholderTrans,
   update_norm,
@@ -391,15 +392,34 @@ end
       offs + 1,
       offs + m
     )))
+    lw = length(h.work)
+    (lw >= na) || throw(DimensionMismatch(@sprintf(
+      """
+      In h ⊛ A, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of columns of A).
+      """,
+      lw,
+      ma,
+      na,
+      na
+    )))
   end
-  v = reshape(h.v, m, 1)
-  @inbounds for k ∈ 1:na
-    x = zero(E)
-    @simd for j ∈ 1:m
-      x = x + conj(v[j]) * A[offs+j,k]
+  v = h.v
+  β = h.β
+  work = h.work
+  @inbounds begin
+    @avx for k ∈ 1:na
+      x = zero(E)
+      for j ∈ 1:m
+        x += conj(v[j]) * A[offs+j,k]
+      end
+      work[k] = x
     end
-    @simd for j ∈ 1:m
-      A[offs+j,k] -= h.β * v[j] * x
+    @avx for k ∈ 1:na
+      x = work[k]
+      for j ∈ 1:m
+        A[offs + j, k] -= β * v[j] * x
+      end
     end
   end
   nothing
@@ -420,15 +440,31 @@ end
       offs + 1,
       offs + m
     )))
+    lw = length(h.work)
+    (lw >= na) || throw(DimensionMismatch(@sprintf(
+      """
+      In h ⊛ A, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of columns of A).
+      """,
+      lw,
+      ma,
+      na,
+      na
+    )))
   end
   v = reshape(h.v, m, 1)
   α = conj(h.β)
-  @inbounds for k ∈ 1:na
+  work=h.work
+  @avx for k ∈ 1:na
     x = zero(E)
-    @simd for j ∈ 1:m
-      x = x + conj(v[j]) * A[offs+j,k]
+    for j ∈ 1:m
+      x += conj(v[j]) * A[offs+j,k]
     end
-    @simd for j ∈ 1:m
+    work[k] = x
+  end
+  @avx for k ∈ 1:na
+    x = work[k]
+    for j ∈ 1:m
       A[offs+j,k] -= α * v[j] * x
     end
   end
@@ -471,14 +507,16 @@ end
   work[1:ma] .= zero(E)
   β = h.β
   @inbounds begin
-    for k ∈ 1:m
-      @simd for j ∈ 1:ma
-        work[j] += A[j,k+offs] * v[k]
+    @avx for k ∈ 1:m
+      x = v[k]
+      for j ∈ 1:ma
+        work[j] += A[j,k+offs] * x
       end
     end
-    for k ∈ 1:m
-      @simd for j ∈ 1:ma
-        A[j,k+offs] -= β * work[j] * conj(v[k])
+    @avx for k ∈ 1:m
+      x=conj(v[k])
+      for j ∈ 1:ma
+        A[j,k+offs] -= β * work[j] * x
       end
     end
   end
@@ -517,15 +555,18 @@ end
     )))
   end
   work[1:ma] .= zero(E)
+  β̃ = conj(h.β)
   @inbounds begin
-    for k ∈ 1:m
-      @simd for j ∈ 1:ma
-        work[j] += A[j,k+offs] * v[k]
+    @avx for k ∈ 1:m
+      x = v[k]
+      for j ∈ 1:ma
+        work[j] += A[j,k+offs] * x
       end
     end
-    for k ∈ 1:m
-      @simd for j ∈ 1:ma
-        A[j,k+offs] -= conj(h.β) * work[j] * conj(v[k])
+    @avx for k ∈ 1:m
+      x = conj(v[k])
+      for j ∈ 1:ma
+        A[j,k+offs] -= β̃ * work[j] * x
       end
     end
   end
@@ -567,15 +608,18 @@ end
     )))
   end
   work[1:na] .= zero(E)
+  β = h.β
   @inbounds begin
-    for j ∈ 1:m
-      @simd for k ∈ 1:na
-        work[k] += Aᴴ[j + offs, k] * conj(v[j])
+    @avx for j ∈ 1:m
+      x = conj(v[j])
+      for k ∈ 1:na
+        work[k] += Aᴴ[j + offs, k] * x
       end
     end
-    for j ∈ 1:m
-      @simd for k ∈ 1:na
-        Aᴴ[j + offs, k] -= h.β * work[k] * v[j]
+    @avx for j ∈ 1:m
+      x = v[j]
+      for k ∈ 1:na
+        Aᴴ[j + offs, k] -= β * work[k] * x
       end
     end
   end
@@ -615,15 +659,18 @@ end
     )))
   end
   work[1:na] .= zero(E)
+  β̃ = conj(h.β)
   @inbounds begin
-    for j ∈ 1:m
-      @simd for k ∈ 1:na
-        work[k] += Aᴴ[j + offs, k] * conj(v[j])
+    @avx for j ∈ 1:m
+      x = conj(v[j])
+      for k ∈ 1:na
+        work[k] += Aᴴ[j + offs, k] * x
       end
     end
-    for j ∈ 1:m
-      @simd for k ∈ 1:na
-        Aᴴ[j + offs, k] -= conj(h.β) * work[k] * v[j]
+    @avx for j ∈ 1:m
+      x = v[j]
+      for k ∈ 1:na
+        Aᴴ[j + offs, k] -= β̃ * work[k] * x
       end
     end
   end
@@ -646,14 +693,32 @@ end
       offs + 1,
       offs + m
     )))
+    lw = length(h.work)
+    (lw >= ma) || throw(DimensionMismatch(@sprintf(
+      """In A⊛h, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of rows of A).
+      """,
+      lw,
+      ma,
+      na,
+      ma
+    )))
   end
-  @inbounds for j ∈ 1:ma
-    x = zero(E)
-    @simd for k ∈ 1:m
-      x = x + Aᴴ[j,k+offs] * v[k]
+  β = h.β
+  work=h.work
+  @inbounds begin
+    @avx for j ∈ 1:ma
+      x = zero(E)
+      for k ∈ 1:m
+        x = x + Aᴴ[j,k+offs] * v[k]
+      end
+      work[j] = x
     end
-    @simd for k ∈ 1:m
-      Aᴴ[j,k+offs] -= h.β * conj(v[k]) * x
+    @avx for j ∈ 1:ma
+      x = work[j]
+      for k ∈ 1:m
+        Aᴴ[j, k + offs] -= β * conj(v[k]) * x
+      end
     end
   end
   nothing
@@ -676,14 +741,32 @@ end
       offs + 1,
       offs + m
     )))
+    lw = length(work)
+    (lw >= ma) || throw(DimensionMismatch(@sprintf(
+      """
+      In A ⊘ h, h has work array of length %d. A is %d×%d and requires
+      a work array of length %d (the number of columns of A).
+      """,
+      lw,
+      ma,
+      na,
+      ma
+    )))
   end
-  @inbounds for j ∈ 1:ma
-    x = zero(E)
-    @simd for k ∈ 1:m
-      x = x + Aᴴ[j, k + offs] * v[k]
+  β̃ = conj(h.β)
+  @inbounds begin
+    @avx for j ∈ 1:ma
+      x = zero(E)
+      for k ∈ 1:m
+        x = x + Aᴴ[j, k + offs] * v[k]
+      end
+      work[j] = x
     end
-    @simd for k ∈ 1:m
-      Aᴴ[j, k + offs] -= conj(h.β) * conj(v[k]) * x
+    @avx for j ∈ 1:ma
+      x = work[j]
+      for k ∈ 1:m
+        Aᴴ[j, k + offs] -= β̃ * conj(v[k]) * x
+      end
     end
   end
   nothing
