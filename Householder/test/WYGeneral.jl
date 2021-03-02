@@ -88,7 +88,7 @@ function qrH(A::AbstractArray{E,2}) where {E<:Number}
   @inbounds @views for k ∈ 1:n
     vk = v[1:(m - k + 1)]
     vk[:] = A[k:m, k]
-    local h = lhouseholder(vk, 1, k - 1, work)
+    h = lhouseholder(vk, 1, k - 1, work)
     h ⊘ A[:, k:n]
     A[(k + 1):m, k] .= zero(E)
     Q ⊛ h
@@ -111,7 +111,7 @@ function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
     block_end = min(b * block_size, n)
     for k ∈ ((b - 1) * block_size + 1):block_end
       vk = v[1:(m - k + 1)]
-      local h = householder(A, k:m, k, vk, offset = k - 1, work = workh)
+      h = householder(A, k:m, k, vk, offset = k - 1, work = workh)
       h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
       wy ⊛ h
