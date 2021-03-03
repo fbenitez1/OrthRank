@@ -46,6 +46,10 @@ export BandColumn,
   bulge_upper!,
   notch_upper!,
   notch_lower!,
+  zero_above!,
+  zero_below!,
+  zero_right!,
+  zero_left!,
   bulge!,
   is_upper,
   is_lower,
@@ -1235,6 +1239,231 @@ end
 end
 
 """
+    function zero_above!(
+      bc::AbstractBandColumn{S,E},
+      j::Int,
+      k::Int,
+    ) where {S,E<:Number}
+
+    function zero_above!(
+      bc::AbstractBandColumn{S,E},
+      j::Int,
+      ks::UnitRange{Int},
+    ) where {S,E<:Number}
+
+Insert hard zeros into elements above index ``(j,k)`` or indices
+``(j,ks)``.  This does not adjust the structural bandwidth.
+"""
+@inline function zero_above!(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  k::Int,
+) where {S,E<:Number}
+  @boundscheck begin
+    is_inband(bc, j, k) || throw(IndexNotInband(j, k))
+  end
+  bc_els = band_elements(bc)
+  offs = storage_offset(bc, k)
+  j0 = first_inband_index(bc, :, k)
+  bc_els[j0-offs:j-offs,k] .= zero(E)
+end
+
+@inline function zero_above!(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  ks::UnitRange{Int},
+) where {S,E<:Number}
+
+  @boundscheck begin
+    k_first = first(ks)
+    k_last = last(ks)
+    is_inband(bc, j, k_first) || throw(IndexNotInband(j, k_first))
+    is_inband(bc, j, k_last) || throw(IndexNotInband(j, k_last))
+  end
+  bc_els = band_elements(bc)
+  z = zero(E)
+  for k ∈ ks
+    offs = storage_offset(bc, k)
+    j0 = first_inband_index(bc, :, k)
+    bc_els[(j0 - offs):(j - offs), k] .= z
+  end
+end
+
+"""
+    function zero_below!(
+      bc::AbstractBandColumn{S,E},
+      j::Int,
+      k::Int,
+    ) where {S,E<:Number}
+
+    function zero_below!(
+      bc::AbstractBandColumn{S,E},
+      j::Int,
+      ks::UnitRange{Int},
+    ) where {S,E<:Number}
+
+Insert hard zeros into elements below index ``(j,k)`` or indices
+``(j,ks)``.  This does not adjust the structural bandwidth.
+"""
+@inline function zero_below!(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  k::Int,
+) where {S,E<:Number}
+
+  @boundscheck begin
+    is_inband(bc, j, k) || throw(IndexNotInband(j, k))
+  end
+  bc_els = band_elements(bc)
+  offs = storage_offset(bc, k)
+  j1 = last_inband_index(bc, :, k)
+  bc_els[(j - offs):(j1 - offs), k] .= zero(E)
+end
+
+@inline function zero_below!(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  ks::UnitRange{Int},
+) where {S,E<:Number}
+
+  k_first = first(ks)
+  k_last = last(ks)
+  @boundscheck begin
+    is_inband(bc, j, k_first) || throw(IndexNotInband(j, k_first))
+    is_inband(bc, j, k_last) || throw(IndexNotInband(j, k_last))
+  end
+  bc_els = band_elements(bc)
+  z = zero(E)
+  for kk ∈ ks
+    offs = storage_offset(bc, kk)
+    j1 = last_inband_index(bc, :, kk)
+    bc_els[(j - offs):(j1 - offs), kk] .= z
+  end
+end
+
+"""
+    function zero_right!(
+      bc::AbstractBandColumn{S,E},
+      j::Int,
+      k::Int,
+    ) where {S,E<:Number}
+
+    function zero_right!(
+      bc::AbstractBandColumn{S,E},
+      js::UnitRange{Int},
+      k::Int,
+    ) where {S,E<:Number}
+
+Insert hard zeros into elements to the right of index ``(j,k)`` or
+indices ``(j,ks)``.  This does not adjust the structural bandwidth.
+"""
+@inline function zero_right!(
+  bc::AbstractBandColumn{S,E},
+  js::UnitRange{Int},
+  k::Int,
+) where {S,E<:Number}
+
+  j_first = first(js)
+  j_last = last(js)
+  k_first = k
+  k_last = last_inband_index(bc, j_last, :)
+
+  @boundscheck begin
+    is_inband(bc, j_first, k) || throw(IndexNotInband(j_first, k))
+    is_inband(bc, j_last, k) || throw(IndexNotInband(j_last, k))
+  end
+  bc_els = band_elements(bc)
+  z = zero(E)
+  for kk ∈ k_first:k_last
+    offs = storage_offset(bc, kk)
+    j0 = max(j_first, first_inband_index(bc, :, kk)) - offs
+    j1 = j_last - offs
+    bc_els[j0:j1, kk] .= z
+  end
+end
+
+@inline function zero_right!(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  k::Int,
+) where {S,E<:Number}
+
+  k_first = k
+  k_last = last_inband_index(bc, j, :)
+
+  @boundscheck begin
+    is_inband(bc, j, k) || throw(IndexNotInband(j, k))
+  end
+  bc_els = band_elements(bc)
+  z = zero(E)
+  for kk ∈ k_first:k_last
+    offs = storage_offset(bc, kk)
+    bc_els[j - offs, kk] = z
+  end
+end
+
+"""
+    function zero_left!(
+      bc::AbstractBandColumn{S,E},
+      j::Int,
+      k::Int,
+    ) where {S,E<:Number}
+
+    function zero_left!(
+      bc::AbstractBandColumn{S,E},
+      js::UnitRange{Int},
+      k::Int,
+    ) where {S,E<:Number}
+
+Insert hard zeros into elements to the left of index ``(j,k)`` or
+indices ``(j,ks)``.  This does not adjust the structural bandwidth.
+"""
+@inline function zero_left!(
+  bc::AbstractBandColumn{S,E},
+  js::UnitRange{Int},
+  k::Int,
+) where {S,E<:Number}
+
+  j_first = first(js)
+  j_last = last(js)
+  k_first = first_inband_index(bc, j_first, :)
+  k_last = k
+
+  @boundscheck begin
+    is_inband(bc, j_first, k) || throw(IndexNotInband(j_first, k))
+    is_inband(bc, j_last, k) || throw(IndexNotInband(j_last, k))
+  end
+  bc_els = band_elements(bc)
+  z = zero(E)
+  for kk ∈ k_first:k_last
+    offs = storage_offset(bc, kk)
+    j0 = j_first - offs
+    j1 = min(j_last, last_inband_index(bc, :, kk)) - offs
+    bc_els[j0:j1, kk] .= z
+  end
+end
+
+@inline function zero_left!(
+  bc::AbstractBandColumn{S,E},
+  j::Int,
+  k::Int,
+) where {S,E<:Number}
+
+  k_first = first_inband_index(bc, j, :)
+  k_last = k
+
+  @boundscheck begin
+    is_inband(bc, j, k) || throw(IndexNotInband(j, k))
+  end
+  bc_els = band_elements(bc)
+  z = zero(E)
+  for kk ∈ k_first:k_last
+    offs = storage_offset(bc, kk)
+    bc_els[j - offs, kk] = z
+  end
+end
+
+"""
     bulge!(
       bc::AbstractBandColumn,
       j::Int,
@@ -1463,6 +1692,7 @@ then ``notch_upper!(A, 2, 3)`` results in
   end
   nothing
 end
+
 
 """
     notch_lower!(bc :: AbstractBandColumn, j::Int, k::Int)
