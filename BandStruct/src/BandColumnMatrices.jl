@@ -1687,6 +1687,7 @@ then ``notch_upper!(A, 2, 3)`` results in
   @inbounds begin
     j_first = first_inband_index(bc, :, k)
     k_last = last_inband_index(bc, j, :)
+    zero_above!(bc, j, k:k_last)
     unsafe_set_last_inband_index!(bc, j_first:j, :, k - 1)
     unsafe_set_first_inband_index!(bc, :, k:k_last, j + 1)
   end
@@ -1736,6 +1737,7 @@ then ``notch_lower!(A, 5, 4)`` results in
   @inbounds begin
     j_last = last_inband_index(bc, :, k)
     k_first = first_inband_index(bc, j, :)
+    zero_below!(bc, j, k_first:k)
     unsafe_set_first_inband_index!(bc, j:j_last, :, k + 1)
     unsafe_set_last_inband_index!(bc, :, k_first:k, j - 1)
   end
