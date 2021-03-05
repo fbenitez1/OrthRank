@@ -178,7 +178,7 @@ end
     LeadingBandColumn(
       ::Type{E},
       m::Int,
-      n::Int,
+      n::Int;
       upper_bw_max::Int,
       lower_bw_max::Int,
       upper_blocks::Array{Int,2},
@@ -191,7 +191,7 @@ matrix size, bounds on the upper and lower bandwidth, and blocksizes.
 function LeadingBandColumn(
   ::Type{E},
   m::Int,
-  n::Int,
+  n::Int;
   upper_bw_max::Int,
   lower_bw_max::Int,
   upper_blocks::Array{Int,2},
@@ -285,10 +285,10 @@ end
 
 """
     LeadingBandColumn(
-      rng::AbstractRNG,
       T::Type{E},
+      rng::AbstractRNG,
       m::Int,
-      n::Int,
+      n::Int;
       upper_bw_max::Int,
       lower_bw_max::Int,
       upper_blocks::Array{Int,2},
@@ -301,10 +301,10 @@ Generate a random band column corresponding to a specific rank
 structure in the upper and lower blocks.
 """
 function LeadingBandColumn(
-  rng::AbstractRNG,
   T::Type{E},
+  rng::AbstractRNG,
   m::Int,
-  n::Int,
+  n::Int;
   upper_bw_max::Int,
   lower_bw_max::Int,
   upper_blocks::Array{Int,2},
@@ -316,15 +316,15 @@ function LeadingBandColumn(
     T,
     m,
     n,
-    upper_bw_max,
-    lower_bw_max,
-    upper_blocks,
-    lower_blocks,
+    upper_bw_max = upper_bw_max,
+    lower_bw_max = lower_bw_max,
+    upper_blocks = upper_blocks,
+    lower_blocks = lower_blocks,
   )
   leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
   leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
   compute_rows_first_last!(lbc)
-  rand!(rng,lbc)
+  rand!(rng, lbc)
   lbc
 end
 

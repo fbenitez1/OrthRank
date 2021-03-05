@@ -21,16 +21,16 @@ upper_blocks = [
 ]
 
 lbc0 = LeadingBandColumn(
-  MersenneTwister(0),
   Float64,
+  MersenneTwister(0),
   8,
   7,
-  3,
-  2,
-  upper_blocks,
-  lower_blocks,
-  [1, 2, 1, 0],
-  [1, 1, 1, 1],
+  upper_bw_max = 3,
+  lower_bw_max = 2,
+  upper_blocks = upper_blocks,
+  lower_blocks = lower_blocks,
+  upper_ranks = [1, 2, 1, 0],
+  lower_ranks = [1, 1, 1, 1],
 )
 
 println("Testing BandStruct operations for a matrix with structure:")

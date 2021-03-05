@@ -33,16 +33,16 @@ function makeB(
 
   blocks = [k for j ∈ 1:2, k ∈ 1:m]
   lbc = LeadingBandColumn(
-    MersenneTwister(0),
     T,
+    MersenneTwister(0),
     m,
     m,
-    lbw + ubw,
-    lbw,
-    blocks,
-    blocks,
-    [ubw for j ∈ 1:m],
-    [lbw for j ∈ 1:m],
+    upper_bw_max = lbw + ubw,
+    lower_bw_max = lbw,
+    upper_blocks = blocks,
+    lower_blocks = blocks,
+    upper_ranks = [ubw for j ∈ 1:m],
+    lower_ranks = [lbw for j ∈ 1:m],
   )
 
   toBandColumn(lbc)
