@@ -37,6 +37,8 @@ export BandColumn,
   IndexNotInband,
   SubcolumnIndicesNotInband,
   SubrowIndicesNotInband,
+  SubcolumnIndicesNotStorable,
+  SubrowIndicesNotStorable,
   # Methods implemented for any AbstractBandColumn
   is_lower_notchable_with_no_well,
   is_upper_notchable_with_no_well,
@@ -148,6 +150,16 @@ struct SubcolumnIndicesNotInband <: Exception
 end
 
 struct SubrowIndicesNotInband <: Exception
+  j :: Int
+  ks :: UnitRange{Int}
+end
+
+struct SubcolumnIndicesNotStorable <: Exception
+  js :: UnitRange{Int}
+  k :: Int
+end
+
+struct SubrowIndicesNotStorable <: Exception
   j :: Int
   ks :: UnitRange{Int}
 end
