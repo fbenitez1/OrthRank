@@ -264,37 +264,53 @@ LeadingBandColumn matrix.
 
 - `rows_first_last::AI`: `rows_first_last[j,:]` contains
    
-  - `rows_first_last[j,1]`: Index of the first inband element in row
+  - `rows_first_last[j,1]`: Index of the first storable element in row
     `j` for a `NonSub` or for the larger containing matrix of a
     submatrix.
 
-  - `rows_first_last[j,2]`: Index of the last lower element in row
+  - `rows_first_last[j,2]`: Index of the first inband element in row
+    `j` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
+
+  - `rows_first_last[j,3]`: Index of the last lower element in row
     `j` for a `NonSub` or for the larger containing matrix of a
     submatrix.  This is not necessarily an inband element.
 
-  - `rows_first_last[j,3]`: Index of the first upper element in row
+  - `rows_first_last[j,4]`: Index of the first upper element in row
     `j` for a `NonSub` or for the larger containing matrix of a
     submatrix.  This is not necessarily an inband element.
 
-  - `rows_first_last[j,4]`: Index of the last inband element in row
+  - `rows_first_last[j,5]`: Index of the last inband element in row
+    `j` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
+
+  - `rows_first_last[j,6]`: Index of the last storable element in row
     `j` for a `NonSub` or for the larger containing matrix of a
     submatrix.
 
 - `cols_first_last::AI`: `cols_first_last[:,k]` contains
    
-  - `cols_first_last[1,k]`: Index of the first inband element in column
+  - `cols_first_last[1,k]`: Index of the first storable element in column
     `k` for a `NonSub` or for the larger containing matrix of a
     submatrix.
 
-  - `cols_first_last[2,k]`: Index of the last upper element in column
+  - `cols_first_last[2,k]`: Index of the first inband element in column
+    `k` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
+
+  - `cols_first_last[3,k]`: Index of the last upper element in column
     `k` for a `NonSub` or for the larger containing matrix of a
     submatrix.  This is not necessarily an inband element.
 
-  - `cols_first_last[3,k]`: Index of the first lower element in column
+  - `cols_first_last[4,k]`: Index of the first lower element in column
     `k` for a `NonSub` or for the larger containing matrix of a
     submatrix.  This is not necessarily an inband element.
 
-  - `cols_first_last[4,k]`: Index of the last inband element in column
+  - `cols_first_last[5,k]`: Index of the last inband element in column
+    `k` for a `NonSub` or for the larger containing matrix of a
+    submatrix.
+
+  - `cols_first_last[6,k]`: Index of the last storable element in column
     `k` for a `NonSub` or for the larger containing matrix of a
     submatrix.
 
@@ -353,18 +369,20 @@ where
     middle_lowerbw_max = 4
 
 
-    cols_first_last =    [ 1 1 3 3 3 6 6;
+    cols_first_last =    [ 1 1 1 1 1 3 3;
+                           1 1 3 3 3 6 6;
                            0 1 3 3 3 6 6;
                            2 4 5 5 5 7 9;
-                           3 4 4 4 6 8 8 ]
-    rows_first_last =    [ 1 0 2 2;
-                           1 1 3 2;
-                           1 1 3 5;
-                           2 2 7 6;
-                           5 5 6 5;
-                           5 5 6 7;
-                           6 6 8 7;
-                           6 6 8 7 ]
+                           3 4 4 4 6 8 8;
+                           4 5 6 6 6 8 8 ]
+    rows_first_last =    [ 1 1 0 2 2 5;
+                           1 1 1 3 2 5;
+                           1 1 1 3 5 7;
+                           1 2 2 7 6 7;
+                           2 5 5 6 5 7;
+                           3 5 5 6 7 7;
+                           3 6 6 8 7 7;
+                           6 6 6 8 7 7 ]
 """
 struct BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
        AbstractBandColumn{S,E,AE,AI}
@@ -444,14 +462,14 @@ then `bc[j,k]` is the first inband element in row ``j``.
   bc::BandColumn,
   ::Colon,
   k::Int,
-) = bc.cols_first_last[1,k]
+) = bc.cols_first_last[2,k]
 
 @propagate_inbounds @inline first_inband_index(
   ::Type{NonSub},
   bc::BandColumn,
   j::Int,
   ::Colon,
-) = bc.rows_first_last[j,1]
+) = bc.rows_first_last[j,2]
 
 """
     last_inband_index(bc, ::Colon, k::Int)
@@ -472,14 +490,14 @@ then `bc[j,k]` is the last inband element in row ``j``.
   bc::BandColumn,
   ::Colon,
   k::Int,
-) = bc.cols_first_last[4,k]
+) = bc.cols_first_last[5,k]
 
 @propagate_inbounds @inline last_inband_index(
   ::Type{NonSub},
   bc::BandColumn,
   j::Int,
   ::Colon,
-) = bc.rows_first_last[j,4]
+) = bc.rows_first_last[j,5]
 
 """
     first_lower_index(bc::BandColumn, ::Colon, k::Int)
@@ -498,7 +516,7 @@ of the underlying banded matrix is not in the submatrix.
   bc::BandColumn,
   ::Colon,
   k::Int,
-) = bc.cols_first_last[3,k]
+) = bc.cols_first_last[4,k]
 
 """
     last_lower_index(bc::BandColumn, j::Int, ::Colon)
@@ -517,7 +535,7 @@ of the underlying banded matrix is not in the submatrix.
   bc::BandColumn,
   j::Int,
   ::Colon,
-) = bc.rows_first_last[j,2]
+) = bc.rows_first_last[j,3]
 
 """
     first_upper_index(bc::BandColumn, j::Int, ::Colon)
@@ -536,7 +554,7 @@ of the underlying banded matrix is not in the submatrix.
   bc::BandColumn,
   j::Int,
   ::Colon,
-) = bc.rows_first_last[j,3]
+) = bc.rows_first_last[j,4]
 
 """
     last_upper_index(bc::BandColumn, ::Colon, k::Int)
@@ -555,7 +573,7 @@ of the underlying banded matrix is not in the submatrix.
   bc::BandColumn,
   ::Colon,
   k::Int,
-) = bc.cols_first_last[2,k]
+) = bc.cols_first_last[3,k]
 
 #=
 
@@ -660,13 +678,13 @@ AbstractBandColumn extensions of the basic NonSub interface.
   bc::AbstractBandColumn,
   ::Colon,
   k::Int,
-) = bc.cols_first_last[2,k] - row_offset(bc)
+) = bc.cols_first_last[3,k] - row_offset(bc)
 
 @propagate_inbounds @inline last_upper_index(
   bc::AbstractBandColumn{NonSub},
   ::Colon,
   k::Int,
-) = bc.cols_first_last[2,k]
+) = bc.cols_first_last[3,k]
 
 is_upper(bc::AbstractBandColumn, j::Int, k::Int) =
   j <= last_upper_index(bc, :, k)
@@ -1216,7 +1234,7 @@ end
   ::Colon,
   k_first::Int,
 ) 
-  bc.rows_first_last[first(js):last(js), 1] .= k_first + col_offset(bc)
+  bc.rows_first_last[first(js):last(js), 2] .= k_first + col_offset(bc)
   nothing
 end
 
@@ -1226,7 +1244,7 @@ end
   ks::AbstractUnitRange{Int},
   j_first::Int,
 ) 
-  bc.cols_first_last[1, first(ks):last(ks)] .= j_first + row_offset(bc)
+  bc.cols_first_last[2, first(ks):last(ks)] .= j_first + row_offset(bc)
   nothing
 end
 
@@ -1236,7 +1254,7 @@ end
   ::Colon,
   k_last::Int,
 ) 
-  bc.rows_first_last[first(js):last(js), 4] .= k_last + col_offset(bc)
+  bc.rows_first_last[first(js):last(js), 5] .= k_last + col_offset(bc)
   nothing
 end
 
@@ -1246,7 +1264,7 @@ end
   ks::AbstractUnitRange{Int},
   j_last::Int,
 ) 
-  bc.cols_first_last[4, first(ks):last(ks)] .= j_last + row_offset(bc)
+  bc.cols_first_last[5, first(ks):last(ks)] .= j_last + row_offset(bc)
   nothing
 end
 
@@ -1776,16 +1794,16 @@ function compute_rows_first_last!(
   first_last::AbstractArray{Int,2},
 )
   (m, n) = size(bc)
-  first_last[:, 1] .= zero(Int)
-  first_last[:, 4] .= zero(Int)
+  first_last[:, 2] .= zero(Int)
+  first_last[:, 5] .= zero(Int)
   coffs = col_offset(bc)
   for k ∈ n:-1:1
     jrange = inband_index_range(bc, :, k) ∩ (1:m)
-    first_last[jrange, 1] .= k+coffs
+    first_last[jrange, 2] .= k+coffs
   end
   for k ∈ 1:n
     jrange = inband_index_range(bc, :, k) ∩ (1:m)
-    first_last[jrange, 4] .= k+coffs
+    first_last[jrange, 5] .= k+coffs
   end
 end
 
@@ -1807,7 +1825,7 @@ them into a newly allocated array.
 """
 function compute_rows_first_last(bc::AbstractBandColumn{NonSub})
   (m, n) = size(bc)
-  first_last_arr = zeros(Int,m,4)
+  first_last_arr = zeros(Int,m,6)
   compute_rows_first_last!(bc, first_last_arr)
   first_last_arr
 end
@@ -1819,8 +1837,8 @@ Check that the upper and lower first and last elements are consistent.
 """
 function validate_rows_first_last(bc::BandColumn{NonSub})
   rfl = compute_rows_first_last(bc)
-  @views rfl[:,1] == bc.rows_first_last[:,1]
-  @views rfl[:,4] == bc.rows_first_last[:,4]
+  @views rfl[:,2] == bc.rows_first_last[:,2]
+  @views rfl[:,5] == bc.rows_first_last[:,5]
 end
 
 #=
@@ -1930,8 +1948,8 @@ wrapped into a BandColumn.
     bc.bw_max,
     bc.upper_bw_max,
     bc.middle_lower_bw_max,
-    view(bc.rows_first_last, rows, 1:4),
-    view(bc.cols_first_last, 1:4, cols),
+    view(bc.rows_first_last, rows, 1:6),
+    view(bc.cols_first_last, 1:6, cols),
     view(bc.band_elements, :, cols),
   )
 end
