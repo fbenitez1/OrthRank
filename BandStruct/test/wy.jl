@@ -55,7 +55,7 @@ h_35_2 = householder(
   bcwy_35_23,
   3:5,
   2,
-  work = lw,
+  lw,
 )
 h_35_2 ⊘ bcwy_35_23h
 wyl ⊛ h_35_2
@@ -83,7 +83,7 @@ h_45_3 = householder(
   bcwy_35_23,
   4:5,
   3,
-  work = lw,
+  lw,
 )
 
 h_45_3 ⊘ bcwy_35_23h
@@ -130,7 +130,7 @@ h_2_57 = householder(
   bcwy_23_57,
   2,
   5:7,
-  work = lw,
+  lw,
 )
 
 bcwy_23_57h ⊛ h_2_57
@@ -161,7 +161,7 @@ h_3_67 = householder(
   bcwy_23_57,
   3,
   6:7,
-  work = lw,
+  lw,
 )
 
 bcwy_23_57h ⊛ h_3_67

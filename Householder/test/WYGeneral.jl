@@ -111,7 +111,7 @@ function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
     block_end = min(b * block_size, n)
     for k ∈ ((b - 1) * block_size + 1):block_end
       vk = v[1:(m - k + 1)]
-      h = householder(A, k:m, k, vk, offset = k - 1, work = workh)
+      h = householder(A, k:m, k, vk, workh)
       h ⊘ A[:, k:block_end]
       A[(k + 1):m, k] .= zero(E)
       wy ⊛ h

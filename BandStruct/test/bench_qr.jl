@@ -59,7 +59,7 @@ function bandQRB(
   @inbounds for k ∈ 1:(n - 1)
     j_end = min(k + lbw, m)
     bulge_lower!(B, j_end, k)
-    h = householder(B, k:min(k + lbw, m), k, v, work = work)
+    h = householder(B, k:min(k + lbw, m), k, v, work)
     h ⊘ B
     notch_lower!(B, k + 1, k)
   end
@@ -72,7 +72,7 @@ function bandQRA(A::AbstractArray{E,2}, lbw::Int, ubw::Int) where {E<:Number}
   v = zeros(E, lbw + 1)
   @inbounds for k = 1:(ma - 1)
     j1 = min(k + lbw, ma)
-    h = householder(A, k:j1, k, v, work = work)
+    h = householder(A, k:j1, k, v, work)
     @views h ⊘ A[:, k:min(ma, k + lbw + ubw)]
     A[(k + 1):j1, k] .= zero(E)
   end

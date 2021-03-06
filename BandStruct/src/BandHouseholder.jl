@@ -17,8 +17,8 @@ using InPlace
   bc::AbstractBandColumn{S,E},
   js::UnitRange{Int},
   k::Int,
-  l::Int64,
-  offs::Int64,
+  l::Int,
+  offs::Int,
   v::AbstractArray{E,1},
   work::AbstractArray{E,1},
 ) where {E<:Number,S}
