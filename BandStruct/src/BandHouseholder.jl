@@ -33,7 +33,7 @@ using InPlace
       lv,
       ljs
     )))
-    ((1:ljs) .+ offs) ⊆ inband_index_range(bc, :, k) ||
+    ((1:ljs) .+ offs) ⊆ storable_index_range(bc, :, k) ||
       throw(SubcolumnIndicesNotInband(js, k))
   end
 
@@ -67,7 +67,7 @@ end
       lv,
       lks
     )))
-    ((1:lks) .+ offs) ⊆ inband_index_range(bc, j, :) ||
+    ((1:lks) .+ offs) ⊆ storable_index_range(bc, j, :) ||
       throw(SubrowIndicesNotInband(j, ks))
   end
 

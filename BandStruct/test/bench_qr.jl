@@ -58,7 +58,6 @@ function bandQRB(
   v = zeros(E, lbw + 1)
   @inbounds for k ∈ 1:(n - 1)
     j_end = min(k + lbw, m)
-    bulge_lower!(B, j_end, k)
     h = householder(B, k:min(k + lbw, m), k, v, work)
     h ⊘ B
     notch_lower!(B, k + 1, k)
