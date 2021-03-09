@@ -462,62 +462,6 @@ Get the col offset of a `bc`.
 ) = bc.coffset
 
 """
-    first_inband_index(bc, ::Colon, k::Int)
-    first_inband_index(bc, j::Int, ::Colon)
-
-If
-
-    j=first_inband_index(bc,:,k)
-
-then `bc[j,k]` is the first inband element in column ``k``.  If
-
-    k=first_inband_index(bc,j,:)
-
-then `bc[j,k]` is the first inband element in row ``j``.
-"""
-@propagate_inbounds first_inband_index(
-  ::Type{NonSub},
-  bc::BandColumn,
-  ::Colon,
-  k::Int,
-) = bc.cols_first_last[2,k]
-
-@propagate_inbounds first_inband_index(
-  ::Type{NonSub},
-  bc::BandColumn,
-  j::Int,
-  ::Colon,
-) = bc.rows_first_last[j,2]
-
-"""
-    last_inband_index(bc, ::Colon, k::Int)
-    last_inband_index(bc, j::Int, ::Colon)
-
-If
-
-    j=last_inband_index(bc,:,k)
-
-then `bc[j,k]` is the last inband element in column ``k``.  If
-
-    k=last_inband_index(bc,j,:)
-
-then `bc[j,k]` is the last inband element in row ``j``.
-"""
-@propagate_inbounds last_inband_index(
-  ::Type{NonSub},
-  bc::BandColumn,
-  ::Colon,
-  k::Int,
-) = bc.cols_first_last[5,k]
-
-@propagate_inbounds last_inband_index(
-  ::Type{NonSub},
-  bc::BandColumn,
-  j::Int,
-  ::Colon,
-) = bc.rows_first_last[j,5]
-
-"""
     first_lower_index(bc::BandColumn, ::Colon, k::Int)
 
 If
@@ -599,58 +543,75 @@ AbstractBandColumn extensions of the basic NonSub interface.
 
 =#
 
-# col first_inband_index methods
+"""
+    first_inband_index(bc, ::Colon, k::Int)
+    first_inband_index(bc, j::Int, ::Colon)
+
+If
+
+    j=first_inband_index(bc,:,k)
+
+then `bc[j,k]` is the first inband element in column ``k``.  If
+
+    k=first_inband_index(bc,j,:)
+
+then `bc[j,k]` is the first inband element in row ``j``.
+"""
+
 @propagate_inbounds first_inband_index(
   bc::AbstractBandColumn,
   ::Colon,
   k::Int,
-) = first(inband_index_range(bc, :, k))
+) = maybe_first(inband_index_range(bc, :, k))
 
 @propagate_inbounds first_inband_index(
-  bc::AbstractBandColumn{NonSub},
+  ::Type{NonSub},
+  bc::AbstractBandColumn,
   ::Colon,
   k::Int,
-) = first_inband_index(NonSub,bc,:,k)
+) = maybe_first(inband_index_range(NonSub, bc, :, k))
 
 # row first_inband_index methods
 @propagate_inbounds first_inband_index(
   bc::AbstractBandColumn,
   j::Int,
   ::Colon,
-) = first(inband_index_range(bc, j, :))
+) = maybe_first(inband_index_range(bc, j, :))
 
 @propagate_inbounds first_inband_index(
-  bc::AbstractBandColumn{NonSub},
+  ::Type{NonSub},
+  bc::AbstractBandColumn,
   j::Int,
   ::Colon,
-) = first_inband_index(NonSub, bc, j, :)
-
+) = maybe_first(inband_index_range(NonSub, bc, j, :))
 
 # col last_inband_index methods
 @propagate_inbounds last_inband_index(
   bc::AbstractBandColumn,
   ::Colon,
   k::Int,
-) = last(inband_index_range(bc, :, k))
+) = maybe_last(inband_index_range(bc, :, k))
 
 @propagate_inbounds last_inband_index(
-  bc::BandColumn{NonSub},
+  ::Type{NonSub},
+  bc::AbstractBandColumn,
   ::Colon,
   k::Int,
-) = last_inband_index(NonSub, bc, :, k)
+) = maybe_last(inband_index_range(NonSub, bc, :, k))
 
 # row last_inband_index methods
 @propagate_inbounds last_inband_index(
   bc::AbstractBandColumn,
   j::Int,
   ::Colon,
-) = last(inband_index_range(bc, j, :))
+) = maybe_last(inband_index_range(bc, j, :))
 
 @propagate_inbounds last_inband_index(
-  bc::AbstractBandColumn{NonSub},
+  ::Type{NonSub},
+  bc::AbstractBandColumn,
   j::Int,
   ::Colon,
-) = last_inband_index(NonSub, bc, j, :)
+) = maybe_last(inband_index_range(NonSub, bc, j, :))
 
 # first_lower_index methods
 @propagate_inbounds first_lower_index(
@@ -721,28 +682,12 @@ is_lower(bc::AbstractBandColumn, j::Int, k::Int) =
 Range of inband elements in column ``k``.
 """
 @propagate_inbounds function inband_index_range(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-)
-  roffs = row_offset(bc)
-  (1:row_size(bc)) ∩ (
-    (first_inband_index(
-      NonSub,
-      bc,
-      :,
-      k,
-    ) - roffs):(last_inband_index(NonSub, bc, :, k) - roffs)
-  )
-end
-
-@propagate_inbounds function inband_index_range(
   ::Type{NonSub},
-  bc::AbstractBandColumn,
+  bc::BandColumn,
   ::Colon,
   k::Int,
 )
-  first_inband_index(NonSub, bc, :, k):last_inband_index(NonSub, bc, :, k)
+  bc.cols_first_last[2, k]:bc.cols_first_last[5, k]
 end
 
 @propagate_inbounds function inband_index_range(
@@ -751,6 +696,15 @@ end
   k::Int,
 )
   inband_index_range(NonSub, bc, :, k)
+end
+
+@propagate_inbounds function inband_index_range(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+)
+  roffs = row_offset(bc)
+  (1:row_size(bc)) ∩ (inband_index_range(NonSub, bc, :, k) .- roffs)
 end
 
 """
@@ -763,28 +717,12 @@ end
 Range of inband elements in row ``j``.
 """
 @propagate_inbounds function inband_index_range(
-  bc::AbstractBandColumn,
-  j::Int,
-  ::Colon,
-)
-  coffs = col_offset(bc)
-  (1:col_size(bc)) ∩ (
-    (first_inband_index(
-      NonSub,
-      bc,
-      j,
-      :,
-    ) - coffs):(last_inband_index(NonSub, bc, j, :) - coffs)
-  )
-end
-
-@propagate_inbounds function inband_index_range(
   ::Type{NonSub},
-  bc::AbstractBandColumn,
+  bc::BandColumn,
   j::Int,
   ::Colon,
 )
-  first_inband_index(NonSub, bc, j, :):last_inband_index(NonSub, bc, j, :)
+  bc.rows_first_last[j, 2]:bc.rows_first_last[j, 5]
 end
 
 @propagate_inbounds function inband_index_range(
@@ -793,6 +731,15 @@ end
   ::Colon,
 )
   inband_index_range(NonSub, bc, j, :)
+end
+
+@propagate_inbounds function inband_index_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  coffs = col_offset(bc)
+  (1:col_size(bc)) ∩ (inband_index_range(NonSub, bc, j, :) .- coffs)
 end
 
 """

@@ -404,33 +404,23 @@ end
 end
 
 
-@propagate_inbounds BandColumnMatrices.first_inband_index(
+@propagate_inbounds function BandColumnMatrices.inband_index_range(
   ::Type{NonSub},
-  lbc::LeadingBandColumn,
+  bc::LeadingBandColumn,
   ::Colon,
   k::Int,
-) = lbc.cols_first_last[2,k]
+)
+  bc.cols_first_last[2, k]:bc.cols_first_last[5, k]
+end
 
-@propagate_inbounds BandColumnMatrices.first_inband_index(
+@propagate_inbounds function BandColumnMatrices.inband_index_range(
   ::Type{NonSub},
-  lbc::LeadingBandColumn,
+  bc::LeadingBandColumn,
   j::Int,
   ::Colon,
-) = lbc.rows_first_last[j,2]
-
-@propagate_inbounds BandColumnMatrices.last_inband_index(
-  ::Type{NonSub},
-  lbc::LeadingBandColumn,
-  ::Colon,
-  k::Int,
-) = lbc.cols_first_last[5,k]
-
-@propagate_inbounds BandColumnMatrices.last_inband_index(
-  ::Type{NonSub},
-  lbc::LeadingBandColumn,
-  j::Int,
-  ::Colon,
-) = lbc.rows_first_last[j,5]
+)
+  bc.rows_first_last[j, 2]:bc.rows_first_last[j, 5]
+end
 
 @propagate_inbounds BandColumnMatrices.first_lower_index(
   ::Type{NonSub},
