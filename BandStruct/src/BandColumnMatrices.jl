@@ -9,6 +9,8 @@ export BandColumn,
   # AbstractBandColumn methods requiring implementation.
   viewbc,
   toBandColumn,
+  maybe_first,
+  maybe_last,
   first_inband_index,
   last_inband_index,
   first_upper_index,
@@ -125,6 +127,10 @@ An exception thrown when an operation would create a well.
 """
 struct WellError <: Exception end
 
+struct FirstOfEmptyRange <: Exception end
+
+struct LastOfEmptyRange <: Exception end
+
 struct EmptyUpperRange <: Exception end
 
 struct EmptyLowerRange <: Exception end
@@ -162,6 +168,18 @@ end
 struct SubrowIndicesNotStorable <: Exception
   j :: Int
   ks :: UnitRange{Int}
+end
+
+@inline function maybe_first(js::UnitRange{<:Integer})
+  j0 = first(js)
+  @boundscheck j0 <= last(js) || throw(FirstOfEmptyRange)
+  j0
+end
+
+@inline function maybe_last(js::UnitRange{<:Integer})
+  j1 = last(js)
+  @boundscheck first(js) <= j1 || throw(LastOfEmptyRange)
+  j1
 end
 
 struct NonSub end
