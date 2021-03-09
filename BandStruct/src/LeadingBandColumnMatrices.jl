@@ -225,7 +225,7 @@ function LeadingBandColumn(
 
   lb=0
   ub=0
-  for j=1:m
+  for j = 1:m
     # If row j intersects with a new lower block, increment.
     while intersect_lower_block(lower_blocks, m, n, lb + 1, j, :)
       lb += 1
@@ -237,15 +237,35 @@ function LeadingBandColumn(
     end
     (_, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
     (_, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
-    rows_first_last[j,2] = last(cols_lb) + 1
-    rows_first_last[j,3] = last(cols_lb)
-    rows_first_last[j,4] = first(cols_ub)
-    rows_first_last[j,5] = first(cols_ub) - 1
+    rows_first_last[j, 2] = last(cols_lb) + 1
+    rows_first_last[j, 3] = last(cols_lb)
+    rows_first_last[j, 4] = first(cols_ub)
+    rows_first_last[j, 5] = first(cols_ub) - 1
   end
   
   bw_max = upper_bw_max + middle_bw_max + lower_bw_max
   middle_lower_bw_max = middle_bw_max + lower_bw_max
   band_elements = zeros(E, bw_max, n)
+
+  # Set the ranges for storable elements.
+
+  for k = 1:n
+    j0 = cols_first_last[3,k] - upper_bw_max
+    cols_first_last[1,k] = project(1 + j0, m)
+    cols_first_last[6,k] = project(bw_max + j0, m)
+  end
+
+  rows_first_last[:,1] .= n+1
+  rows_first_last[:,6] .= 0
+
+  for k = 1:n
+    j0 = cols_first_last[1, k]
+    j1 = cols_first_last[6, k]
+    for j = j0:j1
+      rows_first_last[j, 1] = min(k, rows_first_last[j, 1])
+      rows_first_last[j, 6] = max(k, rows_first_last[j, 6])
+    end
+  end
 
   LeadingBandColumn(
     m,
@@ -364,6 +384,25 @@ Bandwidth functions required by AbstractBandColumn.
 Index functions required by AbstractBandColumn
 
 =#
+
+@propagate_inbounds function BandColumnMatrices.storable_index_range(
+  ::Type{NonSub},
+  bc::LeadingBandColumn,
+  ::Colon,
+  k::Int,
+)
+  bc.cols_first_last[1,k]:bc.cols_first_last[6,k]
+end
+
+@propagate_inbounds function BandColumnMatrices.storable_index_range(
+  ::Type{NonSub},
+  bc::LeadingBandColumn,
+  j::Int,
+  ::Colon,
+)
+  bc.rows_first_last[j,1]:bc.rows_first_last[j,6]
+end
+
 
 @propagate_inbounds @inline BandColumnMatrices.first_inband_index(
   ::Type{NonSub},

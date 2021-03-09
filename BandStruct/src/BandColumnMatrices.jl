@@ -958,37 +958,6 @@ in column ``k``.
   k::Int,
 ) = last_inband_index(bc, :, k) - storage_offset(bc, k)
 
-"""
-    first_storable_index(bc::AbstractBandColumn, k::Int)
-
-If 
-
-    j=first_storable_index(bc::AbstractBandColumn, k::Int)
-
-then `bc[j,k]` is the first element in column ``k`` for which there is
-available storage.
-"""
-@propagate_inbounds @inline first_storable_index(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-) = project(1 + storage_offset(bc, k), row_size(bc))
-
-"""
-    last_storable_index(bc::AbstractBandColumn, k::Int)
-
-If 
-
-    j=last_storable_index(bc::AbstractBandColumn, k::Int)
-
-then `bc[j,k]` is the last element in column ``k`` for which there is
-available storage..
-"""
-@propagate_inbounds @inline last_storable_index(
-  bc::AbstractBandColumn,
-  ::Colon,
-  k::Int,
-) = project(bw_max(bc) + storage_offset(bc, k), row_size(bc))
 
 """
     inband_index_range_storage(
@@ -1016,13 +985,115 @@ end
 The range of elements in column ``k`` of `bc` for which storage is
 available.
 """
-@propagate_inbounds @inline function storable_index_range(
+@propagate_inbounds function storable_index_range(
+  ::Type{NonSub},
+  bc::BandColumn,
+  ::Colon,
+  k::Int,
+)
+  bc.cols_first_last[1,k]:bc.cols_first_last[6,k]
+end
+
+@propagate_inbounds function storable_index_range(
+  bc::AbstractBandColumn{NonSub},
+  ::Colon,
+  k::Int,
+)
+  storable_index_range(NonSub, bc, :, k)
+end
+
+@propagate_inbounds function storable_index_range(
   bc::AbstractBandColumn,
   ::Colon,
   k::Int,
 )
-  first_storable_index(bc, :, k):last_storable_index(bc, :, k)
+  roffs = row_offset(bc)
+  (1:row_size(bc)) ∩ (storable_index_range(NonSub, bc, :, k) .- roffs)
 end
+
+"""
+    storable_index_range(
+      bc::AbstractBandColumn,
+      j::Int,
+      ::Colon,
+    )
+
+The range of elements in row ``j`` of `bc` for which storage is
+available.
+"""
+@propagate_inbounds function storable_index_range(
+  ::Type{NonSub},
+  bc::BandColumn,
+  j::Int,
+  ::Colon,
+)
+  bc.rows_first_last[j,1]:bc.rows_first_last[j,6]
+end
+
+@propagate_inbounds function storable_index_range(
+  bc::AbstractBandColumn{NonSub},
+  j::Int,
+  ::Colon,
+)
+  storable_index_range(NonSub, bc, j, :)
+end
+
+@propagate_inbounds function storable_index_range(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+)
+  coffs = col_offset(bc)
+  (1:col_size(bc)) ∩ (storable_index_range(NonSub, bc, j, :) .- coffs)
+end
+
+"""
+    first_storable_index(bc::AbstractBandColumn, ::Colon, k::Int)
+
+Return the first element in column ``k`` for which there is
+available storage.
+"""
+@propagate_inbounds first_storable_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = maybe_first(storable_index_range(bc, :, k))
+
+"""
+    last_storable_index(bc::AbstractBandColumn, ::Colon, k::Int)
+
+Return the last element in column ``k`` for which there is
+available storage..
+"""
+@propagate_inbounds last_storable_index(
+  bc::AbstractBandColumn,
+  ::Colon,
+  k::Int,
+) = maybe_last(storable_index_range(bc, :, k))
+
+"""
+    first_storable_index(bc::AbstractBandColumn, j::Int, ::Colon)
+
+Return the first element in row ``j`` for which there is
+available storage.
+"""
+@propagate_inbounds first_storable_index(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+) = maybe_first(storable_index_range(bc, j, :))
+
+"""
+    last_storable_index(bc::AbstractBandColumn, j::Int, ::Colon)
+
+Return the last element in row ``j`` for which there is
+available storage..
+"""
+@propagate_inbounds last_storable_index(
+  bc::AbstractBandColumn,
+  j::Int,
+  ::Colon,
+) = maybe_last(storable_index_range(bc, j, :))
 
 """
     upper_inband_index_range_storage(
@@ -1032,7 +1103,7 @@ end
 Compute the range of upper inband elements in column ``k`` of
 `bc.band_elements`.
 """
-@propagate_inbounds @inline function upper_inband_index_range_storage(
+@propagate_inbounds function upper_inband_index_range_storage(
   bc::AbstractBandColumn,
   k::Int,
 )
