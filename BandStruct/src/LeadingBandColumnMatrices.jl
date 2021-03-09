@@ -404,56 +404,56 @@ end
 end
 
 
-@propagate_inbounds @inline BandColumnMatrices.first_inband_index(
+@propagate_inbounds BandColumnMatrices.first_inband_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
   k::Int,
 ) = lbc.cols_first_last[2,k]
 
-@propagate_inbounds @inline BandColumnMatrices.first_inband_index(
+@propagate_inbounds BandColumnMatrices.first_inband_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   j::Int,
   ::Colon,
 ) = lbc.rows_first_last[j,2]
 
-@propagate_inbounds @inline BandColumnMatrices.last_inband_index(
+@propagate_inbounds BandColumnMatrices.last_inband_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
   k::Int,
 ) = lbc.cols_first_last[5,k]
 
-@propagate_inbounds @inline BandColumnMatrices.last_inband_index(
+@propagate_inbounds BandColumnMatrices.last_inband_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   j::Int,
   ::Colon,
 ) = lbc.rows_first_last[j,5]
 
-@propagate_inbounds @inline BandColumnMatrices.first_lower_index(
+@propagate_inbounds BandColumnMatrices.first_lower_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
   k::Int,
 ) = lbc.cols_first_last[4,k]
 
-@propagate_inbounds @inline BandColumnMatrices.last_lower_index(
+@propagate_inbounds BandColumnMatrices.last_lower_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   j::Int,
   ::Colon,
 ) = lbc.rows_first_last[j,3]
 
-@propagate_inbounds @inline BandColumnMatrices.first_upper_index(
+@propagate_inbounds BandColumnMatrices.first_upper_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   j::Int,
   ::Colon,
 ) = lbc.rows_first_last[j,4]
 
-@propagate_inbounds @inline BandColumnMatrices.last_upper_index(
+@propagate_inbounds BandColumnMatrices.last_upper_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
