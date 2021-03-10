@@ -360,7 +360,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
   @boundscheck begin
 
     inds .+ offset ⊆ 1:na ||
-      throw_ColumnRange_DimensionMismatch(ma, na, inds)
+      throw_ColumnRange_DimensionMismatch(ma, na, inds .+ offset)
 
     length(wy.work) >= ma * num_hs ||
       throw_WorkSizeError(ma, na, ma * num_hs, length(wy.work))
@@ -415,7 +415,7 @@ end
   @boundscheck begin
 
     inds .+ offset ⊆ 1:na ||
-      throw_ColumnRange_DimensionMismatch(ma, na, inds)
+      throw_ColumnRange_DimensionMismatch(ma, na, inds .+ offset)
 
     length(wy.work) >= ma * num_hs ||
       throw_WorkSizeError(ma, na, ma * num_hs, length(wy.work))
@@ -470,7 +470,7 @@ end
   @boundscheck begin
 
     inds .+ offset ⊆ 1:ma ||
-      throw_RowRange_DimensionMismatch(ma, na, inds)
+      throw_RowRange_DimensionMismatch(ma, na, inds .+ offset)
 
     length(wy.work) >= na * num_hs ||
       throw_WorkSizeError(ma, na, na * num_hs, length(wy.work))
@@ -523,9 +523,8 @@ end
     (ma, na) = size(A)
   end
   @boundscheck begin
-
     inds .+ offset ⊆ 1:ma ||
-      throw_RowRange_DimensionMismatch(ma, na, inds)
+      throw_RowRange_DimensionMismatch(ma, na, inds .+ offset)
 
     length(wy.work) >= na * num_hs ||
       throw_WorkSizeError(ma, na, na * num_hs, length(wy.work))
