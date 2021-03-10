@@ -319,7 +319,7 @@ end
 
   @boundscheck begin
     inds .+ offset ⊆ 1:nbc ||
-      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds)
+      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds .+ offset)
   end
 
   lw = length(wy.work)
@@ -394,7 +394,7 @@ end
 
   @boundscheck begin
     inds .+ offset ⊆ 1:nbc ||
-      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds)
+      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds .+ offset)
   end
 
   lw = length(wy.work)
@@ -470,7 +470,7 @@ end
 
   @boundscheck begin
     inds .+ offset ⊆ 1:mbc ||
-      throw_RowRange_DimensionMismatch(mbc, nbc, inds)
+      throw_RowRange_DimensionMismatch(mbc, nbc, inds .+ offset)
   end
 
   lw = length(wy.work)
@@ -542,7 +542,7 @@ end
 
   @boundscheck begin
     inds .+ offset ⊆ 1:mbc ||
-      throw_RowRange_DimensionMismatch(mbc, nbc, inds)
+      throw_RowRange_DimensionMismatch(mbc, nbc, inds .+ offset)
   end
 
   lw = length(wy.work)
