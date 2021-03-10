@@ -353,20 +353,22 @@ end
   m = h.size
   (ma, na) = size(A)
   offs = h.offs
-  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:ma)
-    throw(DimensionMismatch(@sprintf(
-      "In h ⊛ A, A is of dimension %d×%d and h acts on rows %d:%d",
-      ma,
-      na,
-      offs + 1,
-      offs + m
-    )))
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:ma)
+      throw(DimensionMismatch(@sprintf(
+        "In h ⊛ A, A is of dimension %d×%d and h acts on rows %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
+    end
     lw = length(h.work)
     (lw >= na) || throw(DimensionMismatch(@sprintf(
       """
-      In h ⊛ A, h has work array of length %d. A is %d×%d and requires
-      a work array of length %d (the number of columns of A).
-      """,
+        In h ⊛ A, h has work array of length %d. A is %d×%d and requires
+        a work array of length %d (the number of columns of A).
+        """,
       lw,
       ma,
       na,
@@ -401,20 +403,22 @@ end
   m = h.size
   (ma,na) = size(A)
   offs = h.offs
-  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:ma)
-    throw(DimensionMismatch(@sprintf(
-      "In h ⊘ A, A is of dimension %d×%d and h acts on rows %d:%d",
-      ma,
-      na,
-      offs + 1,
-      offs + m
-    )))
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:ma)
+      throw(DimensionMismatch(@sprintf(
+        "In h ⊘ A, A is of dimension %d×%d and h acts on rows %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
+    end
     lw = length(h.work)
     (lw >= na) || throw(DimensionMismatch(@sprintf(
       """
-      In h ⊛ A, h has work array of length %d. A is %d×%d and requires
-      a work array of length %d (the number of columns of A).
-      """,
+          In h ⊛ A, h has work array of length %d. A is %d×%d and requires
+          a work array of length %d (the number of columns of A).
+          """,
       lw,
       ma,
       na,
@@ -424,17 +428,19 @@ end
   v = reshape(h.v, m, 1)
   α = conj(h.β)
   work=h.work
-  @avx for k ∈ 1:na
-    x = zero(E)
-    for j ∈ 1:m
-      x += conj(v[j]) * A[offs+j,k]
+  @inbounds begin
+    @avx for k ∈ 1:na
+      x = zero(E)
+      for j ∈ 1:m
+        x += conj(v[j]) * A[offs+j,k]
+      end
+      work[k] = x
     end
-    work[k] = x
-  end
-  @avx for k ∈ 1:na
-    x = work[k]
-    for j ∈ 1:m
-      A[offs+j,k] -= α * v[j] * x
+    @avx for k ∈ 1:na
+      x = work[k]
+      for j ∈ 1:m
+        A[offs+j,k] -= α * v[j] * x
+      end
     end
   end
   nothing
@@ -654,19 +660,21 @@ end
   v = reshape(h.v, m, 1)
   offs = h.offs
   (ma, na) = size(Aᴴ)
-  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:na)
-    throw(DimensionMismatch(@sprintf(
-      "In A ⊛ h, A is of dimension %d×%d and h acts on columns %d:%d",
-      ma,
-      na,
-      offs + 1,
-      offs + m
-    )))
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:na)
+      throw(DimensionMismatch(@sprintf(
+        "In A ⊛ h, A is of dimension %d×%d and h acts on columns %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
+    end
     lw = length(h.work)
     (lw >= ma) || throw(DimensionMismatch(@sprintf(
       """In A⊛h, h has work array of length %d. A is %d×%d and requires
-      a work array of length %d (the number of rows of A).
-      """,
+        a work array of length %d (the number of rows of A).
+        """,
       lw,
       ma,
       na,
@@ -702,20 +710,22 @@ end
   offs = h.offs
   work = h.work
   (ma,na) = size(Aᴴ)
-  @boundscheck if !((offs + 1):(offs + m) ⊆ 1:na)
-    throw(DimensionMismatch(@sprintf(
-      "In A ⊘ h, A is of dimension %d×%d and h acts on columns %d:%d",
-      ma,
-      na,
-      offs + 1,
-      offs + m
-    )))
+  @boundscheck begin
+    if !((offs + 1):(offs + m) ⊆ 1:na)
+      throw(DimensionMismatch(@sprintf(
+        "In A ⊘ h, A is of dimension %d×%d and h acts on columns %d:%d",
+        ma,
+        na,
+        offs + 1,
+        offs + m
+      )))
+    end
     lw = length(work)
     (lw >= ma) || throw(DimensionMismatch(@sprintf(
       """
-      In A ⊘ h, h has work array of length %d. A is %d×%d and requires
-      a work array of length %d (the number of columns of A).
-      """,
+        In A ⊘ h, h has work array of length %d. A is %d×%d and requires
+        a work array of length %d (the number of columns of A).
+        """,
       lw,
       ma,
       na,
