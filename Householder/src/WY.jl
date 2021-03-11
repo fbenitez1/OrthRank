@@ -23,7 +23,9 @@ export WYTrans,
   throw_RowRange_DimensionMismatch,
   WYIndexSubsetError,
   WYMaxHouseholderError,
-  throw_WYMaxHouseholderError
+  throw_WYMaxHouseholderError,
+  SweepForward,
+  SweepBackward
 
 """
 
@@ -45,15 +47,17 @@ A struct for storing multiple WY transformations.
 
   - `max_WY_size::Int`: Maximum number of transformations.
 
-  - `work_size::Int`: Other dimension of A (determines the size of
-    the workspace).
+  - `work_size::Int`: In applying `A ⊛ wy` or `wy ⊛ A`, the work space
+    size should be the number of rows in `A` or columns in `A`
+    respectively.
 
   - `max_num_hs::Int`: maximum number of Householders in each
     transformation.
 
   - `num_WY::Base.RefValue{Int}`: Actual number of blocks currently stored.
 
-  - `active_WY::Base.RefValue{Int}`: Active block.  Zero if no active block.
+  - `active_WY::Base.RefValue{Int}`: Active block.  Zero if there is
+    no active block.
 
   - `offsets::AI`: Array of length `max_num_WY` giving
     multiplcation offsets for each WY transformation.
@@ -76,28 +80,28 @@ A struct for storing multiple WY transformations.
 
 ## Application of WY Transformations
 
-### `selectWY(wy,k) ⊛ A` is equivalent to
+### With `wy.active_WY[]==k`, `wy ⊛ A` is equivalent to
 
     A₁=A[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], :]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - W₁ Y₁ᴴ A₁
 
-### `selectWY(wy,k) ⊘ A` is equivalent to
+### `wy.active_WY[]==k`, `wy ⊘ A` is equivalent to
 
     A₁=A[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], :]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - Y₁ W₁ᴴ A₁
 
-### `A ⊛ selectWY(wy,k)` is equivalent to
+### `wy.active_WY[]==k`, `A ⊛ wy` is equivalent to
 
     A₁=A[:, wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k]]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     Y₁=Y[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
     A₁ = A₁ - A₁ W₁ Y₁ᴴ
 
-### `A ⊘ selectWY(wy,k)` is equivalent to
+### `wy.active_WY[]==k`, `A ⊘ wy` is equivalent to
 
     A₁=A[:, wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k]]
     W₁=W[wy.offsets[k]+1:wy.offsets[k]+wy.sizes[k], 1:wy.num_hs[k]]
@@ -836,5 +840,130 @@ end
 
   apply_inv!(h, wy, wy.active_WY[])
 end
+
+# Sweeps
+
+"""
+    SweepForward{T}
+
+A struct for a forward product of WY transformations.  If
+`wy=SweepForward.wy` and `n=wy.num_WY[]`, then this is conceptually
+equivalent to the product
+
+    wy₁ * wy₂ * ⋯ * wyₙ.
+"""
+struct SweepForward{T}
+  wy::T
+end
+
+"""
+    SweepBackward{T}
+
+A struct for a forward product of WY transformations.  If
+`wy=SweepForward.wy` and `n=wy.num_WY[]`, then this is conceptually
+equivalent to the product
+
+    wyₙ * wyₙ₋₁ * ⋯ * wy₁.
+"""
+struct SweepBackward{T}
+  wy::T
+end
+
+@inline function InPlace.apply!(
+  A::AbstractArray{E,2},
+  sfwy::SweepForward{<:WYTrans{E}},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ 1:n
+    apply!(A, wy, k)
+  end
+end
+
+@inline function InPlace.apply!(
+  sfwy::SweepForward{<:WYTrans{E}},
+  A::AbstractArray{E,2},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ n:-1:1
+    apply!(wy, k, A)
+  end
+end
+
+@inline function InPlace.apply_inv!(
+  A::AbstractArray{E,2},
+  sfwy::SweepForward{<:WYTrans{E}},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ n:-1:1
+    apply_inv!(A, wy, k)
+  end
+end
+
+@inline function InPlace.apply_inv!(
+  sfwy::SweepForward{<:WYTrans{E}},
+  A::AbstractArray{E,2},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ 1:n
+    apply_inv!(wy, k, A)
+  end
+end
+
+@inline function InPlace.apply!(
+  A::AbstractArray{E,2},
+  sfwy::SweepBackward{<:WYTrans{E}},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ n:-1:1
+    apply!(A, wy, k)
+  end
+end
+
+@inline function InPlace.apply!(
+  sfwy::SweepBackward{<:WYTrans{E}},
+  A::AbstractArray{E,2},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ 1:n
+    apply!(wy, k, A)
+  end
+end
+
+@inline function InPlace.apply_inv!(
+  A::AbstractArray{E,2},
+  sfwy::SweepBackward{<:WYTrans{E}},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ 1:n
+    apply_inv!(A, wy, k)
+  end
+end
+
+@inline function InPlace.apply_inv!(
+  sfwy::SweepBackward{<:WYTrans{E}},
+  A::AbstractArray{E,2},
+) where {E<:Number}
+
+  wy = sfwy.wy
+  n = wy.num_WY[]
+  for k ∈ n:-1:1
+    apply_inv!(wy, k, A)
+  end
+end
+
 
 end # module
