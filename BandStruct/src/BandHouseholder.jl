@@ -98,47 +98,51 @@ end
   k_last = offs + h.size
   n_bc = k_last - k_first + 1
 
-  j_first = first_inband_index(bc, :, k_first)
-  j_last = last_inband_index(bc, :, k_last)
-  m_bc = j_last - j_first + 1
+  js = hull(bc, :, k_first:k_last)
+  m_bc = length(js)
+
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
+  if m_bc > 0 && n_bc > 0
+    j_first = first(js)
+    j_last = last(js)
+    @boundscheck begin
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
 
-    lw >= m_bc || throw(DimensionMismatch(@sprintf(
-      """
-      In bc ⊛ h, h has work array of length %d. The active block
-      of bc is %d×%d and requires a work array of length %d
-      (the number of rows in the block).
-      """,
-      length(work),
-      m_bc,
-      n_bc,
-      m_bc
-    )))
-  end
-
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    work[1:m_bc] .= zero(E)
-    # Accumulate w = bc * v in work array by a linear combination of
-    # columns of bc.
-    for k ∈ 1:m
-      storage_offs = storage_offset(bc, k + offs)
-      x=v[k]
-      @simd for j ∈ j_first:j_last
-        work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
-      end
+      lw >= m_bc || throw(DimensionMismatch(@sprintf(
+        """
+        In bc ⊛ h, h has work array of length %d. The active block
+        of bc is %d×%d and requires a work array of length %d
+        (the number of rows in the block).
+        """,
+        length(work),
+        m_bc,
+        n_bc,
+        m_bc
+      )))
     end
-    # Subtract β * w * vᴴ from bc.
-    for k ∈ 1:m
-      storage_offs = storage_offset(bc, k + offs)
-      x = β * conj(v[k])
-      @simd for j ∈ j_first:j_last
-        bc_els[j - storage_offs, k + offs] -= work[j - j_first + 1] * x
+
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      work[1:m_bc] .= zero(E)
+      # Accumulate w = bc * v in work array by a linear combination of
+      # columns of bc.
+      for k ∈ 1:m
+        storage_offs = storage_offset(bc, k + offs)
+        x=v[k]
+        @simd for j ∈ j_first:j_last
+          work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
+        end
+      end
+      # Subtract β * w * vᴴ from bc.
+      for k ∈ 1:m
+        storage_offs = storage_offset(bc, k + offs)
+        x = β * conj(v[k])
+        @simd for j ∈ j_first:j_last
+          bc_els[j - storage_offs, k + offs] -= work[j - j_first + 1] * x
+        end
       end
     end
   end
@@ -159,30 +163,33 @@ end
   j_last = offs + h.size
   m_bc = j_last - j_first + 1
 
-  k_first = first_inband_index(bc, j_first, :)
-  k_last = last_inband_index(bc, j_last, :)
-  n_bc = k_last - k_first + 1
+  ks = hull(bc, j_first:j_last, :)
+
+  n_bc = length(ks)
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
-  end
-
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    for k ∈ k_first:k_last
-      x = zero(E)
-      storage_offs = storage_offset(bc, k)
-      # Form x = vᴴ * bc[:,k].
-      @simd for j ∈ j_first:j_last
-        x += conj(v[j - offs]) * bc_els[j - storage_offs, k]
-      end
-      # Subtract v * x from bc[:,k].
-      x = β * x
-      @simd for j ∈ 1:m
-        bc_els[offs + j - storage_offs, k] -= v[j] * x
+  if m_bc > 0 && n_bc > 0
+    k_first = first(ks)
+    k_last = last(ks)
+    @boundscheck begin
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
+    end
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      for k ∈ k_first:k_last
+        x = zero(E)
+        storage_offs = storage_offset(bc, k)
+        # Form x = vᴴ * bc[:,k].
+        @simd for j ∈ j_first:j_last
+          x += conj(v[j - offs]) * bc_els[j - storage_offs, k]
+        end
+        # Subtract v * x from bc[:,k].
+        x = β * x
+        @simd for j ∈ 1:m
+          bc_els[offs + j - storage_offs, k] -= v[j] * x
+        end
       end
     end
   end
@@ -206,48 +213,53 @@ end
   k_last = offs + h.size
   n_bc = k_last - k_first + 1
 
-  j_first = first_inband_index(bc, :, k_first)
-  j_last = last_inband_index(bc, :, k_last)
-  m_bc = j_last - j_first + 1
+  js = hull(bc, :, k_first:k_last)
+  m_bc = length(js)
+
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
+  if m_bc > 0 && n_bc > 0
+    j_first = first(js)
+    j_last = last(js)
 
-    lw >= m_bc || throw(DimensionMismatch(@sprintf(
-      """
-      In bc ⊛ h, h has work array of length %d. The active block
-      of bc is %d×%d and requires a work array of length %d
-      (the number of rows in the block).
-      """,
-      length(work),
-      m_bc,
-      n_bc,
-      m_bc
-    )))
-  end
+    @boundscheck begin
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
 
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    work[1:m_bc] .= zero(E)
-    # Accumulate w = bc * v in work array by a linear combination of
-    # columns of bc.
-    for k ∈ 1:m
-      storage_offs = storage_offset(bc, k + offs)
-      x=v[k]
-      @simd for j ∈ j_first:j_last
-        work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
-      end
+      lw >= m_bc || throw(DimensionMismatch(@sprintf(
+        """
+        In bc ⊛ h, h has work array of length %d. The active block
+        of bc is %d×%d and requires a work array of length %d
+        (the number of rows in the block).
+        """,
+        length(work),
+        m_bc,
+        n_bc,
+        m_bc
+      )))
     end
-    # Subtract β̄ * w * vᴴ from bc.
-    for k ∈ 1:m
-      storage_offs = storage_offset(bc, k + offs)
-      x = β̄ * conj(v[k])
-      @simd for j ∈ j_first:j_last
-        bc_els[j - storage_offs, k + offs] -=
-          work[j - j_first + 1] * x
+
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      work[1:m_bc] .= zero(E)
+      # Accumulate w = bc * v in work array by a linear combination of
+      # columns of bc.
+      for k ∈ 1:m
+        storage_offs = storage_offset(bc, k + offs)
+        x=v[k]
+        @simd for j ∈ j_first:j_last
+          work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
+        end
+      end
+      # Subtract β̄ * w * vᴴ from bc.
+      for k ∈ 1:m
+        storage_offs = storage_offset(bc, k + offs)
+        x = β̄ * conj(v[k])
+        @simd for j ∈ j_first:j_last
+          bc_els[j - storage_offs, k + offs] -=
+            work[j - j_first + 1] * x
+        end
       end
     end
   end
@@ -268,34 +280,38 @@ end
   j_last = offs + h.size
   m_bc = j_last - j_first + 1
 
-  k_first = first_inband_index(bc, j_first, :)
-  k_last = last_inband_index(bc, j_last, :)
-  n_bc = k_last - k_first + 1
+  ks = hull(bc, j_first:j_last, :)
+  n_bc = length(ks)
+
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
-  end
-  work=h.work
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    @avx for k ∈ k_first:k_last
-      x=zero(E)
-      storage_offs = storage_offset(bc, k)
-      # Form x = vᴴ * bc[:,k].
-      for j ∈ 1:m
-        x += conj(v[j]) * bc_els[j - storage_offs+offs, k]
-      end
-      work[k-k_first+1]=x
+  if m_bc > 0 && n_bc > 0
+    k_first = first(ks)
+    k_last = last(ks)
+    @boundscheck begin
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
     end
-    # Subtract v * x from bc[:,k].
-    for k ∈ k_first:k_last
-      storage_offs = storage_offset(bc, k)
-      x = β̄ * work[k-k_first+1] 
-      @simd for j ∈ 1:m
-        bc_els[offs + j - storage_offs, k] -= v[j] * x
+    work=h.work
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      @avx for k ∈ k_first:k_last
+        x=zero(E)
+        storage_offs = storage_offset(bc, k)
+        # Form x = vᴴ * bc[:,k].
+        for j ∈ 1:m
+          x += conj(v[j]) * bc_els[j - storage_offs+offs, k]
+        end
+        work[k-k_first+1]=x
+      end
+      # Subtract v * x from bc[:,k].
+      for k ∈ k_first:k_last
+        storage_offs = storage_offset(bc, k)
+        x = β̄ * work[k-k_first+1] 
+        @simd for j ∈ 1:m
+          bc_els[offs + j - storage_offs, k] -= v[j] * x
+        end
       end
     end
   end
@@ -328,48 +344,54 @@ end
   k_first = offset + 1
   k_last = offset + n_bc0
 
-  j_first = first_inband_index(bc, :, k_first)
-  j_last = last_inband_index(bc, :, k_last)
-  m_bc0 = j_last - j_first + 1
+  js = hull(bc, :, k_first:k_last)
+  m_bc0 = length(js)
+
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    lw >= m_bc0 * num_hs ||
-      throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
-  end
+  if m_bc0 > 0 && n_bc0 > 0
 
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    @views begin
-      work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
-      W = wy.W[inds, 1:num_hs, k]
-      Y = wy.Y[inds, 1:num_hs, k]
+    j_first = first(js)
+    j_last = last(js)
+
+    @boundscheck begin
+      lw >= m_bc0 * num_hs ||
+        throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
     end
-    work .= zero(E)
 
-    # Accumulate work = bc * W.
-    for l ∈ 1:num_hs
-      for kk ∈ 1:n_bc0
-        j0 = first_inband_index(bc, :, kk + offset)
-        j1 = last_inband_index(bc, :, kk + offset)
-        storage_offs = storage_offset(bc, kk + offset)
-        @simd for j ∈ j0:j1
-          work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
-            W[kk, l]
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      @views begin
+        work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
+        W = wy.W[inds, 1:num_hs, k]
+        Y = wy.Y[inds, 1:num_hs, k]
+      end
+      work .= zero(E)
+
+      # Accumulate work = bc * W.
+      for l ∈ 1:num_hs
+        for kk ∈ 1:n_bc0
+          j0 = first_inband_index(bc, :, kk + offset)
+          j1 = last_inband_index(bc, :, kk + offset)
+          storage_offs = storage_offset(bc, kk + offset)
+          @simd for j ∈ j0:j1
+            work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
+              W[kk, l]
+          end
         end
       end
-    end
 
-    # Subtract bc * W * Yᴴ = work * Yᴴ from bc.
-    for l ∈ 1:num_hs
-      for kk ∈ 1:n_bc0
-        storage_offs = storage_offset(bc, kk + offset)
-        @simd for j ∈ j_first:j_last
-          bc_els[j - storage_offs, kk + offset] -=
-            work[j - j_first + 1, l] * conj(Y[kk,l])
+      # Subtract bc * W * Yᴴ = work * Yᴴ from bc.
+      for l ∈ 1:num_hs
+        for kk ∈ 1:n_bc0
+          storage_offs = storage_offset(bc, kk + offset)
+          @simd for j ∈ j_first:j_last
+            bc_els[j - storage_offs, kk + offset] -=
+              work[j - j_first + 1, l] * conj(Y[kk,l])
+          end
         end
       end
     end
@@ -402,48 +424,53 @@ end
   k_first = offset + 1
   k_last = offset + n_bc0
 
-  j_first = first_inband_index(bc, :, k_first)
-  j_last = last_inband_index(bc, :, k_last)
-  m_bc0 = j_last - j_first + 1
+  js = hull(bc, :, k_first:k_last)
+  m_bc0 = length(js)
+
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    lw >= m_bc0 * num_hs ||
-      throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
-  end
+  if m_bc0 > 0 && n_bc0 > 0
+    j_first = first(js)
+    j_last = last(js)
 
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    @views begin
-      work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
-      W = wy.W[inds, 1:num_hs, k]
-      Y = wy.Y[inds, 1:num_hs, k]
+    @boundscheck begin
+      lw >= m_bc0 * num_hs ||
+        throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
     end
-    work .= zero(E)
 
-    # Accumulate work = bc * Y.
-    for l ∈ 1:num_hs
-      for kk ∈ 1:n_bc0
-        j0 = first_inband_index(bc, :, kk + offset)
-        j1 = last_inband_index(bc, :, kk + offset)
-        storage_offs = storage_offset(bc, kk + offset)
-        @simd for j ∈ j0:j1
-          work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
-            Y[kk, l]
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      @views begin
+        work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
+        W = wy.W[inds, 1:num_hs, k]
+        Y = wy.Y[inds, 1:num_hs, k]
+      end
+      work .= zero(E)
+
+      # Accumulate work = bc * Y.
+      for l ∈ 1:num_hs
+        for kk ∈ 1:n_bc0
+          j0 = first_inband_index(bc, :, kk + offset)
+          j1 = last_inband_index(bc, :, kk + offset)
+          storage_offs = storage_offset(bc, kk + offset)
+          @simd for j ∈ j0:j1
+            work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
+              Y[kk, l]
+          end
         end
       end
-    end
 
-    # Subtract bc * Y * Wᴴ = work * Wᴴ from bc.
-    for l ∈ 1:num_hs
-      for kk ∈ 1:n_bc0
-        storage_offs = storage_offset(bc, kk + offset)
-        @simd for j ∈ j_first:j_last
-          bc_els[j - storage_offs, kk + offset] -=
-            work[j - j_first + 1, l] * conj(W[kk,l])
+      # Subtract bc * Y * Wᴴ = work * Wᴴ from bc.
+      for l ∈ 1:num_hs
+        for kk ∈ 1:n_bc0
+          storage_offs = storage_offset(bc, kk + offset)
+          @simd for j ∈ j_first:j_last
+            bc_els[j - storage_offs, kk + offset] -=
+              work[j - j_first + 1, l] * conj(W[kk,l])
+          end
         end
       end
     end
@@ -478,45 +505,51 @@ end
   j_first = offset + 1
   j_last = offset + m_bc0
 
-  k_first = first_inband_index(bc, j_first, :)
-  k_last = last_inband_index(bc, j_last, :)
-  n_bc0 = k_last - k_first + 1
+  ks = hull(bc, j_first:j_last, :)
+  n_bc0 = length(ks)
+
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    lw >= n_bc0 * num_hs ||
-      throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
-  end
+  if m_bc0 > 0 && n_bc0 > 0
+    
+    k_first = first(ks)
+    k_last = last(ks)
 
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    @views begin
-      work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
-      W = wy.W[inds, 1:num_hs, k]
-      Y = wy.Y[inds, 1:num_hs, k]
+    @boundscheck begin
+      lw >= n_bc0 * num_hs ||
+        throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
     end
-    work .= zero(E)
-    # Form work[l,kk] = Y[:,l]ᴴ * bc[:,kk].
-    for l∈1:num_hs
-      for kk ∈ k_first:k_last
-        x = zero(E)
-        storage_offs = storage_offset(bc, kk)
-        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-        @simd for j ∈ jrange
-          work[l,kk-k_first+1] += conj(Y[j - offset,l]) * bc_els[j - storage_offs, kk]
+
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      @views begin
+        work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
+        W = wy.W[inds, 1:num_hs, k]
+        Y = wy.Y[inds, 1:num_hs, k]
+      end
+      work .= zero(E)
+      # Form work[l,kk] = Y[:,l]ᴴ * bc[:,kk].
+      for l∈1:num_hs
+        for kk ∈ k_first:k_last
+          x = zero(E)
+          storage_offs = storage_offset(bc, kk)
+          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+          @simd for j ∈ jrange
+            work[l,kk-k_first+1] += conj(Y[j - offset,l]) * bc_els[j - storage_offs, kk]
+          end
         end
       end
-    end
-    # Subtract  W * work from bc[j_first:j_last,k_first:k_last].
-    for l∈1:num_hs
-      for kk∈k_first:k_last
-        storage_offs = storage_offset(bc, kk)
-        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-        @simd for j ∈ jrange
-          bc_els[j - storage_offs, kk] -= W[j-offset,l] * work[l,kk-k_first+1]
+      # Subtract  W * work from bc[j_first:j_last,k_first:k_last].
+      for l∈1:num_hs
+        for kk∈k_first:k_last
+          storage_offs = storage_offset(bc, kk)
+          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+          @simd for j ∈ jrange
+            bc_els[j - storage_offs, kk] -= W[j-offset,l] * work[l,kk-k_first+1]
+          end
         end
       end
     end
@@ -550,45 +583,50 @@ end
   j_first = offset + 1
   j_last = offset + m_bc0
 
-  k_first = first_inband_index(bc, j_first, :)
-  k_last = last_inband_index(bc, j_last, :)
-  n_bc0 = k_last - k_first + 1
+  ks = hull(bc, j_first:j_last, :)
+  n_bc0 = length(ks)
   bc_els = band_elements(bc)
 
-  @boundscheck begin
-    lw >= n_bc0 * num_hs ||
-      throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
-    check_bc_storage_bounds(bc, j_first, k_last)
-    check_bc_storage_bounds(bc, j_last, k_first)
-  end
+  if m_bc0 > 0 && n_bc0 >0
 
-  @inbounds begin
-    bulge_upper!(bc, j_first, k_last)
-    bulge_lower!(bc, j_last, k_first)
-    @views begin
-      work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
-      W = wy.W[inds, 1:num_hs, k]
-      Y = wy.Y[inds, 1:num_hs, k]
+    k_first = first(ks)
+    k_last = last(ks)
+
+    @boundscheck begin
+      lw >= n_bc0 * num_hs ||
+        throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
+      check_bc_storage_bounds(bc, j_first, k_last)
+      check_bc_storage_bounds(bc, j_last, k_first)
     end
-    work .= zero(E)
-    # Form work[l,kk] = W[:,l]ᴴ * bc[:,kk].
-    for l∈1:num_hs
-      for kk ∈ k_first:k_last
-        x = zero(E)
-        storage_offs = storage_offset(bc, kk)
-        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-        @simd for j ∈ jrange
-          work[l,kk-k_first+1] += conj(W[j - offset,l]) * bc_els[j - storage_offs, kk]
+
+    @inbounds begin
+      bulge_upper!(bc, j_first, k_last)
+      bulge_lower!(bc, j_last, k_first)
+      @views begin
+        work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
+        W = wy.W[inds, 1:num_hs, k]
+        Y = wy.Y[inds, 1:num_hs, k]
+      end
+      work .= zero(E)
+      # Form work[l,kk] = W[:,l]ᴴ * bc[:,kk].
+      for l∈1:num_hs
+        for kk ∈ k_first:k_last
+          x = zero(E)
+          storage_offs = storage_offset(bc, kk)
+          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+          @simd for j ∈ jrange
+            work[l,kk-k_first+1] += conj(W[j - offset,l]) * bc_els[j - storage_offs, kk]
+          end
         end
       end
-    end
-    # Subtract  Y * work from bc[j_first:j_last,k_first:k_last].
-    for l∈1:num_hs
-      for kk∈k_first:k_last
-        storage_offs = storage_offset(bc, kk)
-        jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-        @simd for j ∈ jrange
-          bc_els[j - storage_offs, kk] -= Y[j-offset,l] * work[l,kk-k_first+1]
+      # Subtract  Y * work from bc[j_first:j_last,k_first:k_last].
+      for l∈1:num_hs
+        for kk∈k_first:k_last
+          storage_offs = storage_offset(bc, kk)
+          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
+          @simd for j ∈ jrange
+            bc_els[j - storage_offs, kk] -= Y[j-offset,l] * work[l,kk-k_first+1]
+          end
         end
       end
     end

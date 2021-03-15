@@ -99,7 +99,7 @@ end
 end
 
 """
-  hull(a :: AbstractUnitRange, b :: AbstractUnitRange)
+    hull(a :: AbstractUnitRange, b :: AbstractUnitRange)
 
 Return the convex hull of two closed intervals, with
 the intervals represented by an `AbstractUnitRange`.
@@ -248,6 +248,32 @@ An AbstractBandColumn should implement the following:
 
 """
 abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2} end
+
+"""
+    hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
+
+Return the convex hull of the inband indices in the rows in the range js.
+"""
+@inline function hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
+  h = 1:0
+  for j ∈ js
+    h = hull(h, inband_index_range(bc, j, :))
+  end
+  h
+end
+
+"""
+    hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
+
+Return the convex hull of the inband indices in the columns in the range ks.
+"""
+@inline function hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
+  h = 1:0
+  for k ∈ ks
+    h = hull(h, inband_index_range(bc, :, k))
+  end
+  h
+end
 
 """
 
