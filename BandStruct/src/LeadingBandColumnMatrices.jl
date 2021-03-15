@@ -598,10 +598,12 @@ Base.print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
   j1 = last(rows)
   k0 = first(cols)
   k1 = last(cols)
-
+  
   @boundscheck begin
-    checkbounds(lbc, j0, k0)
-    checkbounds(lbc, j1, k1)
+    if j1 >= j0 && k1 >= k0
+      checkbounds(lbc, j0, k0)
+      checkbounds(lbc, j1, k1)
+    end
   end
   BandColumn(
     Sub(),

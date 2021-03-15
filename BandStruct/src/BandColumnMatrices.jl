@@ -1996,8 +1996,10 @@ wrapped into a BandColumn.
   k1 = last(cols)
 
   @boundscheck begin
-    checkbounds(bc, j0, k0)
-    checkbounds(bc, j1, k1)
+    if j1 >= j0 && k1 >= k0
+      checkbounds(bc, j0, k0)
+      checkbounds(bc, j1, k1)
+    end
   end
   @inbounds BandColumn(
     Sub(),
