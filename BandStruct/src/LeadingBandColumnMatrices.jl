@@ -451,42 +451,46 @@ end
 ) = lbc.cols_first_last[3,k]
 
 @inline function BandColumnMatrices.unsafe_set_first_inband_index!(
+  ::Type{NonSub},
   lbc::LeadingBandColumn,
   js::AbstractUnitRange{Int},
   ::Colon,
   k_first::Int,
 ) 
-  lbc.rows_first_last[first(js):last(js), 2] .= k_first + col_offset(lbc)
+  lbc.rows_first_last[js, 2] .= k_first
   nothing
 end
 
 @inline function BandColumnMatrices.unsafe_set_first_inband_index!(
+  ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
   ks::AbstractUnitRange{Int},
   j_first::Int,
 ) 
-  lbc.cols_first_last[2, first(ks):last(ks)] .= j_first + row_offset(lbc)
+  lbc.cols_first_last[2, ks] .= j_first
   nothing
 end
 
 @inline function BandColumnMatrices.unsafe_set_last_inband_index!(
+  ::Type{NonSub},
   lbc::LeadingBandColumn,
   js::AbstractUnitRange{Int},
   ::Colon,
   k_last::Int,
 ) 
-  lbc.rows_first_last[first(js):last(js), 5] .= k_last + col_offset(lbc)
+  lbc.rows_first_last[js, 5] .= k_last
   nothing
 end
 
 @inline function BandColumnMatrices.unsafe_set_last_inband_index!(
+  ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
   ks::AbstractUnitRange{Int},
   j_last::Int,
 ) 
-  lbc.cols_first_last[5, first(ks):last(ks)] .= j_last + row_offset(lbc)
+  lbc.cols_first_last[5, ks] .= j_last
   nothing
 end
 
@@ -616,9 +620,9 @@ Base.print(io::IO, ::MIME"text/plain", lbc::LeadingBandColumn) = print(io, lbc)
     lbc.bw_max,
     lbc.upper_bw_max,
     lbc.middle_lower_bw_max,
-    view(lbc.rows_first_last, rows, 1:6),
-    view(lbc.cols_first_last, 1:6, cols),
-    view(lbc.band_elements, :, cols),
+    lbc.rows_first_last,
+    lbc.cols_first_last,
+    lbc.band_elements,
   )
 end
 
@@ -647,9 +651,9 @@ end
     lbc.bw_max,
     lbc.upper_bw_max,
     lbc.middle_lower_bw_max,
-    lbc.rows_first_last[rows, 1:6],
-    lbc.cols_first_last[1:6, cols],
-    lbc.band_elements[:, cols],
+    copy(lbc.rows_first_last),
+    copy(lbc.cols_first_last),
+    copy(lbc.band_elements),
   )
 end
 

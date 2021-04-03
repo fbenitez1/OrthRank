@@ -60,21 +60,6 @@ show_equality_result(
   wilk14_notch,
 )
 
-# Original index (3,5) notch_upper! done in a submatrix (3:4,
-# 4:6). (Creates a well).
-
-bc35_notch = lbc0_notch[3:4,4:6]
-res = false
-try
-  notch_upper!(bc35_notch, 1, 2)
-catch e
-  isa(e, WellError) && global res = true
-end
-show_bool_result(
-  "notch_upper! Submatrix [3:4, 4:6] WellError test, original index (3,5)",
-  res,
-)
-
 # Index (2,6)
 
 lbc26_notch = copy(lbc0_notch)
@@ -178,19 +163,4 @@ show_equality_result(
   ==,
   wilk(toBandColumn(lbcr64_notch)).arr,
   wilkr64_notch,
-)
-
-# Original index (6,4) notch_lower! done in submatrix (4:6,
-# 4:6). (Creates a well).
-
-bc64w_notch = lbc0_notch[4:6,4:6]
-res = false
-try
-  notch_lower!(bc64w_notch, 3, 1)
-catch e
-  isa(e, WellError) && global res = true
-end
-show_bool_result(
-  "notch_upper! Submatrix [4:6, 4:6] WellError test, original index (6,4)",
-  res,
 )

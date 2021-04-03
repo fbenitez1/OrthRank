@@ -122,7 +122,7 @@ end
         m_bc
       )))
     end
-
+    
     @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
