@@ -333,8 +333,9 @@ end
   l::Int,
   k::Int,
 ) where {E<:Number}
+  m = size(A,1)
   A[1:(l - 1), k] .= zero(E)
-  A[(l + 1):end, k] .= zero(E)
+  A[(l + 1):m, k] .= zero(E)
 end
 
 @inline function row_nonzero!(
@@ -342,8 +343,9 @@ end
   j::Int,
   l::Int,
 ) where {E<:Number}
+  n = size(A,2)
   A[j, 1:(l - 1)] .= zero(E)
-  A[j, (l + 1):end] .= zero(E)
+  A[j, (l + 1):n] .= zero(E)
 end
 
 @inline function InPlace.apply!(

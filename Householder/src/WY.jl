@@ -593,7 +593,6 @@ throw_WYMaxHouseholderError(block) =
   @inbounds begin
     num_hs = wy.num_hs[k]
     wy_offset=wy.offsets[k]
-    v = reshape(h.v, length(h.v), 1)
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
     indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
@@ -613,11 +612,10 @@ throw_WYMaxHouseholderError(block) =
       Y0 = wy.Y[indswy, 1:num_hs, k]
       Y1 = wy.Y[indswy, (num_hs + 1):(num_hs + 1), k]
     end
-
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
-    W1[indshwy,:] .= h.β .* v
-    Y1[indshwy,:] = v
+    W1[indshwy,:] .= h.β .* h.v
+    Y1[indshwy,:] .= h.v
     mul!(work, Y0', W1)
     mul!(W1, W0, work, -one(E), one(E))
 
@@ -657,8 +655,6 @@ end
     num_hs = wy.num_hs[k]
     wy_offset=wy.offsets[k]
 
-    v=reshape(h.v,length(h.v),1)
-
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
     indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
@@ -681,8 +677,8 @@ end
 
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
-    W1[indshwy,:] .= conj(h.β) .* v
-    Y1[indshwy,:] = v
+    W1[indshwy,:] .= conj(h.β) .* h.v
+    Y1[indshwy,:] = h.v
     mul!(work, Y0', W1)
     mul!(W1, W0, work, -one(E), one(E))
     wy.num_hs[k] += 1
@@ -721,8 +717,6 @@ end
     num_hs = wy.num_hs[k]
     wy_offset = wy.offsets[k]
 
-    v=reshape(h.v,length(h.v),1)
-
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
     indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
@@ -745,8 +739,8 @@ end
     end
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
-    W1[indshwy,:] = v
-    Y1[indshwy,:] .= conj(h.β) .* v
+    W1[indshwy,:] = h.v
+    Y1[indshwy,:] .= conj(h.β) .* h.v
 
     mul!(work, W0', Y1)
     mul!(Y1, Y0, work, -one(E), one(E))

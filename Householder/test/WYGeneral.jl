@@ -126,7 +126,6 @@ function qrWYSweep(A::Array{E,2}; block_size::Int=32) where {E<:Number}
   m, n = size(A)
   blocks, rem = divrem(n, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
   wy = WYTrans(
     E,
@@ -148,7 +147,6 @@ function qrWYSweep(A::Array{E,2}; block_size::Int=32) where {E<:Number}
       A[(k + 1):m, k] .= zero(E)
       wy ⊛ h
     end
-    # Q ⊛ wy
     wy ⊘ A[:, (block_end + 1):n]
   end
   (SweepForward(wy), A)
