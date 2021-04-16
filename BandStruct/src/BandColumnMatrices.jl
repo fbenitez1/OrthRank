@@ -85,7 +85,6 @@ export BandColumn,
   NonSub,
   Sub
 
-
 @inline function project(j::Int, m::Int)
   min(max(j, 1), m)
 end
@@ -1052,7 +1051,6 @@ in column ``k``.
   k::Int,
 ) = last_inband_index(NonSub, bc, :, k) - storage_offset(NonSub, bc, k)
 
-
 """
     inband_index_range_storage(
        bc::AbstractBandColumn,
@@ -1595,7 +1593,7 @@ end
       isempty(j_range) ? max(1, first_lower_index(NonSub, bc, :, k)) : last(j_range)
     k_range = inband_index_range(NonSub, bc, j, :)
     k_first =
-      isempty(k_range) ? min(n, first_lower_index(NonSub, bc, j, :)) : first(k_range)
+      isempty(k_range) ? min(n, last_lower_index(NonSub, bc, j, :)) : first(k_range)
     # Does nothing if (j,k) is not below the diagonal.
     # j <= j_last ⟹ (j_last+1):j is empty.
     unsafe_set_first_inband_index!(NonSub, bc, (j_last+1):j, :, k)
@@ -2500,7 +2498,7 @@ wrapped into a BandColumn.
 """
 @inline function viewbc(
   bc::BandColumn,
-  i::Tuple{AbstractUnitRange{Int},AbstractUnitRange{Int}},
+  i::Tuple{<:AbstractUnitRange{Int},<:AbstractUnitRange{Int}},
 )
   (rows, cols) = i
   j0 = first(rows)
