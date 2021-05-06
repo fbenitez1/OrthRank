@@ -4,6 +4,7 @@ using LinearAlgebra
 using Base: @propagate_inbounds
 using Printf
 using LoopVectorization
+using Octavian
 
 using Householder.Compute
 using Householder.WY
@@ -321,7 +322,7 @@ end
 @inline function InPlace.apply!(
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E},
-  k::Int
+  k::Int,
 ) where {E<:Number,S}
 
   num_WY = wy.num_WY[]
@@ -355,49 +356,41 @@ end
     j_last = last(js)
 
     @boundscheck begin
-      lw >= m_bc0 * num_hs ||
-        throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
+      lw >= m_bc0 * num_hs + m_bc0 * n_bc0 ||
+        throw_WorkSizeError(mbc,
+                            nbc,
+                            m_bc0 * num_hs + m_bc0 * n_bc0,
+                            length(wy.work))
       check_bc_storage_bounds(bc, j_first, k_last)
       check_bc_storage_bounds(bc, j_last, k_first)
     end
 
-    @inbounds begin
+    @views @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
-      @views begin
-        work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
-        W = wy.W[inds, 1:num_hs, k]
-        Y = wy.Y[inds, 1:num_hs, k]
-      end
+      work = reshape(wy.work[1:m_bc0*num_hs], m_bc0, num_hs)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+
       work .= zero(E)
 
-      # Accumulate work = bc * W.
-      for l ∈ 1:num_hs
-        for kk ∈ 1:n_bc0
-          j0 = first_inband_index(bc, :, kk + offset)
-          j1 = last_inband_index(bc, :, kk + offset)
-          storage_offs = storage_offset(bc, kk + offset)
-          @simd for j ∈ j0:j1
-            work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
-              W[kk, l]
-          end
-        end
-      end
+      tmp0 = reshape(
+        work[(m_bc0 * num_hs + 1):(m_bc0 * num_hs + m_bc0 * n_bc0)],
+        m_bc0,
+        n_bc0,
+      )
 
-      # Subtract bc * W * Yᴴ = work * Yᴴ from bc.
-      for l ∈ 1:num_hs
-        for kk ∈ 1:n_bc0
-          storage_offs = storage_offset(bc, kk + offset)
-          @simd for j ∈ j_first:j_last
-            bc_els[j - storage_offs, kk + offset] -=
-              work[j - j_first + 1, l] * conj(Y[kk,l])
-          end
-        end
-      end
+      copyto!(tmp0, bc[js, k_first:k_last])
+      matmul!(work,tmp0,W)
+
+      oneE = one(E)
+      matmul!(tmp0, work, Y', -oneE, oneE)
+      copyto!(bc[js, k_first:k_last], tmp0)
     end
   end
   nothing
 end
+
 
 @inline function InPlace.apply_inv!(
   bc::AbstractBandColumn{S,E},
@@ -434,50 +427,41 @@ end
     j_last = last(js)
 
     @boundscheck begin
-      lw >= m_bc0 * num_hs ||
-        throw_WorkSizeError(mbc, nbc, m_bc0 * num_hs, length(wy.work))
+      lw >= m_bc0 * num_hs + m_bc0 * n_bc0 ||
+        throw_WorkSizeError(mbc,
+                            nbc,
+                            m_bc0 * num_hs + m_bc0 * n_bc0,
+                            length(wy.work))
       check_bc_storage_bounds(bc, j_first, k_last)
       check_bc_storage_bounds(bc, j_last, k_first)
     end
 
-    @inbounds begin
+    @views @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
-      @views begin
-        work = reshape(wy.work[1:mbc*num_hs], mbc, num_hs)
-        W = wy.W[inds, 1:num_hs, k]
-        Y = wy.Y[inds, 1:num_hs, k]
-      end
+
+      work = reshape(wy.work[1:m_bc0*num_hs], m_bc0, num_hs)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+
       work .= zero(E)
 
-      # Accumulate work = bc * Y.
-      for l ∈ 1:num_hs
-        for kk ∈ 1:n_bc0
-          j0 = first_inband_index(bc, :, kk + offset)
-          j1 = last_inband_index(bc, :, kk + offset)
-          storage_offs = storage_offset(bc, kk + offset)
-          @simd for j ∈ j0:j1
-            work[j - j_first + 1, l] += bc_els[j - storage_offs, kk + offset] *
-              Y[kk, l]
-          end
-        end
-      end
+      tmp0 = reshape(
+        work[(m_bc0 * num_hs + 1):(m_bc0 * num_hs + m_bc0 * n_bc0)],
+        m_bc0,
+        n_bc0,
+      )
 
-      # Subtract bc * Y * Wᴴ = work * Wᴴ from bc.
-      for l ∈ 1:num_hs
-        for kk ∈ 1:n_bc0
-          storage_offs = storage_offset(bc, kk + offset)
-          @simd for j ∈ j_first:j_last
-            bc_els[j - storage_offs, kk + offset] -=
-              work[j - j_first + 1, l] * conj(W[kk,l])
-          end
-        end
-      end
+      copyto!(tmp0, bc[js, k_first:k_last])
+      matmul!(work,tmp0,Y)
+      
+      oneE = one(E)
+      matmul!(tmp0, work, W', -oneE, oneE)
+      copyto!(bc[js, k_first:k_last], tmp0)
     end
   end
   nothing
 end
-
 
 @inline function InPlace.apply!(
   wy::WYTrans{E},
@@ -516,42 +500,37 @@ end
     k_last = last(ks)
 
     @boundscheck begin
-      lw >= n_bc0 * num_hs ||
-        throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
+      lw >= n_bc0 * num_hs + m_bc0 * n_bc0 ||
+        throw_WorkSizeError(mbc,
+                            nbc,
+                            n_bc0 * num_hs + m_bc0 * n_bc0,
+                            length(wy.work))
       check_bc_storage_bounds(bc, j_first, k_last)
       check_bc_storage_bounds(bc, j_last, k_first)
     end
-
-    @inbounds begin
+    
+    @views @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
-      @views begin
-        work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
-        W = wy.W[inds, 1:num_hs, k]
-        Y = wy.Y[inds, 1:num_hs, k]
-      end
+
+      work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+
       work .= zero(E)
-      # Form work[l,kk] = Y[:,l]ᴴ * bc[:,kk].
-      for l∈1:num_hs
-        for kk ∈ k_first:k_last
-          x = zero(E)
-          storage_offs = storage_offset(bc, kk)
-          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-          @simd for j ∈ jrange
-            work[l,kk-k_first+1] += conj(Y[j - offset,l]) * bc_els[j - storage_offs, kk]
-          end
-        end
-      end
-      # Subtract  W * work from bc[j_first:j_last,k_first:k_last].
-      for l∈1:num_hs
-        for kk∈k_first:k_last
-          storage_offs = storage_offset(bc, kk)
-          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-          @simd for j ∈ jrange
-            bc_els[j - storage_offs, kk] -= W[j-offset,l] * work[l,kk-k_first+1]
-          end
-        end
-      end
+
+      tmp0 = reshape(
+        work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
+        m_bc0,
+        n_bc0,
+      )
+
+      copyto!(tmp0, bc[j_first:j_last, ks])
+      matmul!(work, Y', tmp0)
+
+      oneE = one(E)
+      matmul!(tmp0, W, work, -oneE, oneE)
+      copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
   nothing
@@ -585,50 +564,46 @@ end
 
   ks = hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)
+
   bc_els = band_elements(bc)
 
-  if m_bc0 > 0 && n_bc0 >0
-
+  if m_bc0 > 0 && n_bc0 > 0
+    
     k_first = first(ks)
     k_last = last(ks)
 
     @boundscheck begin
-      lw >= n_bc0 * num_hs ||
-        throw_WorkSizeError(mbc, nbc, n_bc0 * num_hs, length(wy.work))
+      lw >= n_bc0 * num_hs + m_bc0 * n_bc0 ||
+        throw_WorkSizeError(mbc,
+                            nbc,
+                            n_bc0 * num_hs + m_bc0 * n_bc0,
+                            length(wy.work))
       check_bc_storage_bounds(bc, j_first, k_last)
       check_bc_storage_bounds(bc, j_last, k_first)
     end
-
-    @inbounds begin
+    
+    @views @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
-      @views begin
-        work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
-        W = wy.W[inds, 1:num_hs, k]
-        Y = wy.Y[inds, 1:num_hs, k]
-      end
+
+      work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
+      W = wy.W[inds, 1:num_hs, k]
+      Y = wy.Y[inds, 1:num_hs, k]
+
       work .= zero(E)
-      # Form work[l,kk] = W[:,l]ᴴ * bc[:,kk].
-      for l∈1:num_hs
-        for kk ∈ k_first:k_last
-          x = zero(E)
-          storage_offs = storage_offset(bc, kk)
-          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-          @simd for j ∈ jrange
-            work[l,kk-k_first+1] += conj(W[j - offset,l]) * bc_els[j - storage_offs, kk]
-          end
-        end
-      end
-      # Subtract  Y * work from bc[j_first:j_last,k_first:k_last].
-      for l∈1:num_hs
-        for kk∈k_first:k_last
-          storage_offs = storage_offset(bc, kk)
-          jrange = (offset .+ (1:m_bc0)) ∩ inband_index_range(bc, :, kk)
-          @simd for j ∈ jrange
-            bc_els[j - storage_offs, kk] -= Y[j-offset,l] * work[l,kk-k_first+1]
-          end
-        end
-      end
+
+      tmp0 = reshape(
+        work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
+        m_bc0,
+        n_bc0,
+      )
+
+      copyto!(tmp0, bc[j_first:j_last, ks])
+      matmul!(work, W', tmp0)
+
+      oneE = one(E)
+      matmul!(tmp0, Y, work, -oneE, oneE)
+      copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
   nothing

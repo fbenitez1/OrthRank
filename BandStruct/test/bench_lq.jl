@@ -78,10 +78,16 @@ function lqBWY(
   blocks, rem = divrem(m, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
   v = zeros(E, ubw + 1)
-  wy = WYTrans(E, max_WY_size = n, work_size = n, max_num_hs = block_size + 2)
+  wy = WYTrans(
+    E,
+    max_WY_size = n,
+    work_size = n * (block_size + 2) + n * (block_size + ubw),
+    max_num_hs = block_size + 2,
+  )
   workh = zeros(E, n)
   selectWY!(wy, 1)
   @views for b ∈ 1:blocks
+    j_dense = last_inband_index(B, :, ((b - 1) * block_size + 1))
     offs = (b - 1) * block_size
     resetWYBlock!(wy, offset = offs, sizeWY = min(block_size + ubw, n - offs))
     block_end = min(b * block_size, m)
@@ -89,10 +95,11 @@ function lqBWY(
       k_end = min(j + ubw, n)
       h = householder(B, j, j:k_end, v, workh)
       B[j:block_end, :] ⊛ h
+      B[j_dense+1:m, :] ⊛ h
       j < n && notch_upper!(B, j, j + 1)
       wy ⊛ h
     end
-    B[(block_end + 1):m, :] ⊛ wy
+    B[(block_end + 1):j_dense, :] ⊛ wy
   end
   nothing
 end
@@ -106,14 +113,12 @@ function lqBWYSweep(
   m, n = size(B)
   blocks, rem = divrem(m, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  # Q = Matrix{E}(I, n, n)
   v = zeros(E, ubw + 1)
-  # wy = WYTrans(E, max_WY_size = n, work_size = n, max_num_hs = block_size + 2)
   wy = WYTrans(
     E,
     max_num_WY = blocks,
     max_WY_size = n,
-    work_size = n,
+    work_size = n * (block_size + 2) + n * (block_size + ubw),
     max_num_hs = block_size + 2,
   )
   workh = zeros(E, n)
@@ -143,8 +148,8 @@ tol = 1e-12
 
 # Tests
 m0=1000
-lbw=30
-ubw=30
+lbw=100
+ubw=100
 bs = 8
 
 B = makeB(
@@ -234,7 +239,7 @@ show_error_result(
 m0=10000
 lbw=100
 ubw=100
-bs = 32
+bs = 16
 
 B = makeB(
   Float64,
@@ -254,5 +259,11 @@ println("Benchmarking lqH:")
 
 println()
 println("Benchmarking lqBWY:")
-B=copy(B0)
-@time lqBWY(B, lbw, ubw, block_size=bs)
+B=copy(B0);
+
+using Profile
+Profile.clear();
+Profile.init(n=10^7, delay=0.0001)
+@time lqBWY(B, lbw, ubw, block_size=bs);
+B=copy(B0);
+@profile lqBWY(B, lbw, ubw, block_size=bs);
