@@ -133,11 +133,13 @@ struct WYTrans{
   sizes::AI
   # Number of Householders in each WY.
   num_hs::AI
-  # sizeA_h×max_k array.
+  # sizeA_h×max_num_hs array.
   W::AEW
-  # sizeA_h×max_k array.
+  # sizeA_h×max_num_hs array.
   Y::AEY
-  # sizeA_other*max_k work array.
+  # Work array.
+  # For dense matrices it requires sizeA_other*max_num_hs elements.
+  # For band matrices it requires sizeA_other*(max_num_hs + max_WY_size)
   work::AEWork
 end
 
@@ -184,7 +186,7 @@ function WYTrans(
     zeros(Int,max_num_WY),
     zeros(E, max_WY_size, max_num_hs, max_num_WY),
     zeros(E, max_WY_size, max_num_hs, max_num_WY),
-    zeros(E, work_size * max_num_hs),
+    zeros(E, work_size),
   )
 end
 

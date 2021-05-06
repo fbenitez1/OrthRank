@@ -39,7 +39,13 @@ max_num_hs=2
 lw = maximum(size(bc0))
 work = zeros(Float64, lw)
 
-wyl=WYTrans(Float64,3,m,n,max_num_hs)
+wyl = WYTrans(
+  Float64,
+  max_num_WY = 3,
+  max_WY_size = m,
+  work_size = n * (max_num_hs + m),
+  max_num_hs = max_num_hs,
+)
 # set WY transformation 2 with offset 2 and size 3.
 selectWY!(wyl, 2)
 resetWYBlock!(wyl, block = 2, offset = 2, sizeWY = 3)
@@ -121,7 +127,15 @@ bcwy_23_57h = copy(bcwy_23_57)
 bcwy_23_57w = copy(bcwy_23_57)
 mx_bcwy_23_57 = Matrix(bcwy_23_57)
 
-wyr=WYTrans(Float64,3,m,n,max_num_hs)
+wyr = WYTrans(
+  Float64,
+  max_num_WY = 3,
+  max_WY_size = m,
+  work_size = n * (max_num_hs + m),
+  max_num_hs = max_num_hs,
+)
+
+
 # set WY transformation 2 with offset 2 and size 3.
 selectWY!(wyr, 2)
 resetWYBlock!(wyr, block = 2, offset = 4, sizeWY = 3)

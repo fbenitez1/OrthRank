@@ -13,9 +13,19 @@ n=10
 E = Float64
 A = randn(E, m, n)
 A0 = copy(A)
-wy1 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+wy1 = WYTrans(
+  E,
+  max_WY_size = m,
+  work_size = n * max_num_hs,
+  max_num_hs = max_num_hs,
+)
 resetWYBlock!(wy1, offset=0, sizeWY=m)
-wy2 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+wy2 = WYTrans(
+  E,
+  max_WY_size = m,
+  work_size = n * max_num_hs,
+  max_num_hs = max_num_hs,
+)
 resetWYBlock!(wy2, offset=0, sizeWY=m)
 Im=Matrix{E}(I,m,m)
 Q=copy(Im)
@@ -51,9 +61,19 @@ show_error_result(
 E=Complex{Float64}
 A=randn(E,m,n)
 A0=copy(A)
-wy1 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+wy1 = WYTrans(
+  E,
+  max_WY_size = m,
+  work_size = n * max_num_hs,
+  max_num_hs = max_num_hs,
+)
 resetWYBlock!(wy1, offset = 0, sizeWY = m)
-wy2 = WYTrans(E, max_WY_size = m, work_size = n, max_num_hs = max_num_hs)
+wy2 = WYTrans(
+  E,
+  max_WY_size = m,
+  work_size = n * max_num_hs,
+  max_num_hs = max_num_hs,
+)
 resetWYBlock!(wy2, offset = 0, sizeWY = m)
 Im=Matrix{E}(I,m,m)
 Q=copy(Im)
@@ -102,7 +122,12 @@ function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
   blocks = rem > 0 ? blocks + 1 : blocks
   Q = Matrix{E}(I, m, m)
   v = zeros(E, m)
-  wy = WYTrans(E, max_WY_size = m, work_size = m, max_num_hs = block_size + 2)
+  wy = WYTrans(
+    E,
+    max_WY_size = m,
+    work_size = m * (block_size + 2),
+    max_num_hs = block_size + 2,
+  )
   workh = zeros(E, m)
   selectWY!(wy, 1)
   @inbounds @views for b ∈ 1:blocks
@@ -131,7 +156,7 @@ function qrWYSweep(A::Array{E,2}; block_size::Int=32) where {E<:Number}
     E,
     max_num_WY = blocks,
     max_WY_size = m,
-    work_size = m,
+    work_size = m * (block_size + 2),
     max_num_hs = block_size + 2,
   )
   workh = zeros(E, m)
