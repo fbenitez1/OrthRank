@@ -2599,6 +2599,43 @@ end
   viewbc(bc, (1:row_size(bc), 1:col_size(bc)))
 end
 
+@propagate_inbounds function Base.copyto!(
+  a::AbstractArray{E},
+  bc::AbstractBandColumn{S,E},
+) where {S,E<:Number}
+  (m, n) = size(bc)
+  bc_els = band_elements(bc)
+  coffs = col_offset(bc)
+  zeroE = zero(E)
+  for k ∈ 1:n
+    storage_offs = storage_offset(bc, k)
+    js = inband_index_range(bc, :, k)
+    kk = k + coffs
+    @simd for j ∈ 1:m
+      a[j, k] = j ∈ js ? bc_els[j - storage_offs, kk] : zeroE
+    end
+  end
+  a
+end
+
+@propagate_inbounds function Base.copyto!(
+  bc::AbstractBandColumn{S,E},
+  a::AbstractArray{E},
+) where {S,E<:Number}
+  (m, n) = size(bc)
+  bulge_upper!(bc, 1, n)
+  bulge_lower!(bc, m, n)
+  bc_els = band_elements(bc)
+  coffs = col_offset(bc)
+  for k ∈ 1:n
+    storage_offs = storage_offset(bc, k)
+    @simd for j ∈ 1:m
+      bc_els[j - storage_offs, k + coffs] = a[j, k]
+    end
+  end
+  bc
+end
+
 function LinearAlgebra.Matrix(bc::AbstractBandColumn{S,E}) where {S,E<:Number}
   (m, n) = size(bc)
   a = zeros(E, m, n)
