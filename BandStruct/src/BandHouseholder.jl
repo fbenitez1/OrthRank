@@ -1,10 +1,8 @@
 module BandHouseholder
 
 using LinearAlgebra
-using Base: @propagate_inbounds
 using Printf
 using LoopVectorization
-using Octavian
 
 using Householder.Compute
 using Householder.WY
@@ -13,8 +11,49 @@ using ..BandColumnMatrices
 using ..LeadingBandColumnMatrices
 using InPlace
 
+# Lifted from Octavian Benchmarks.
+function lvmul_threads!(C, A, B)
+    @avxt for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
+        Cmn = zero(eltype(C))
+        for k ∈ indices((A,B), (2,1))
+            Cmn += A[m,k] * B[k,n]
+        end
+        C[m,n] = Cmn
+    end
+end
+
+@inline function lvmul_minus_threads!(C, A, B)
+    @avxt for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
+        Cmn = C[m,n]
+        for k ∈ indices((A,B), (2,1))
+            Cmn -= A[m,k] * B[k,n]
+        end
+        C[m,n] = Cmn
+    end
+end
+
+@inline function lvmul_no_threads!(C, A, B)
+    @avx for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
+        Cmn = zero(eltype(C))
+        for k ∈ indices((A,B), (2,1))
+            Cmn += A[m,k] * B[k,n]
+        end
+        C[m,n] = Cmn
+    end
+end
+
+function lvmul_minus_no_threads!(C, A, B)
+    @avx for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
+        Cmn = C[m,n]
+        for k ∈ indices((A,B), (2,1))
+            Cmn -= A[m,k] * B[k,n]
+        end
+        C[m,n] = Cmn
+    end
+end
+
 # vector and work.
-@propagate_inbounds function Compute.householder(
+Base.@propagate_inbounds function Compute.householder(
   bc::AbstractBandColumn{S,E},
   js::UnitRange{Int},
   k::Int,
@@ -48,7 +87,7 @@ using InPlace
   @views lhouseholder(v[1:ljs], l, offs, work)
 end
 
-@propagate_inbounds function Compute.householder(
+Base.@propagate_inbounds function Compute.householder(
   bc::AbstractBandColumn{S,E},
   j::Int,
   ks::UnitRange{Int},
@@ -123,11 +162,12 @@ end
         m_bc
       )))
     end
-    
+
     @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
       work[1:m_bc] .= zero(E)
+
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
       for k ∈ 1:m
@@ -244,6 +284,7 @@ end
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
       work[1:m_bc] .= zero(E)
+
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
       for k ∈ 1:m
@@ -297,11 +338,11 @@ end
     @inbounds begin
       bulge_upper!(bc, j_first, k_last)
       bulge_lower!(bc, j_last, k_first)
-      @avx for k ∈ k_first:k_last
+      for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        for j ∈ 1:m
+        @simd for j ∈ 1:m
           x += conj(v[j]) * bc_els[j - storage_offs+offs, k]
         end
         work[k-k_first+1]=x
@@ -348,8 +389,6 @@ end
   js = hull(bc, :, k_first:k_last)
   m_bc0 = length(js)
 
-  bc_els = band_elements(bc)
-
   if m_bc0 > 0 && n_bc0 > 0
 
     j_first = first(js)
@@ -381,10 +420,9 @@ end
       )
 
       copyto!(tmp0, bc[js, k_first:k_last])
-      matmul!(work,tmp0,W)
+      lvmul_threads!(work, tmp0, W)
 
-      oneE = one(E)
-      matmul!(tmp0, work, Y', -oneE, oneE)
+      lvmul_minus_threads!(tmp0, work, Y')
       copyto!(bc[js, k_first:k_last], tmp0)
     end
   end
@@ -420,8 +458,6 @@ end
   js = hull(bc, :, k_first:k_last)
   m_bc0 = length(js)
 
-  bc_els = band_elements(bc)
-
   if m_bc0 > 0 && n_bc0 > 0
     j_first = first(js)
     j_last = last(js)
@@ -453,10 +489,9 @@ end
       )
 
       copyto!(tmp0, bc[js, k_first:k_last])
-      matmul!(work,tmp0,Y)
+      lvmul_threads!(work,tmp0,Y)
       
-      oneE = one(E)
-      matmul!(tmp0, work, W', -oneE, oneE)
+      lvmul_minus_threads!(tmp0, work, W')
       copyto!(bc[js, k_first:k_last], tmp0)
     end
   end
@@ -492,8 +527,6 @@ end
   ks = hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)
 
-  bc_els = band_elements(bc)
-
   if m_bc0 > 0 && n_bc0 > 0
     
     k_first = first(ks)
@@ -526,10 +559,9 @@ end
       )
 
       copyto!(tmp0, bc[j_first:j_last, ks])
-      matmul!(work, Y', tmp0)
+      lvmul_threads!(work, Y', tmp0)
 
-      oneE = one(E)
-      matmul!(tmp0, W, work, -oneE, oneE)
+      lvmul_minus_threads!(tmp0, W, work)
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
@@ -565,8 +597,6 @@ end
   ks = hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)
 
-  bc_els = band_elements(bc)
-
   if m_bc0 > 0 && n_bc0 > 0
     
     k_first = first(ks)
@@ -599,10 +629,9 @@ end
       )
 
       copyto!(tmp0, bc[j_first:j_last, ks])
-      matmul!(work, W', tmp0)
+      lvmul_threads!(work, W', tmp0)
 
-      oneE = one(E)
-      matmul!(tmp0, Y, work, -oneE, oneE)
+      lvmul_minus_threads!(tmp0, Y, work)
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
