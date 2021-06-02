@@ -166,6 +166,77 @@ end
 Create a new, empty WYTrans with element type `E`.  Defaults to including
 all blocks.
 
+The work space required varies with the type of the matrix to which it
+is applied.
+
+  - From the left applied to a general m×n matrix:
+    `na * max_num_hs` elements.
+
+  - From the right applied to a general m×n matrix:
+    `ma * max_num_hs` elements. 
+
+For a band matrix the requirements depend on the details of the structure
+
+  * From the left applied to an m×n band matrix `bc`, in order of decreasing
+    specificity/economy:
+
+      * What is actually needed on a single application to a specific block
+
+        ```julia
+        (wy_size + num_hs) * 
+        length(inband_hull(bc, offs+1:offs+max_WY_size, :))
+        ```
+
+      * What is sufficient for an application prior to fill-in:
+
+        ```julia
+        (max_WY_size + max_num_hs) *
+        max_inband_hull_size(bc, max_WY_size, :)
+        ```
+
+      * What is sufficient if the band matrix never fills past what is
+        storable:
+
+        ```julia
+        (max_WY_size + max_num_hs) *
+        max_storable_hull_size(bc, max_WY_size, :)
+        ```
+
+      * Overkill:
+        ```julia
+        (max_WY_size + max_num_hs) * n
+        ```
+
+  * From the right applied to an m×n band matrix `bc`, in order of decreasing
+    specificity/economy:
+
+      * What is actually needed on a single application to a specific block
+
+        ```julia
+        (wy_size + num_hs) * 
+        length(inband_hull(bc, :, offs+1:offs+max_WY_size))
+        ```
+
+      * What is sufficient for an application prior to fill-in:
+
+        ```julia
+        (max_WY_size + max_num_hs) *
+        max_inband_hull_size(bc, :, max_WY_size)
+        ```
+
+      * What is sufficient if the band matrix never fills past what is
+        storable:
+
+        ```julia
+        (max_WY_size + max_num_hs) *
+        max_storable_hull_size(bc, :, max_WY_size)
+        ```
+
+      * Overkill:
+
+        ```julia
+        (max_WY_size + max_num_hs) * m
+        ```
 """
 function WYTrans(
   ::Type{E},
