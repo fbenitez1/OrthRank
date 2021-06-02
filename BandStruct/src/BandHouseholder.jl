@@ -138,7 +138,7 @@ end
   k_last = offs + h.size
   n_bc = k_last - k_first + 1
 
-  js = hull(bc, :, k_first:k_last)
+  js = inband_hull(bc, :, k_first:k_last)
   m_bc = length(js)
 
   bc_els = band_elements(bc)
@@ -204,7 +204,7 @@ end
   j_last = offs + h.size
   m_bc = j_last - j_first + 1
 
-  ks = hull(bc, j_first:j_last, :)
+  ks = inband_hull(bc, j_first:j_last, :)
 
   n_bc = length(ks)
   bc_els = band_elements(bc)
@@ -254,7 +254,7 @@ end
   k_last = offs + h.size
   n_bc = k_last - k_first + 1
 
-  js = hull(bc, :, k_first:k_last)
+  js = inband_hull(bc, :, k_first:k_last)
   m_bc = length(js)
 
   bc_els = band_elements(bc)
@@ -322,7 +322,7 @@ end
   j_last = offs + h.size
   m_bc = j_last - j_first + 1
 
-  ks = hull(bc, j_first:j_last, :)
+  ks = inband_hull(bc, j_first:j_last, :)
   n_bc = length(ks)
 
   bc_els = band_elements(bc)
@@ -386,7 +386,7 @@ end
   k_first = offset + 1
   k_last = offset + n_bc0
 
-  js = hull(bc, :, k_first:k_last)
+  js = inband_hull(bc, :, k_first:k_last)
   m_bc0 = length(js)
 
   if m_bc0 > 0 && n_bc0 > 0
@@ -455,7 +455,7 @@ end
   k_first = offset + 1
   k_last = offset + n_bc0
 
-  js = hull(bc, :, k_first:k_last)
+  js = inband_hull(bc, :, k_first:k_last)
   m_bc0 = length(js)
 
   if m_bc0 > 0 && n_bc0 > 0
@@ -524,7 +524,7 @@ end
   j_first = offset + 1
   j_last = offset + m_bc0
 
-  ks = hull(bc, j_first:j_last, :)
+  ks = inband_hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)
 
   if m_bc0 > 0 && n_bc0 > 0
@@ -594,7 +594,7 @@ end
   j_first = offset + 1
   j_last = offset + m_bc0
 
-  ks = hull(bc, j_first:j_last, :)
+  ks = inband_hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)
 
   if m_bc0 > 0 && n_bc0 > 0

@@ -80,6 +80,10 @@ export BandColumn,
   Wilk,
   # utility functions
   hull,
+  inband_hull,
+  storable_hull,
+  max_inband_hull_size,
+  max_storable_hull_size,
   project,
   # types
   BCFloat64,
@@ -243,11 +247,11 @@ An AbstractBandColumn should implement the following:
 abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2} end
 
 """
-    hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
+    inband_hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
 
 Return the convex hull of the inband indices in the rows in the range js.
 """
-@inline function hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
+@inline function inband_hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
   h = 1:0
   for j ∈ js
     h = hull(h, inband_index_range(bc, j, :))
@@ -256,16 +260,99 @@ Return the convex hull of the inband indices in the rows in the range js.
 end
 
 """
-    hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
+    inband_hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
 
 Return the convex hull of the inband indices in the columns in the range ks.
 """
-@inline function hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
+@inline function inband_hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
   h = 1:0
   for k ∈ ks
     h = hull(h, inband_index_range(bc, :, k))
   end
   h
+end
+
+"""
+    storable_hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
+
+Return the convex hull of the storable indices in the rows in the range js.
+"""
+@inline function storable_hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
+  h = 1:0
+  for j ∈ js
+    h = hull(h, storable_index_range(bc, j, :))
+  end
+  h
+end
+
+"""
+    storable_hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
+
+Return the convex hull of the storable indices in the columns in the range ks.
+"""
+@inline function storable_hull(bc::AbstractBandColumn, ::Colon, ks::UnitRange{Int})
+  h = 1:0
+  for k ∈ ks
+    h = hull(h, storable_index_range(bc, :, k))
+  end
+  h
+end
+
+
+"""
+    max_inband_hull_size(bc::AbstractBandColumn, l::Int, ::Colon)
+
+Return the maximum convex hull size of the inband indices in
+any block of l rows.
+"""
+@inline function max_inband_hull_size(bc::AbstractBandColumn, l::Int, ::Colon)
+  hsize = 0
+  for j ∈ 1:size(bc,1)
+    hsize=max(hsize, length(inband_hull(bc, j:j+l-1, :)))
+  end
+  hsize
+end
+
+"""
+    max_inband_hull_size(bc::AbstractBandColumn, ::Colon, l::Int)
+
+Return the maximum convex hull size of the inband indices in
+any block of l columns.
+"""
+@inline function max_inband_hull_size(bc::AbstractBandColumn, ::Colon, l::Int)
+  hsize = 0
+  for k ∈ 1:size(bc,1)
+    hsize=max(hsize, length(inband_hull(bc, :, k:k+l-1)))
+  end
+  hsize
+end
+
+"""
+    max_storable_hull_size(bc::AbstractBandColumn, l::Int, ::Colon)
+
+Return the maximum convex hull size of the storable indices in
+any block of l rows.
+"""
+@inline function max_storable_hull_size(bc::AbstractBandColumn, l::Int, ::Colon)
+  hsize = 0
+  for j ∈ 1:size(bc,1)
+    hsize=max(hsize, length(storable_hull(bc, j:j+l-1, :)))
+  end
+  hsize
+end
+
+"""
+    max_storable_hull_size(bc::AbstractBandColumn, ::Colon, l::Int)
+
+Return the maximum convex hull size of the storable indices in
+any block of l columns.
+"""
+@inline function max_storable_hull_size(bc::AbstractBandColumn, ::Colon, l::Int)
+  hsize = 0
+  for k ∈ 1:size(bc,1)
+    hsize=max(hsize, length(storable_hull(bc, :, k:k+l-1)))
+  end
+  hsize
 end
 
 """
