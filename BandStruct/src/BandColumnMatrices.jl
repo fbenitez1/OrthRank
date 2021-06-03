@@ -362,90 +362,90 @@ end
     BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}}
     <: AbstractBandColumn{S,E,AE,AI}
 
-A simplified band column structure that does not include leading
+A band column structure that does not include leading
 blocks but does include uniform offsets that can be changed to give
 different submatrices.  This can be used to represent submatrices of a
 LeadingBandColumn matrix.
 
 # Fields
-- `m_nosub::Int`: Full matrix number of rows.
+  - `m_nosub::Int`: Full matrix number of rows.
 
-- `n_nosub::Int`: Full matrix and full elements array number of columns.
+  - `n_nosub::Int`: Full matrix and full elements array number of columns.
 
-- `m::Int`: Matrix number of rows.
+  - `m::Int`: Matrix number of rows.
 
-- `n::Int`: Matrix and elements number of columns.
+  - `n::Int`: Matrix and elements number of columns.
 
-- `roffset::Int`: Uniform column offset, used to identify submatrices.
+  - `roffset::Int`: Uniform column offset, used to identify submatrices.
 
-- `coffset::Int`: Uniform row offset, used to identify submatrices.
+  - `coffset::Int`: Uniform row offset, used to identify submatrices.
 
-- `bw_max::Int`: Elements array number of rows.
+  - `bw_max::Int`: Elements array number of rows.
 
-- `upper_bw_max::Int`: Maximum upper bandwidth.
+  - `upper_bw_max::Int`: Maximum upper bandwidth.
 
-- `middle_lower_bw_max::Int`: Maximum middle + lower bandwidth.
+  - `middle_lower_bw_max::Int`: Maximum middle + lower bandwidth.
 
-- `rows_first_last::AI`: `rows_first_last[j,:]` contains
-   
-  - `rows_first_last[j,1]`: Index of the first storable element in row
-    `j` for a `NonSub` or for the larger containing matrix of a
-    submatrix.
+  - `rows_first_last::AI`: `rows_first_last[j,:]` contains
 
-  - `rows_first_last[j,2]`: Index of the first inband element in row
-    `j` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  If there are no inband elements then
-    `rows_first_last[j,2] > rows_first_last[j,5]`.
+      - `rows_first_last[j,1]`: Index of the first storable element in row
+        `j` for a `NonSub` or for the larger containing matrix of a
+        submatrix.
 
-  - `rows_first_last[j,3]`: Index of the last lower element in row
-    `j` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  This is not necessarily an inband element.
+      - `rows_first_last[j,2]`: Index of the first inband element in row
+        `j` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  If there are no inband elements then
+        `rows_first_last[j,2] > rows_first_last[j,5]`.
 
-  - `rows_first_last[j,4]`: Index of the first upper element in row
-    `j` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  This is not necessarily an inband element.
+      - `rows_first_last[j,3]`: Index of the last lower element in row
+        `j` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  This is not necessarily an inband element.
 
-  - `rows_first_last[j,5]`: Index of the last inband element in row
-    `j` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  If there are no inband elements then
-    `rows_first_last[j,2] > rows_first_last[j,5]`.
+      - `rows_first_last[j,4]`: Index of the first upper element in row
+        `j` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  This is not necessarily an inband element.
 
-  - `rows_first_last[j,6]`: Index of the last storable element in row
-    `j` for a `NonSub` or for the larger containing matrix of a
-    submatrix.
+      - `rows_first_last[j,5]`: Index of the last inband element in row
+        `j` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  If there are no inband elements then
+        `rows_first_last[j,2] > rows_first_last[j,5]`.
 
-- `cols_first_last::AI`: `cols_first_last[:,k]` contains
-   
-  - `cols_first_last[1,k]`: Index of the first storable element in column
-    `k` for a `NonSub` or for the larger containing matrix of a
-    submatrix.
+      - `rows_first_last[j,6]`: Index of the last storable element in row
+        `j` for a `NonSub` or for the larger containing matrix of a
+        submatrix.
 
-  - `cols_first_last[2,k]`: Index of the first inband element in column
-    `k` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  If there are no inband elements then
-    `cols_first_last[2,k] > cols_first_last[5,k]`.
+  - `cols_first_last::AI`: `cols_first_last[:,k]` contains
 
-  - `cols_first_last[3,k]`: Index of the last upper element in column
-    `k` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  This is not necessarily an inband element.
+      - `cols_first_last[1,k]`: Index of the first storable element in column
+        `k` for a `NonSub` or for the larger containing matrix of a
+        submatrix.
 
-  - `cols_first_last[4,k]`: Index of the first lower element in column
-    `k` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  This is not necessarily an inband element.
+      - `cols_first_last[2,k]`: Index of the first inband element in column
+        `k` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  If there are no inband elements then
+        `cols_first_last[2,k] > cols_first_last[5,k]`.
 
-  - `cols_first_last[5,k]`: Index of the last inband element in column
-    `k` for a `NonSub` or for the larger containing matrix of a
-    submatrix.  If there are no inband elements then
-    `cols_first_last[2,k] > cols_first_last[5,k]`.
+      - `cols_first_last[3,k]`: Index of the last upper element in column
+        `k` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  This is not necessarily an inband element.
 
-  - `cols_first_last[6,k]`: Index of the last storable element in column
-    `k` for a `NonSub` or for the larger containing matrix of a
-    submatrix.
+      - `cols_first_last[4,k]`: Index of the first lower element in column
+        `k` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  This is not necessarily an inband element.
 
-- `band_elements::AE`: Column-wise storage of the band elements with
-  dimensions:
-   
-  ``(upper_bw_max + middle_bw_max lower_bw_max) × n``
+      - `cols_first_last[5,k]`: Index of the last inband element in column
+        `k` for a `NonSub` or for the larger containing matrix of a
+        submatrix.  If there are no inband elements then
+        `cols_first_last[2,k] > cols_first_last[5,k]`.
+
+      - `cols_first_last[6,k]`: Index of the last storable element in column
+        `k` for a `NonSub` or for the larger containing matrix of a
+        submatrix.
+
+  - `band_elements::AE`: Column-wise storage of the band elements with
+    dimensions:
+
+    ``(upper_bw_max + middle_bw_max lower_bw_max) × n``
 
 It is assumed that the middle bandwidths and the first row subdiagonal
 and column superdiagonal will never change.  In the case of a

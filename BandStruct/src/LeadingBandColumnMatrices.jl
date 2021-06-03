@@ -1,7 +1,6 @@
 module LeadingBandColumnMatrices
 using Printf
 using Random
-using Base: @propagate_inbounds
 
 using ..BandColumnMatrices
 
@@ -30,54 +29,73 @@ export LeadingBandColumn,
 
 A banded matrix with structure defined by leading blocks and stored in
 a compressed column-wise format.  This is basically a `BandColumn`
-with additional leading block information and without the `roffset`
-and `coffset` fields.
+with additional leading block information and without the `roffset`,
+`coffset`, `sub`, `m_nosub`, and `n_nosub` fields.
 
 # Fields
 
-- `m::Int`: Matrix number of rows.
+  - `m::Int`: Matrix number of rows.
 
-- `n::Int`: Matrix and elements number of columns.
+  - `n::Int`: Matrix and elements number of columns.
 
-- `m_els::Int`: Elements number of rows.
+  - `roffset::Int`: Uniform column offset, used to identify submatrices.
 
-- `num_blocks::Int`: Number of leading blocks.
+  - `coffset::Int`: Uniform row offset, used to identify submatrices.
 
-- `upper_bw_max::Int`: Maximum upper bandwidth.
+  - `bw_max::Int`: Elements array number of rows.
 
-- `middle_bw_max::Int`: Maximum middle bandwidth.
+  - `upper_bw_max::Int`: Maximum upper bandwidth.
 
-- `lower_bw_max::Int`: Maximum lower bandwidth.
+  - `middle_lower_bw_max::Int`: Maximum middle + lower bandwidth.
 
-- `rbws::AI`: Row bandwidths and first subdiagonal in each row.  An
-   ``m×4`` matrix with each row containing lower, middle, and upper
-   bandwidths as well as the first subdiagonal position in that row.
-
-- `cbws::AI`: Column bandwidths and first superdiagonal in each
-   column. A ``4×n`` matrix with each column containing lower, middle,
-   and upper bandwidths as well as the first superdiagonal position in
-   that row.
-
-- `lower_blocks::AI`: A ``2×num_blocks`` matrix.  If
-  `j=lower_blocks[1,l]` and `k=lower_blocks[2,l]` then lower block
-  ``l`` is in ``lbc[j+1:m, 1:k]``, i.e. the leading block above the
-  lower block is ``j×k``.
-
-- `upper_blocks::AI`: A ``2×num_blocks`` matrix.  If
-  `j=upper_blocks[1,l]` and `k=upper_blocks[2,l]` then upper block
-  ``l`` is in ``lbc[1:j, k+1:n]``, i.e. the leading block to the left
-  of the lower block is ``j×k``.  We require that
-
-  `upper_blocks[1,k] <= lower_blocks[1,k]`
-
-  and
-
-  `lower_blocks[2,k] <= upper_blocks[2,k]`
-
-- `band_elements::AE`: Column-wise storage of the band elements with
-  dimensions:
+  - `rows_first_last::AI`: `rows_first_last[j,:]` contains
    
-  ``(upper_bw_max + middle_bw_max lower_bw_max) × n``
+      - `rows_first_last[j,1]`: Index of the first storable element in row
+        `j`.
+
+      - `rows_first_last[j,2]`: Index of the first inband element in row
+        `j`.  If there are no inband elements then
+        `rows_first_last[j,2] > rows_first_last[j,5]`.
+
+      - `rows_first_last[j,3]`: Index of the last lower element in row
+        `j`.  This is not necessarily an inband element.
+
+      - `rows_first_last[j,4]`: Index of the first upper element in row
+        `j`.  This is not necessarily an inband element.
+
+      - `rows_first_last[j,5]`: Index of the last inband element in row
+        `j`.  If there are no inband elements then
+        `rows_first_last[j,2] > rows_first_last[j,5]`.
+
+      - `rows_first_last[j,6]`: Index of the last storable element in row
+        `j`.
+
+  - `cols_first_last::AI`: `cols_first_last[:,k]` contains
+   
+      - `cols_first_last[1,k]`: Index of the first storable element in column
+        `k`.
+
+      - `cols_first_last[2,k]`: Index of the first inband element in column
+        `k`.  If there are no inband elements then
+        `cols_first_last[2,k] > cols_first_last[5,k]`.
+
+      - `cols_first_last[3,k]`: Index of the last upper element in column
+        `k`.  This is not necessarily an inband element.
+
+      - `cols_first_last[4,k]`: Index of the first lower element in column
+        `k`.  This is not necessarily an inband element.
+
+      - `cols_first_last[5,k]`: Index of the last inband element in column
+        `k`.  If there are no inband elements then
+        `cols_first_last[2,k] > cols_first_last[5,k]`.
+
+      - `cols_first_last[6,k]`: Index of the last storable element in column
+        `k`.
+
+  - `band_elements::AE`: Column-wise storage of the band elements with
+     dimensions:
+   
+     ``(upper_bw_max + middle_bw_max lower_bw_max) × n``
 
 It is assumed that the middle bandwidths and the first row subdiagonal
 and column superdiagonal will never change.  In the case of a
@@ -129,28 +147,34 @@ The matrix is stored as
 
 where
 
-    m =                  8
-    n =                  7
-    m_els =              9
-    num_blocks =         4
-    upper_bw_max =       3
-    middle_bw_max =      4
-    lower_bw_max =       2
-    cbws =               [ 0  0  0  1  2  2  1  # upper
-                           2  2  4  4  4  4  4  # middle
-                           0  2  1  2  0  1  0  # lower
-                           0  0  0  1  3  3  4 ] # first superdiagonal.
-    rbws =               [ 0  3  1  0
-                           0  3  2  0
-                           1  2  2  2
-                           1  4  1  2
-                           1  4  0  3
-                           1  3  0  4
-                           1  3  0  4
-                           1  1  0  6 ]
-                         # lower, middle, upper first subdiagonal.
+    m =                   8
+    n =                   7
+    m_els =               9
+    num_blocks =          4
+    upper_bw_max =        3
+    middle_lower_bw_max = 6
+
+    cols_first_last =    [ 1 1 1 1 1 1 2   # first storable
+                           1 1 1 1 2 2 4   # first inband
+                           0 0 0 1 3 3 4   # last upper
+                           3 3 5 6 8 8 9   # first lower
+                           2 4 5 7 7 8 8   # last inband
+                           6 6 6 7 8 8 8 ] # last storable
+
+    rows_first_last =    [ 1 1 0 4 4 6
+                           1 1 0 5 6 7
+                           1 2 2 5 6 7
+                           1 2 2 7 7 7
+                           1 3 3 8 7 7
+                           1 4 4 8 7 7
+                           4 4 4 8 7 7
+                           5 6 6 8 7 7 ]
+                         # first storable, first inband, last lower, first upper,
+                         # last inband, last storable
+
     upper_blocks =       [ 1  3  4  6   # rows
                            3  4  6  7 ]  # columns
+
     lower_blocks =       [ 2  4  5  7   # rows
                            2  3  4  6 ]  # columns
 """
@@ -385,7 +409,7 @@ Index functions required by AbstractBandColumn
 
 =#
 
-@propagate_inbounds function BandColumnMatrices.storable_index_range(
+Base.@propagate_inbounds function BandColumnMatrices.storable_index_range(
   ::Type{NonSub},
   bc::LeadingBandColumn,
   ::Colon,
@@ -394,7 +418,7 @@ Index functions required by AbstractBandColumn
   bc.cols_first_last[1,k]:bc.cols_first_last[6,k]
 end
 
-@propagate_inbounds function BandColumnMatrices.storable_index_range(
+Base.@propagate_inbounds function BandColumnMatrices.storable_index_range(
   ::Type{NonSub},
   bc::LeadingBandColumn,
   j::Int,
@@ -404,7 +428,7 @@ end
 end
 
 
-@propagate_inbounds function BandColumnMatrices.inband_index_range(
+Base.@propagate_inbounds function BandColumnMatrices.inband_index_range(
   ::Type{NonSub},
   bc::LeadingBandColumn,
   ::Colon,
@@ -413,7 +437,7 @@ end
   bc.cols_first_last[2, k]:bc.cols_first_last[5, k]
 end
 
-@propagate_inbounds function BandColumnMatrices.inband_index_range(
+Base.@propagate_inbounds function BandColumnMatrices.inband_index_range(
   ::Type{NonSub},
   bc::LeadingBandColumn,
   j::Int,
@@ -422,28 +446,28 @@ end
   bc.rows_first_last[j, 2]:bc.rows_first_last[j, 5]
 end
 
-@propagate_inbounds BandColumnMatrices.first_lower_index(
+Base.@propagate_inbounds BandColumnMatrices.first_lower_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
   k::Int,
 ) = lbc.cols_first_last[4,k]
 
-@propagate_inbounds BandColumnMatrices.last_lower_index(
+Base.@propagate_inbounds BandColumnMatrices.last_lower_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   j::Int,
   ::Colon,
 ) = lbc.rows_first_last[j,3]
 
-@propagate_inbounds BandColumnMatrices.first_upper_index(
+Base.@propagate_inbounds BandColumnMatrices.first_upper_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   j::Int,
   ::Colon,
 ) = lbc.rows_first_last[j,4]
 
-@propagate_inbounds BandColumnMatrices.last_upper_index(
+Base.@propagate_inbounds BandColumnMatrices.last_upper_index(
   ::Type{NonSub},
   lbc::LeadingBandColumn,
   ::Colon,
@@ -1028,7 +1052,6 @@ function leading_constrain_lower_ranks(
   lr[1] = min(minpair(size_lower_block(blocks,m,n,1)), lower_ranks[1])
 
   for l = 2:num_blocks
-    j0 = blocks[1, l - 1] + 1
     k0 = blocks[2, l - 1]
     j1 = blocks[1, l] + 1
     k1 = blocks[2, l]
@@ -1068,7 +1091,6 @@ function leading_constrain_upper_ranks(
 
   for l = 2:num_blocks
     j0 = blocks[1, l - 1]
-    k0 = blocks[2, l - 1] + 1
     j1 = blocks[1, l]
     k1 = blocks[2, l] + 1
     n1 = n - k1 + 1
@@ -1096,10 +1118,9 @@ function leading_lower_ranks_to_cols_first_last!(
   rs1 = leading_constrain_lower_ranks(lbc.lower_blocks, m, n, rs)
 
   for l = 1:lbc.num_blocks
-    (rows0, cols0) = lower_block_ranges(lbc, l)
-    j0=first(rows0)
+    _, cols0 = lower_block_ranges(lbc, l)
     k0=last(cols0)
-    (rows1, _) = lower_block_ranges(lbc, l+1)
+    rows1, _ = lower_block_ranges(lbc, l+1)
     j1=first(rows1)
     lbc.cols_first_last[5, (k0 - rs1[l] + 1):k0] .= j1-1
   end
