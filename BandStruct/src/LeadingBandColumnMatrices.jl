@@ -700,7 +700,7 @@ end
 
 """
     lower_block_ranges(
-      lower_blocks::Array{Int,2},
+      lower_blocks::AbstractArray{Int,2},
       m :: Int,
       n :: Int,
       l::Integer
@@ -710,7 +710,7 @@ For lower blocks and a given matrix size m×n, compute ranges for lower
 block ``l``.
 """
 @inline function lower_block_ranges(
-  lower_blocks::Array{Int,2},
+  lower_blocks::AbstractArray{Int,2},
   m :: Int,
   n :: Int,
   l::Integer,
@@ -728,7 +728,7 @@ end
 
 """
     size_lower_block(
-      lower_blocks::Array{Int,2},
+      lower_blocks::AbstractArray{Int,2},
       m::Int,
       n::Int,
       l::Int,
@@ -738,7 +738,7 @@ Compute the size of lower block ``l`` for an m×n matrix using the
 lower_block sequence `lower_blocks`.
 """
 @inline function size_lower_block(
-  lower_blocks::Array{Int,2},
+  lower_blocks::AbstractArray{Int,2},
   m::Int,
   n::Int,
   l::Int,
@@ -798,7 +798,7 @@ Determine if column ``k`` intersects with lower block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_lower_block(
-  lower_blocks::Array{Int,2},
+  lower_blocks::AbstractArray{Int,2},
   m :: Int,
   n :: Int,
   l::Integer,
@@ -832,7 +832,7 @@ in a `LeadingBandColumn`.
 
 """
     intersect_lower_block(
-      lower_blocks::Array{Int,2},
+      lower_blocks::AbstractArray{Int,2},
       m::Int,
       n::Int,
       l::Int,
@@ -844,7 +844,7 @@ Determine if row ``j`` intersects with lower block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_lower_block(
-  lower_blocks::Array{Int,2},
+  lower_blocks::AbstractArray{Int,2},
   m::Int,
   n::Int,
   l::Int,
@@ -870,7 +870,7 @@ end
 
 """
     upper_block_ranges(
-      upper_blocks::Array{Int,2},
+      upper_blocks::AbstractArray{Int,2},
       m :: Int,
       n :: Int,
       l::Integer
@@ -880,7 +880,7 @@ For upper blocks and a given matrix size m×n, compute ranges for upper
 block ``l``.
 """
 @inline function upper_block_ranges(
-  upper_blocks::Array{Int,2},
+  upper_blocks::AbstractArray{Int,2},
   m::Int,
   n::Int,
   l::Integer,
@@ -898,7 +898,7 @@ end
 
 """
     size_upper_block(
-      upper_blocks::Array{Int,2},
+      upper_blocks::AbstractArray{Int,2},
       m::Int,
       n::Int,
       l::Int,
@@ -908,7 +908,7 @@ Compute the size of upper block ``l`` for an m×n matrix using the
 upper_block sequence `upper_blocks`.
 """
 @inline function size_upper_block(
-  upper_blocks::Array{Int,2},
+  upper_blocks::AbstractArray{Int,2},
   m::Int,
   n::Int,
   l::Int,
@@ -956,7 +956,7 @@ in a `LeadingBandColumn`.
 
 """
     intersect_upper_block(
-      upper_blocks::Array{Int,2},
+      upper_blocks::AbstractArray{Int,2},
       m :: Int,
       n :: Int,
       l::Integer,
@@ -968,7 +968,7 @@ Determine if column ``k`` intersects with upper block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_upper_block(
-  upper_blocks::Array{Int,2},
+  upper_blocks::AbstractArray{Int,2},
   m::Int,
   n::Int,
   l::Integer,
@@ -1002,7 +1002,7 @@ in a `LeadingBandColumn`.
 
 """
     intersect_upper_block(
-      upper_blocks::Array{Int,2},
+      upper_blocks::AbstractArray{Int,2},
       m::Int,
       n::Int,
       l::Int,
@@ -1014,7 +1014,7 @@ Determine if row ``j`` intersects with upper block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_upper_block(
-  upper_blocks::Array{Int,2},
+  upper_blocks::AbstractArray{Int,2},
   m::Int,
   n::Int,
   l::Integer,
@@ -1077,7 +1077,7 @@ this function decreases the rank.
 function leading_constrain_upper_ranks(
   blocks::AbstractArray{Int,2},
   m::Int,
-  n::Int,
+  ::Int,
   upper_ranks::AbstractArray{Int,1},
 )
   minpair((x,y)) = x < y ? x : y
