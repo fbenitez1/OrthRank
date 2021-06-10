@@ -14,8 +14,24 @@ export LeadingBandColumn,
   size_lower_block,
   size_upper_block,
   intersect_lower_block,
-  intersect_upper_block
-
+  intersect_upper_block,
+  setdiffᵣ,
+  ∪ᵣ,
+  get_middle_bw_max,
+  get_upper_bw_max,
+  get_lower_bw_max,
+  get_cols_first_last,
+  get_cols_first_last!,
+  get_cols_first_last_lower,
+  get_cols_first_last_lower!,
+  get_cols_first_last_upper,
+  get_cols_first_last_upper!,
+  get_rows_first_last,
+  get_rows_first_last!,
+  get_rows_first_last_lower,
+  get_rows_first_last_lower!,
+  get_rows_first_last_upper,
+  get_rows_first_last_upper!
 
 """
 
@@ -216,8 +232,10 @@ function LeadingBandColumn(
   ::Type{E},
   m::Int,
   n::Int;
-  upper_bw_max::Int,
-  lower_bw_max::Int,
+  upper_bw_max::Union{Nothing,Int}=nothing,
+  lower_bw_max::Union{Nothing,Int}=nothing,
+  upper_rank::Union{Nothing,Int}=nothing,
+  lower_rank::Union{Nothing,Int}=nothing,
   upper_blocks::Array{Int,2},
   lower_blocks::Array{Int,2},
 ) where {E<:Number}
@@ -225,77 +243,77 @@ function LeadingBandColumn(
   num_blocks = size(lower_blocks,2)
   cols_first_last = zeros(Int, 6, n)
   rows_first_last = zeros(Int, m, 6)
-  lb=0
-  ub=0
-  middle_bw_max=0
-  for k ∈ 1:n
-    # If column k intersects with a new upper block, increment.
-    while intersect_upper_block(upper_blocks, m, n, ub + 1, :, k)
-      ub += 1
-    end
-    # If we no longer intersect with the current lower block,
-    # increment until we do.
-    while !intersect_lower_block(lower_blocks, m, n, lb, :, k)
-      lb += 1
-    end
-    (rows_lb, _) = lower_block_ranges(lower_blocks, m, n, lb)
-    (rows_ub, _) = upper_block_ranges(upper_blocks, m, n, ub)
-    cols_first_last[2,k] = last(rows_ub) + 1
-    cols_first_last[3,k] = last(rows_ub)
-    cols_first_last[4,k] = first(rows_lb)
-    cols_first_last[5,k] = first(rows_lb) - 1
-    middle_bw_max = max(first(rows_lb) - last(rows_ub) - 1, middle_bw_max)
-  end
+  if isa(upper_rank, Int) && isa(lower_rank, Int) &&
+    isa(upper_bw_max, Nothing) && isa(lower_bw_max, Nothing)
 
-  lb=0
-  ub=0
-  for j = 1:m
-    # If row j intersects with a new lower block, increment.
-    while intersect_lower_block(lower_blocks, m, n, lb + 1, j, :)
-      lb += 1
+    get_cols_first_last!(
+      m,
+      n,
+      upper_blocks,
+      lower_blocks,
+      upper_rank,
+      lower_rank,
+      cols_first_last,
+    )
+    get_rows_first_last!(
+      m,
+      n,
+      upper_blocks,
+      lower_blocks,
+      upper_rank,
+      lower_rank,
+      rows_first_last,
+    )
+    middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
+    ubw_max = get_upper_bw_max(m, n, cols_first_last)
+    lbw_max = get_lower_bw_max(m, n, cols_first_last)
+    bw_max = ubw_max + middle_bw_max + lbw_max
+
+  elseif isa(upper_rank, Nothing) && isa(lower_rank, Nothing) &&
+    isa(upper_bw_max, Int) && isa(lower_bw_max, Int)
+
+    get_cols_first_last!(m, n, upper_blocks, lower_blocks, 0, 0, cols_first_last)
+    get_rows_first_last!(m, n, upper_blocks, lower_blocks, 0, 0, rows_first_last)
+
+    middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
+    ubw_max = upper_bw_max
+    lbw_max = lower_bw_max
+    bw_max = ubw_max + middle_bw_max + lbw_max
+
+    for k = 1:n
+      j0 = cols_first_last[3,k] - ubw_max
+      cols_first_last[1,k] = project(1 + j0, m)
+      cols_first_last[6,k] = project(bw_max + j0, m)
     end
-    # If we no longer intersect with the current upper block,
-    # increment until we do.
-    while !intersect_upper_block(upper_blocks, m, n, ub, j, :)
-      ub += 1
+
+    rows_first_last[:,1] .= n+1
+    rows_first_last[:,6] .= 0
+
+    for k = 1:n
+      j0 = cols_first_last[1, k]
+      j1 = cols_first_last[6, k]
+      for j = j0:j1
+        rows_first_last[j, 1] = min(k, rows_first_last[j, 1])
+        rows_first_last[j, 6] = max(k, rows_first_last[j, 6])
+      end
     end
-    (_, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
-    (_, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
-    rows_first_last[j, 2] = last(cols_lb) + 1
-    rows_first_last[j, 3] = last(cols_lb)
-    rows_first_last[j, 4] = first(cols_ub)
-    rows_first_last[j, 5] = first(cols_ub) - 1
+
+  else
+
+    error("LeadingBandColumn must specify ranks or bandwidths (and not both).")
+
   end
   
-  bw_max = upper_bw_max + middle_bw_max + lower_bw_max
-  middle_lower_bw_max = middle_bw_max + lower_bw_max
+  middle_lower_bw_max = middle_bw_max + lbw_max
   band_elements = zeros(E, bw_max, n)
 
   # Set the ranges for storable elements.
-
-  for k = 1:n
-    j0 = cols_first_last[3,k] - upper_bw_max
-    cols_first_last[1,k] = project(1 + j0, m)
-    cols_first_last[6,k] = project(bw_max + j0, m)
-  end
-
-  rows_first_last[:,1] .= n+1
-  rows_first_last[:,6] .= 0
-
-  for k = 1:n
-    j0 = cols_first_last[1, k]
-    j1 = cols_first_last[6, k]
-    for j = j0:j1
-      rows_first_last[j, 1] = min(k, rows_first_last[j, 1])
-      rows_first_last[j, 6] = max(k, rows_first_last[j, 6])
-    end
-  end
 
   LeadingBandColumn(
     m,
     n,
     bw_max,
-    upper_bw_max,
+    ubw_max,
     middle_lower_bw_max,
     rows_first_last,
     cols_first_last,
@@ -304,6 +322,291 @@ function LeadingBandColumn(
     upper_blocks,
     lower_blocks,
   )
+end
+
+function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
+  x0 = first(xs)
+  x1 = last(xs)
+  y0 = first(ys)
+  y1 = last(ys)
+  if isempty(ys)
+    xs
+  elseif y0 == x0 
+    y1+1:x1
+  elseif y1 == x1
+    x0:y0-1
+  else
+    error("setdiffᵣ produces non-UnitRange")
+  end
+end
+
+function ∪ᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
+  x0 = first(xs)
+  x1 = last(xs)
+  y0 = first(ys)
+  y1 = last(ys)
+  if isempty(xs)
+    ys
+  elseif isempty(ys)
+    xs
+  elseif x1 ∈ ys || x1 == y0 - 1
+    x0:y1
+  elseif x0 ∈ ys || x0 == y1 + 1
+    y0:x1
+  else
+    error("∪ᵣ produces non-UnitRange")
+  end
+end
+
+function get_middle_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
+  middle_bw_max = 0
+  for k ∈ 1:n
+    middle_bw_max =
+      max(middle_bw_max, cols_first_last[4, k] - cols_first_last[3, k] - 1)
+  end
+  middle_bw_max
+end
+
+function get_upper_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
+  upper_bw_max = 0
+  for k ∈ 1:n
+    upper_bw_max =
+      max(upper_bw_max, cols_first_last[3, k] - cols_first_last[1, k] + 1)
+  end
+  upper_bw_max
+end
+
+function get_lower_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
+  lower_bw_max = 0
+  for k ∈ 1:n
+    lower_bw_max =
+      max(lower_bw_max, cols_first_last[6, k] - cols_first_last[4, k] + 1)
+  end
+  lower_bw_max
+end
+
+function get_cols_first_last(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  r_upper::Int,
+  r_lower::Int
+)
+  cols_first_last = zeros(Int, 6, n)
+  get_cols_first_last!(
+    m,
+    n,
+    upper_blocks,
+    lower_blocks,
+    r_upper,
+    r_lower,
+    cols_first_last,
+  )
+  cols_first_last
+end
+
+function get_cols_first_last!(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  r_upper::Int,
+  r_lower::Int,
+  cols_first_last::AbstractArray{Int,2}
+)
+  get_cols_first_last_upper!(m, n, upper_blocks, r_upper, cols_first_last)
+  get_cols_first_last_lower!(m, n, lower_blocks, r_lower, cols_first_last)
+end
+
+function get_rows_first_last(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  r_upper::Int,
+  r_lower::Int
+)
+  rows_first_last = zeros(Int, m, 6)
+  get_rows_first_last!(
+    m,
+    n,
+    upper_blocks,
+    lower_blocks,
+    r_upper,
+    r_lower,
+    rows_first_last,
+  )
+  rows_first_last
+end
+
+function get_rows_first_last!(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  r_upper::Int,
+  r_lower::Int,
+  rows_first_last::AbstractArray{Int,2}
+)
+  get_rows_first_last_upper!(m, n, upper_blocks, r_upper, rows_first_last)
+  get_rows_first_last_lower!(m, n, lower_blocks, r_lower, rows_first_last)
+end
+
+
+function get_cols_first_last_lower(
+  m::Int,
+  n::Int,
+  lower_blocks::AbstractArray{Int,2},
+  r::Int
+)
+  first_last_lower = zeros(Int, 6, n)
+  get_cols_first_last_lower!(m, n, lower_blocks, r, first_last_lower)
+  first_last_lower[4:6, :]
+end
+
+function get_cols_first_last_lower!(
+  m::Int,
+  n::Int,
+  lower_blocks::AbstractArray{Int,2},
+  r::Int,
+  first_last_lower::AbstractArray{Int,2}
+)
+  
+  num_blocks = size(lower_blocks, 2)
+  first_last_lower[4, :] .= m+1
+  first_last_lower[5, :] .= m
+  first_last_lower[6, :] .= m
+  old_cols_lb = 1:0
+  for lb ∈ 1:num_blocks
+    (rows_lb, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
+    if !isempty(rows_lb)
+      dᵣ = setdiffᵣ(cols_lb, old_cols_lb)
+      first_last_lower[4, dᵣ] .= first(rows_lb)
+      first_last_lower[5, dᵣ] .= first(rows_lb) - 1
+      first_last_lower[6, dᵣ ∪ᵣ last(old_cols_lb, r)] .=
+        min(m, first(rows_lb) + r - 1)
+    end
+    old_cols_lb = cols_lb
+  end
+  first_last_lower[6, last(old_cols_lb,r)] .= m
+  nothing
+end
+
+function get_cols_first_last_upper(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  r::Int
+)
+  first_last_upper = zeros(Int, 6, n)
+  get_cols_first_last_upper!(m, n, upper_blocks, r, first_last_upper)
+  first_last_upper[1:3, :]
+end
+
+function get_cols_first_last_upper!(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  r::Int,
+  first_last_upper::AbstractArray{Int,2}
+)
+  num_blocks = size(upper_blocks, 2)
+  first_last_upper[1, :] .= 1
+  first_last_upper[2, :] .= 1
+  first_last_upper[3, :] .= 0
+  old_cols_ub = 1:0
+  for ub ∈ num_blocks:-1:1
+    (rows_ub, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
+    if !isempty(rows_ub)
+      dᵣ = setdiffᵣ(cols_ub, old_cols_ub)
+      first_last_upper[3, dᵣ] .= last(rows_ub)
+      first_last_upper[2, dᵣ] .= last(rows_ub) + 1
+      first_last_upper[1, dᵣ ∪ᵣ first(old_cols_ub, r)] .=
+        max(1, last(rows_ub) - r + 1)
+    end
+    old_cols_ub = cols_ub
+  end
+  first_last_upper[1, first(old_cols_ub,r)] .= 1
+  nothing
+end
+
+function get_rows_first_last_lower(
+  m::Int,
+  n::Int,
+  lower_blocks::AbstractArray{Int,2},
+  r::Int
+)
+  first_last_lower = zeros(Int, m, 6)
+  get_rows_first_last_lower!(m, n, lower_blocks, r, first_last_lower)
+  first_last_lower[:, 1:3]
+end
+
+function get_rows_first_last_lower!(
+  m::Int,
+  n::Int,
+  lower_blocks::AbstractArray{Int,2},
+  r::Int,
+  first_last_lower::AbstractArray{Int,2}
+)
+  
+  num_blocks = size(lower_blocks, 2)
+  first_last_lower[:, 1] .= 1
+  first_last_lower[:, 2] .= 1
+  first_last_lower[:, 3] .= 0
+  old_rows_lb = 1:0
+  for lb ∈ num_blocks:-1:1
+    (rows_lb, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
+    if !isempty(cols_lb)
+      dᵣ = setdiffᵣ(rows_lb, old_rows_lb)
+      first_last_lower[dᵣ,3] .= last(cols_lb)
+      first_last_lower[dᵣ,2] .= last(cols_lb) + 1
+      first_last_lower[dᵣ ∪ᵣ first(old_rows_lb, r), 1] .=
+        max(1, last(cols_lb) - r + 1)
+    end
+    old_rows_lb = rows_lb
+  end
+  first_last_lower[first(old_rows_lb,r),1] .= 1
+  nothing
+end
+
+function get_rows_first_last_upper(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  r::Int
+)
+  first_last_upper = zeros(Int, m, 6)
+  get_rows_first_last_upper!(m, n, upper_blocks, r, first_last_upper)
+  first_last_upper[:, 4:6]
+end
+
+function get_rows_first_last_upper!(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  r::Int,
+  first_last_upper::AbstractArray{Int,2}
+)
+  
+  num_blocks = size(upper_blocks, 2)
+  first_last_upper[:, 4] .= n+1
+  first_last_upper[:, 5] .= n
+  first_last_upper[:, 6] .= n
+  old_rows_ub = 1:0
+  for ub ∈ 1:num_blocks
+    (rows_ub, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
+    if !isempty(cols_ub)
+      dᵣ = setdiffᵣ(rows_ub, old_rows_ub)
+      first_last_upper[dᵣ,4] .= first(cols_ub)
+      first_last_upper[dᵣ,5] .= first(cols_ub) - 1
+      first_last_upper[dᵣ ∪ᵣ last(old_rows_ub, r), 6] .=
+        min(n, first(cols_ub) + r - 1)
+    end
+    old_rows_ub = rows_ub
+  end
+  first_last_upper[last(old_rows_ub, r), 6] .= n
+  nothing
 end
 
 """

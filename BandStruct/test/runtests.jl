@@ -10,6 +10,8 @@ using InPlace
 using ShowTests
 using LinearAlgebra
 
+include("first_last_init.jl")
+
 lower_blocks = [
   2 4 5 7
   2 3 4 6
@@ -40,7 +42,6 @@ show(wilk(lbc0))
 
 bc0 = copy(toBandColumn(lbc0))
 mx_bc0 = Matrix(bc0)
-
 
 include("index.jl")
 include("submatrix.jl")
