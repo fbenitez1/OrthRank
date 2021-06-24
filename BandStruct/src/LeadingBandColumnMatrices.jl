@@ -737,12 +737,14 @@ structure in the upper and lower blocks.
 """
 function LeadingBandColumn(
   T::Type{E},
+  ::Type{LeadingDecomp},
   rng::AbstractRNG,
   m::Int,
   n::Int;
-  l_or_t::Union{Type{LeadingDecomp}, Type{TrailingDecomp}}=LeadingDecomp,
-  upper_bw_max::Int,
-  lower_bw_max::Int,
+  upper_rank_max::Union{Int, Nothing}=nothing,
+  lower_rank_max::Union{Int, Nothing}=nothing,
+  upper_bw_max::Union{Int, Nothing}=nothing,
+  lower_bw_max::Union{Int, Nothing}=nothing,
   upper_blocks::Array{Int,2},
   lower_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
@@ -754,16 +756,46 @@ function LeadingBandColumn(
     n,
     upper_bw_max = upper_bw_max,
     lower_bw_max = lower_bw_max,
+    upper_rank_max = upper_rank_max,
+    lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
   )
-  if isa(l_or_t, Type{LeadingDecomp})
-    leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
-    leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
-  else
-    trailing_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
-    trailing_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
-  end
+  leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+  leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  compute_rows_first_last!(lbc)
+  rand!(rng, lbc)
+  lbc
+end
+
+function LeadingBandColumn(
+  T::Type{E},
+  ::Type{TrailingDecomp},
+  rng::AbstractRNG,
+  m::Int,
+  n::Int;
+  upper_rank_max::Union{Int, Nothing}=nothing,
+  lower_rank_max::Union{Int, Nothing}=nothing,
+  upper_bw_max::Union{Int, Nothing}=nothing,
+  lower_bw_max::Union{Int, Nothing}=nothing,
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
+  upper_ranks::Array{Int,1},
+  lower_ranks::Array{Int,1},
+) where {E<:Number}
+  lbc = LeadingBandColumn(
+    T,
+    m,
+    n,
+    upper_bw_max = upper_bw_max,
+    lower_bw_max = lower_bw_max,
+    upper_rank_max = upper_rank_max,
+    lower_rank_max = lower_rank_max,
+    upper_blocks = upper_blocks,
+    lower_blocks = lower_blocks,
+  )
+  trailing_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+  trailing_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
   compute_rows_first_last!(lbc)
   rand!(rng, lbc)
   lbc

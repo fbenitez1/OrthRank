@@ -34,6 +34,7 @@ function makeB(
   blocks = [k for j ∈ 1:2, k ∈ 1:m]
   lbc = LeadingBandColumn(
     T,
+    LeadingDecomp,
     MersenneTwister(0),
     m,
     m,

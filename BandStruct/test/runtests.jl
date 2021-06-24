@@ -24,6 +24,7 @@ upper_blocks = [
 
 lbc0 = LeadingBandColumn(
   Float64,
+  LeadingDecomp,
   MersenneTwister(0),
   8,
   7,
@@ -55,10 +56,10 @@ show_equality_result(
 
 lbc0T = LeadingBandColumn(
   Float64,
+  TrailingDecomp,
   MersenneTwister(0),
   8,
   7,
-  l_or_t = TrailingDecomp,
   upper_bw_max = 3,
   lower_bw_max = 2,
   upper_blocks = upper_blocks,
