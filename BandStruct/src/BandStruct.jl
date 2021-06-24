@@ -17,4 +17,4 @@ include("BandHouseholder.jl")
 # include("HouseholderWeight.jl")
 # @reexport using .HouseholderWeight
 
-end # module
+end

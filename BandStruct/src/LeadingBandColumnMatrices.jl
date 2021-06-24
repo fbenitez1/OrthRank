@@ -5,10 +5,18 @@ using Random
 using ..BandColumnMatrices
 
 export LeadingBandColumn,
+  UpperBlock,
+  LowerBlock,
+  LeadingDecomp,
+  TrailingDecomp,
   leading_lower_ranks_to_cols_first_last!,
   leading_upper_ranks_to_cols_first_last!,
   leading_constrain_lower_ranks,
   leading_constrain_upper_ranks,
+  trailing_lower_ranks_to_cols_first_last!,
+  trailing_upper_ranks_to_cols_first_last!,
+  trailing_constrain_lower_ranks,
+  trailing_constrain_upper_ranks,
   lower_block_ranges,
   upper_block_ranges,
   size_lower_block,
@@ -17,6 +25,8 @@ export LeadingBandColumn,
   intersect_upper_block,
   setdiffᵣ,
   ∪ᵣ,
+  get_left_transform_sizes,
+  get_right_transform_sizes,
   get_middle_bw_max,
   get_upper_bw_max,
   get_lower_bw_max,
@@ -32,6 +42,11 @@ export LeadingBandColumn,
   get_rows_first_last_lower!,
   get_rows_first_last_upper,
   get_rows_first_last_upper!
+
+struct UpperBlock end
+struct LowerBlock end
+
+
 
 """
 
@@ -234,8 +249,8 @@ function LeadingBandColumn(
   n::Int;
   upper_bw_max::Union{Nothing,Int}=nothing,
   lower_bw_max::Union{Nothing,Int}=nothing,
-  upper_rank::Union{Nothing,Int}=nothing,
-  lower_rank::Union{Nothing,Int}=nothing,
+  upper_rank_max::Union{Nothing,Int}=nothing,
+  lower_rank_max::Union{Nothing,Int}=nothing,
   upper_blocks::Array{Int,2},
   lower_blocks::Array{Int,2},
 ) where {E<:Number}
@@ -243,7 +258,7 @@ function LeadingBandColumn(
   num_blocks = size(lower_blocks,2)
   cols_first_last = zeros(Int, 6, n)
   rows_first_last = zeros(Int, m, 6)
-  if isa(upper_rank, Int) && isa(lower_rank, Int) &&
+  if isa(upper_rank_max, Int) && isa(lower_rank_max, Int) &&
     isa(upper_bw_max, Nothing) && isa(lower_bw_max, Nothing)
 
     get_cols_first_last!(
@@ -251,8 +266,8 @@ function LeadingBandColumn(
       n,
       upper_blocks,
       lower_blocks,
-      upper_rank,
-      lower_rank,
+      upper_rank_max,
+      lower_rank_max,
       cols_first_last,
     )
     get_rows_first_last!(
@@ -260,8 +275,8 @@ function LeadingBandColumn(
       n,
       upper_blocks,
       lower_blocks,
-      upper_rank,
-      lower_rank,
+      upper_rank_max,
+      lower_rank_max,
       rows_first_last,
     )
     middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
@@ -269,7 +284,7 @@ function LeadingBandColumn(
     lbw_max = get_lower_bw_max(m, n, cols_first_last)
     bw_max = ubw_max + middle_bw_max + lbw_max
 
-  elseif isa(upper_rank, Nothing) && isa(lower_rank, Nothing) &&
+  elseif isa(upper_rank_max, Nothing) && isa(lower_rank_max, Nothing) &&
     isa(upper_bw_max, Int) && isa(lower_bw_max, Int)
 
     get_cols_first_last!(m, n, upper_blocks, lower_blocks, 0, 0, cols_first_last)
@@ -383,6 +398,76 @@ function get_lower_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
       max(lower_bw_max, cols_first_last[6, k] - cols_first_last[4, k] + 1)
   end
   lower_bw_max
+end
+
+function get_right_transform_sizes(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  r_upper::Int,
+  r_lower::Int,
+)
+  num_blocks = size(lower_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+
+  num_hs = 0
+
+  # leading lower
+  old_cols_lb = 1:0
+  for lb ∈ 1:num_blocks
+    (_, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
+    dᵣ = setdiffᵣ(cols_lb, old_cols_lb)
+    tsize = length(dᵣ ∪ᵣ last(old_cols_lb, r_lower))
+    transform_sizes[lb] = tsize
+    num_hs = max(num_hs, tsize - r_lower)
+  end
+
+  # trailing upper
+  old_cols_ub = 1:0
+  for ub ∈ num_blocks:-1:1
+    (_, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
+    dᵣ = setdiffᵣ(cols_ub, old_cols_ub)
+    tsize = length(dᵣ ∪ᵣ first(old_cols_lb, r_upper))
+    transform_sizes[ub] = max(transform_sizes[ub], tsize)
+    num_hs = max(num_hs, tsize - r_upper)
+  end
+  num_hs, transform_sizes
+end
+
+function get_left_transform_sizes(
+  m::Int,
+  n::Int,
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  r_upper::Int,
+  r_lower::Int,
+)
+  num_blocks = size(lower_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+
+  num_hs = 0
+
+  # leading upper
+  old_rows_ub = 1:0
+  for ub ∈ 1:num_blocks
+    rows_ub, _ = upper_block_ranges(upper_blocks, m, n, ub)
+    dᵣ = setdiffᵣ(rows_ub, old_rows_ub)
+    tsize = length(dᵣ ∪ᵣ last(old_rows_ub, r_upper))
+    transform_sizes[ub] = tsize
+    num_hs = max(num_hs, tsize - r_upper)
+  end
+
+  # trailing lower
+  old_rows_lb = 1:0
+  for lb ∈ num_blocks:-1:1
+    rows_lb, _ = lower_block_ranges(lower_blocks, m, n, lb)
+    dᵣ = setdiffᵣ(rows_lb, old_rows_lb)
+    tsize = length(dᵣ ∪ᵣ first(old_rows_lb, r_lower))
+    transform_sizes[lb] = max(transform_sizes[lb], tsize)
+    num_hs = max(num_hs, tsize - r_lower)
+  end
+  num_hs, transform_sizes
 end
 
 function get_cols_first_last(
@@ -630,6 +715,9 @@ function rand!(
   end
 end
 
+struct LeadingDecomp end
+struct TrailingDecomp end
+
 """
     LeadingBandColumn(
       T::Type{E},
@@ -652,6 +740,7 @@ function LeadingBandColumn(
   rng::AbstractRNG,
   m::Int,
   n::Int;
+  l_or_t::Union{Type{LeadingDecomp}, Type{TrailingDecomp}}=LeadingDecomp,
   upper_bw_max::Int,
   lower_bw_max::Int,
   upper_blocks::Array{Int,2},
@@ -668,8 +757,13 @@ function LeadingBandColumn(
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
   )
-  leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
-  leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  if isa(l_or_t, Type{LeadingDecomp})
+    leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+    leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  else
+    trailing_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+    trailing_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  end
   compute_rows_first_last!(lbc)
   rand!(rng, lbc)
   lbc
@@ -1335,10 +1429,7 @@ in a matrix of size ``m×n``.
     )
 
 Take a nominal lower rank sequence and constrain it to be
-consistent with the size of the leading blocks and preceding ranks.
-If the rank of block 'l' is larger than is consistent with the size
-of the corresponding lower block or the rank of the previous block,
-this function decreases the rank.
+consistent with the preceding ranks in a leading decomposition.
 """
 function leading_constrain_lower_ranks(
   blocks::AbstractArray{Int,2},
@@ -1346,21 +1437,52 @@ function leading_constrain_lower_ranks(
   n::Int,
   lower_ranks::AbstractArray{Int,1},
 )
-  minpair((x,y)) = x < y ? x : y
 
   lr = similar(lower_ranks)
   lr .= 0
   num_blocks = size(blocks, 2)
   
-  lr[1] = min(minpair(size_lower_block(blocks,m,n,1)), lower_ranks[1])
+  sz_first = size_lower_block(blocks,m,n,1)
+  lr[1] = min(minimum(sz_first), lower_ranks[1])
+  old_cols_lb = 1:0
+  for lb = 2:num_blocks
+    rows_lb, cols_lb = lower_block_ranges(blocks, m, n, lb)
+    cols_ext = setdiffᵣ(cols_lb, old_cols_lb) ∪ᵣ last(old_cols_lb, lr[lb-1])
+    lr[lb] = min(length(rows_lb), length(cols_ext), lower_ranks[lb])
+  end
+  lr
+end
 
-  for l = 2:num_blocks
-    k0 = blocks[2, l - 1]
-    j1 = blocks[1, l] + 1
-    k1 = blocks[2, l]
-    m1 = m - j1 + 1
-    n1 = k1 - k0 + lr[l - 1] # Added k1-k0 columns in next block.
-    lr[l] = min(m1, n1, lower_ranks[l])
+"""
+    trailing_constrain_lower_ranks(
+      blocks::AbstractArray{Int,2},
+      lower_ranks::AbstractArray{Int,1},
+    )
+
+Take a nominal lower rank sequence and constrain it to be consistent
+with the size of the blocks and preceding ranks in a trailing
+decomposition.
+"""
+function trailing_constrain_lower_ranks(
+  blocks::AbstractArray{Int,2},
+  m::Int,
+  n::Int,
+  lower_ranks::AbstractArray{Int,1},
+)
+
+  lr = similar(lower_ranks)
+  lr .= 0
+  num_blocks = size(blocks, 2)
+
+  sz_last = size_lower_block(blocks, m, n, num_blocks)
+  lr[num_blocks] = min(minimum(sz_last), lower_ranks[num_blocks])
+
+  old_rows_lb, _ = lower_block_ranges(blocks, m, n, num_blocks)
+
+  for lb = (num_blocks - 1):-1:1
+    rows_lb, cols_lb = lower_block_ranges(blocks, m, n, lb)
+    rows_ext = setdiffᵣ(rows_lb, old_rows_lb) ∪ᵣ first(old_rows_lb, lr[lb + 1])
+    lr[lb] = min(length(cols_lb), length(rows_ext), lower_ranks[lb])
   end
   lr
 end
@@ -1372,70 +1494,125 @@ end
     )
 
 Take a nominal upper rank sequence and constrain it to be
-consistent with the size of the leading blocks and preceding ranks.
-If the rank of block 'l' is larger than is consistent with the size
-of the corresponding upper block or the rank of the previous block,
-this function decreases the rank.
+consistent with the size of block and preceding ranks in
+a leading decomposition.
 """
 function leading_constrain_upper_ranks(
   blocks::AbstractArray{Int,2},
   m::Int,
-  ::Int,
+  n::Int,
   upper_ranks::AbstractArray{Int,1},
 )
-  minpair((x,y)) = x < y ? x : y
 
   ur = similar(upper_ranks)
   ur .= 0
   num_blocks = size(blocks, 2)
-  n = blocks[2,num_blocks]
 
-  ur[1] = min(minpair(size_upper_block(blocks,m,n,1)), upper_ranks[1])
-
-  for l = 2:num_blocks
-    j0 = blocks[1, l - 1]
-    j1 = blocks[1, l]
-    k1 = blocks[2, l] + 1
-    n1 = n - k1 + 1
-    m1 = j1 - j0 + ur[l - 1]
-    ur[l] = min(m1, n1, upper_ranks[l])
+  sz_first = size_upper_block(blocks,m,n,1)
+  ur[1] = min(minimum(sz_first), upper_ranks[1])
+  old_rows_ub = 1:0
+  for ub = 2:num_blocks
+    rows_ub, cols_ub = upper_block_ranges(blocks, m, n, ub)
+    rows_ext = setdiffᵣ(rows_ub, old_rows_ub) ∪ᵣ last(old_rows_ub, ur[ub - 1])
+    ur[ub] = min(length(cols_ub), length(rows_ext), upper_ranks[ub])
   end
   ur
 end
 
 """
-    leading_lower_ranks_to_cbws!(
+    trailing_constrain_upper_ranks(
+      blocks::AbstractArray{Int,2},
+      upper_ranks::AbstractArray{Int,1},
+    )
+
+Take a nominal upper rank sequence and constrain it to be
+consistent with the size of block and preceding ranks in
+a trailing decomposition.
+"""
+function trailing_constrain_upper_ranks(
+  blocks::AbstractArray{Int,2},
+  m::Int,
+  n::Int,
+  upper_ranks::AbstractArray{Int,1},
+)
+
+  ur = similar(upper_ranks)
+  ur .= 0
+  num_blocks = size(blocks, 2)
+  sz_last = size_upper_block(blocks,m,n,num_blocks)
+
+  ur[num_blocks] =
+    min(minimum(sz_last), upper_ranks[num_blocks])
+
+  old_cols_ub = 1:0
+  for ub = num_blocks-1:-1:1
+    rows_ub, cols_ub = upper_block_ranges(blocks, m, n, ub)
+    cols_ext = setdiffᵣ(cols_ub, old_cols_ub) ∪ᵣ first(old_cols_ub, ur[ub+1])
+    ur[ub] = min(length(rows_ub), length(cols_ext), upper_ranks[ub])
+  end
+  ur
+end
+
+"""
+    leading_lower_ranks_to_cols_first_last!(
       lbc::LeadingBandColumn,
       rs::AbstractArray{Int},
     )
 
-Set lower bandwidth appropriate for a leading decomposition associated
-with a given lower rank sequence.
+Set first_last indices appropriate for a leading decomposition
+associated with a given lower rank sequence.
 """
 function leading_lower_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
   rs::AbstractArray{Int},
 )
 
-  (m, n) = size(lbc)
+  m, n = size(lbc)
   rs1 = leading_constrain_lower_ranks(lbc.lower_blocks, m, n, rs)
-
-  for l = 1:lbc.num_blocks
-    _, cols0 = lower_block_ranges(lbc, l)
-    k0=last(cols0)
-    rows1, _ = lower_block_ranges(lbc, l+1)
-    j1=first(rows1)
-    lbc.cols_first_last[5, (k0 - rs1[l] + 1):k0] .= j1-1
+  for lb = 1:lbc.num_blocks
+    rows_lb, cols_lb = lower_block_ranges(lbc, lb)
+    rows_lb1, _ = lower_block_ranges(lbc, lb+1) # empty if lb+1 > num_blocks
+    dᵣ = setdiffᵣ(rows_lb, rows_lb1)
+    if !isempty(dᵣ)
+      lbc.cols_first_last[5, last(cols_lb, rs1[lb])] .= last(dᵣ)
+    end
   end
 end
 
 """
-    leading_upper_ranks_to_cbws!(
+    trailing_lower_ranks_to_cols_first_last!(
       lbc::LeadingBandColumn,
       rs::AbstractArray{Int},
     )
 
-Set upper bandwidth appropriate for a leading decomposition associated
+Set first_last indices appropriate for a trailing decomposition
+associated with a given lower rank sequence.
+"""
+function trailing_lower_ranks_to_cols_first_last!(
+  lbc::LeadingBandColumn,
+  rs::AbstractArray{Int},
+)
+
+  m, n = size(lbc)
+  rs1 = trailing_constrain_lower_ranks(lbc.lower_blocks, m, n, rs)
+  for lb = lbc.num_blocks:-1:1
+    rows_lb, cols_lb = lower_block_ranges(lbc, lb)
+    _, cols_lb1 = lower_block_ranges(lbc, lb-1) # empty if lb-1 < 1
+    dᵣ = setdiffᵣ(cols_lb, cols_lb1)
+    if !isempty(dᵣ)
+      rows_lb_first = isempty(rows_lb) ? m : first(rows_lb)
+      lbc.cols_first_last[5, dᵣ] .= min(m, rows_lb_first + rs1[lb] - 1)
+    end
+  end
+end
+
+"""
+    leading_upper_ranks_to_cols_first_last!(
+      lbc::LeadingBandColumn,
+      rs::AbstractArray{Int},
+    )
+
+Set first_last indices appropriate for a leading decomposition associated
 with a given upper rank sequence
 """
 function leading_upper_ranks_to_cols_first_last!(
@@ -1443,16 +1620,44 @@ function leading_upper_ranks_to_cols_first_last!(
   rs::AbstractArray{Int},
 )
 
-  (m, n) = size(lbc)
+  m, n = size(lbc)
   rs1 = leading_constrain_upper_ranks(lbc.upper_blocks, m, n, rs)
 
-  for l = 1:lbc.num_blocks
-    (rows0, cols0) = upper_block_ranges(lbc, l)
-    j0 = last(rows0)
-    k0 = first(cols0)
-    (_, cols1) = upper_block_ranges(lbc, l + 1)
-    k1 = first(cols1)
-    lbc.cols_first_last[2, k0:(k1 - 1)] .= j0 - rs1[l] + 1
+  for ub = 1:lbc.num_blocks
+    rows_ub, cols_ub = upper_block_ranges(lbc, ub)
+    _, cols_ub1 = upper_block_ranges(lbc, ub+1) # empty if ub+1 > num_blocks
+    dᵣ = setdiffᵣ(cols_ub, cols_ub1)
+    if !isempty(dᵣ)
+      rows_ub_last = isempty(rows_ub) ? 0 : last(rows_ub)
+      lbc.cols_first_last[2, dᵣ] .= 
+        max(1, rows_ub_last - rs1[ub] + 1)
+    end
+  end
+end
+
+"""
+    trailing_upper_ranks_to_cols_first_last!(
+      lbc::LeadingBandColumn,
+      rs::AbstractArray{Int},
+    )
+
+Set first_last indices appropriate for a leading decomposition
+associated with a given upper rank sequence
+"""
+function trailing_upper_ranks_to_cols_first_last!(
+  lbc::LeadingBandColumn,
+  rs::AbstractArray{Int},
+)
+
+  m, n = size(lbc)
+  rs1 = trailing_constrain_upper_ranks(lbc.upper_blocks, m, n, rs)
+  for ub = lbc.num_blocks:-1:1
+    rows_ub, cols_ub = upper_block_ranges(lbc, ub)
+    rows_ub1, _ = upper_block_ranges(lbc, ub - 1) # empty if ub-1 < 1
+    dᵣ = setdiffᵣ(rows_ub, rows_ub1)
+    if !isempty(dᵣ)
+      lbc.cols_first_last[2, first(cols_ub, rs1[ub])] .= first(dᵣ)
+    end
   end
 end
 

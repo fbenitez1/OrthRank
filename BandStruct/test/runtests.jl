@@ -35,6 +35,57 @@ lbc0 = LeadingBandColumn(
   lower_ranks = [1, 1, 1, 1],
 )
 
+wilk_lbc0 = [
+  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'X' 'U' 'U' 'O'
+  'O' 'L' 'X' 'X' 'U' 'U' 'O'
+  'O' 'L' 'X' 'X' 'X' 'X' 'U'
+  'O' 'O' 'L' 'X' 'X' 'X' 'X'
+  'O' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'N' 'L' 'X' 'X' 'X'
+  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+]
+
+show_equality_result(
+  "LBC LeadingDecomp Creation Test",
+  ==,
+  wilk(toBandColumn(lbc0)).arr,
+  wilk_lbc0,
+)
+
+lbc0T = LeadingBandColumn(
+  Float64,
+  MersenneTwister(0),
+  8,
+  7,
+  l_or_t = TrailingDecomp,
+  upper_bw_max = 3,
+  lower_bw_max = 2,
+  upper_blocks = upper_blocks,
+  lower_blocks = lower_blocks,
+  upper_ranks = [1, 2, 1, 0],
+  lower_ranks = [1, 1, 1, 1],
+)
+
+wilk_lbc0T = [
+  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'X' 'U' 'U' 'O'
+  'L' 'L' 'X' 'X' 'U' 'U' 'O'
+  'O' 'O' 'X' 'X' 'X' 'X' 'U'
+  'O' 'O' 'L' 'X' 'X' 'X' 'X'
+  'O' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'N' 'O' 'X' 'X' 'X'
+  'N' 'N' 'N' 'N' 'L' 'L' 'X'
+]
+
+show_equality_result(
+  "LBC TrailingDecomp Creation Test",
+  ==,
+  wilk(toBandColumn(lbc0T)).arr,
+  wilk_lbc0T,
+)
+
+
 println("Testing BandStruct operations for a matrix with structure:")
 println()
 
