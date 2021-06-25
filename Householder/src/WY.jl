@@ -1,6 +1,5 @@
 module WY
 
-using Base: @propagate_inbounds
 using Printf
 
 using LinearAlgebra
@@ -47,10 +46,6 @@ A struct for storing multiple WY transformations.
 
   - `max_WY_size::Int`: Maximum number of transformations.
 
-  - `work_size::Int`: In applying `A ⊛ wy` or `wy ⊛ A`, the work space
-    size should be the number of rows in `A` or columns in `A`
-    respectively.
-
   - `max_num_hs::Int`: maximum number of Householders in each
     transformation.
 
@@ -76,7 +71,9 @@ A struct for storing multiple WY transformations.
     max_num_WY`.  This stores `Y` for the different
     transformations.
 
-  - `work:AEWork`: Element array of length `work_size * max_num_hs`.
+  - `work:AEWork`: Workspace array.  Its size depends on how the WY
+    transformation is used.  See the descriptions for the WYTrans
+    constructors below.
 
 ## Application of WY Transformations
 
@@ -120,26 +117,22 @@ struct WYTrans{
   max_num_WY::Int
   # Maximum block size.
   max_WY_size::Int
-  # Other dimension of A (determines the size of the workspace).
-  work_size::Int
   # maximum number of Householders.
   max_num_hs::Int
-  # Number of blocks
+  # Number of WY transformations.
   num_WY::Base.RefValue{Int}
   # Active block
   active_WY::Base.RefValue{Int}
+  # Offset of each WY.
   offsets::AI
-  # Size of the individual block transformations
+  # Size of each WY.
   sizes::AI
-  # Number of Householders in each WY.
+  # num_hs: number of Householders in each WY.
   num_hs::AI
-  # sizeA_h×max_num_hs array.
+  # W: max_WY_size × max_num_hs × max_num_WY
   W::AEW
-  # sizeA_h×max_num_hs array.
+  # Y: max_WY_size × max_num_hs × max_num_WY
   Y::AEY
-  # Work array.
-  # For dense matrices it requires sizeA_other*max_num_hs elements.
-  # For band matrices it requires sizeA_other*(max_num_hs + max_WY_size)
   work::AEWork
 end
 
@@ -248,7 +241,6 @@ function WYTrans(
   WYTrans(
     max_num_WY,
     max_WY_size,
-    work_size,
     max_num_hs,
     Ref(max_num_WY), # include all possible blocks.
     Ref(0),
@@ -316,7 +308,7 @@ offset and block size.
   nothing
 end
 
-@propagate_inbounds function resetWYBlock!(
+Base.@propagate_inbounds function resetWYBlock!(
   wy::WYTrans;
   block::Int=1,
   offset::Int=wy.offsets[block],
@@ -370,7 +362,6 @@ matrix of a different (larger) opposite side size.
   WYTrans(
     wy.max_num_WY,
     wy.max_WY_size,
-    work_size,
     wy.max_num_hs,
     wy.num_WY,
     wy.active_WY,
@@ -379,7 +370,7 @@ matrix of a different (larger) opposite side size.
     wy.num_hs,
     wy.W,
     wy.Y,
-    zeros(E, wy.work_size * wy.max_num_hs),
+    zeros(E, work_size),
   )
 end
 
@@ -458,7 +449,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
   nothing
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -467,7 +458,7 @@ end
   apply!(A, wy, k)
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -513,7 +504,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -522,7 +513,7 @@ end
   apply_inv!(A, wy, k)
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -568,7 +559,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   wyk::SelectWY{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -577,7 +568,7 @@ end
   apply!(wy, k, A)
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   wy::WYTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -622,7 +613,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   wyk::SelectWY{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -631,7 +622,7 @@ end
   apply_inv!(wy, k, A)
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   wy::WYTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -697,7 +688,7 @@ throw_WYMaxHouseholderError(block) =
   nothing
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -707,7 +698,7 @@ end
   apply!(wy, k, h)
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -759,7 +750,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -769,7 +760,7 @@ end
   apply_inv!(wy, k, h)
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -823,7 +814,7 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -834,7 +825,7 @@ end
   apply!(h, wy, k)
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
@@ -890,7 +881,7 @@ end
 
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -900,7 +891,7 @@ end
   apply_inv!(h, wy, k)
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
