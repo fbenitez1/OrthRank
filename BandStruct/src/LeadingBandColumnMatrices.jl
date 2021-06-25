@@ -694,16 +694,19 @@ function get_rows_first_last_upper!(
   nothing
 end
 
-"""
-    rand!(
-      rng::AbstractRNG,
-      lbc::LeadingBandColumn{E},
-    ) where {E}
+function Base.fill!(
+  lbc::LeadingBandColumn{E},
+  x::E
+) where {E}
 
-Fill a leading band column with random elements.  This assumes
-that the bandwidths have already been set.
-"""
-function rand!(
+  for k = 1:lbc.n
+    for j = first_inband_index_storage(lbc, k):last_inband_index_storage(lbc, k)
+      lbc.band_elements[j, k] = x
+    end
+  end
+end
+
+function Random.rand!(
   rng::AbstractRNG,
   lbc::LeadingBandColumn{E},
 ) where {E}
@@ -713,6 +716,13 @@ function rand!(
       lbc.band_elements[j, k] = rand(rng, E)
     end
   end
+end
+
+function Random.rand!(
+  lbc::LeadingBandColumn{E},
+) where {E}
+
+  rand!(Random.default_rng(), lbc)
 end
 
 struct LeadingDecomp end
@@ -770,6 +780,39 @@ end
 
 function LeadingBandColumn(
   T::Type{E},
+  ::Type{LeadingDecomp},
+  x::E,
+  m::Int,
+  n::Int;
+  upper_rank_max::Union{Int, Nothing}=nothing,
+  lower_rank_max::Union{Int, Nothing}=nothing,
+  upper_bw_max::Union{Int, Nothing}=nothing,
+  lower_bw_max::Union{Int, Nothing}=nothing,
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
+  upper_ranks::Array{Int,1},
+  lower_ranks::Array{Int,1},
+) where {E<:Number}
+  lbc = LeadingBandColumn(
+    T,
+    m,
+    n,
+    upper_bw_max = upper_bw_max,
+    lower_bw_max = lower_bw_max,
+    upper_rank_max = upper_rank_max,
+    lower_rank_max = lower_rank_max,
+    upper_blocks = upper_blocks,
+    lower_blocks = lower_blocks,
+  )
+  leading_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+  leading_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  compute_rows_first_last!(lbc)
+  fill!(lbc, x)
+  lbc
+end
+
+function LeadingBandColumn(
+  T::Type{E},
   ::Type{TrailingDecomp},
   rng::AbstractRNG,
   m::Int,
@@ -799,6 +842,70 @@ function LeadingBandColumn(
   compute_rows_first_last!(lbc)
   rand!(rng, lbc)
   lbc
+end
+
+function LeadingBandColumn(
+  T::Type{E},
+  ::Type{TrailingDecomp},
+  x::E,
+  m::Int,
+  n::Int;
+  upper_rank_max::Union{Int, Nothing}=nothing,
+  lower_rank_max::Union{Int, Nothing}=nothing,
+  upper_bw_max::Union{Int, Nothing}=nothing,
+  lower_bw_max::Union{Int, Nothing}=nothing,
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
+  upper_ranks::Array{Int,1},
+  lower_ranks::Array{Int,1},
+) where {E<:Number}
+  lbc = LeadingBandColumn(
+    T,
+    m,
+    n,
+    upper_bw_max = upper_bw_max,
+    lower_bw_max = lower_bw_max,
+    upper_rank_max = upper_rank_max,
+    lower_rank_max = lower_rank_max,
+    upper_blocks = upper_blocks,
+    lower_blocks = lower_blocks,
+  )
+  trailing_lower_ranks_to_cols_first_last!(lbc, lower_ranks)
+  trailing_upper_ranks_to_cols_first_last!(lbc, upper_ranks)
+  compute_rows_first_last!(lbc)
+  fill!(lbc, x)
+  lbc
+end
+
+function LeadingBandColumn(
+  T::Type{E},
+  D::Union{Type{LeadingDecomp},Type{TrailingDecomp}},
+  m::Int,
+  n::Int;
+  upper_rank_max::Union{Int,Nothing} = nothing,
+  lower_rank_max::Union{Int,Nothing} = nothing,
+  upper_bw_max::Union{Int,Nothing} = nothing,
+  lower_bw_max::Union{Int,Nothing} = nothing,
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
+  upper_ranks::Array{Int,1},
+  lower_ranks::Array{Int,1},
+) where {E<:Number}
+  LeadingBandColumn(
+    T,
+    D,
+    Random.default_rng(),
+    m,
+    n,
+    upper_bw_max = upper_bw_max,
+    lower_bw_max = lower_bw_max,
+    upper_rank_max = upper_rank_max,
+    lower_rank_max = lower_rank_max,
+    upper_blocks = upper_blocks,
+    lower_blocks = lower_blocks,
+    upper_ranks = upper_ranks,
+    lower_ranks = lower_ranks,
+  )
 end
 
 @inline BandColumnMatrices.toBandColumn(lbc::LeadingBandColumn) = BandColumn(

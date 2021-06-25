@@ -57,7 +57,6 @@ show_equality_result(
 lbc0T = LeadingBandColumn(
   Float64,
   TrailingDecomp,
-  MersenneTwister(0),
   8,
   7,
   upper_bw_max = 3,
