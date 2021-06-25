@@ -3,7 +3,6 @@ module Compute
 using Printf
 
 using LinearAlgebra
-using Base: @propagate_inbounds
 import InPlace
 using LoopVectorization
 
@@ -128,7 +127,7 @@ function lhouseholder(
   end
 end
 
-@propagate_inbounds function lhouseholder(
+Base.@propagate_inbounds function lhouseholder(
   a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
@@ -185,7 +184,7 @@ function rhouseholder(
   end
 end
 
-@propagate_inbounds function rhouseholder(
+Base.@propagate_inbounds function rhouseholder(
   a::AbstractArray{E,1},
   l::Int64,
   offs::Int64,
@@ -196,7 +195,7 @@ end
 end
 
 # No keywords, explicit vector and work arrays.
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   js::UnitRange{Int},
   k::Int,
@@ -213,7 +212,7 @@ end
   lhouseholder(vjs, nonzero_index, offset, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   js::UnitRange{Int},
   k::Int,
@@ -225,7 +224,7 @@ end
   householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   js::UnitRange{Int},
   k::Int,
@@ -233,10 +232,11 @@ end
   nonzero_index = 1,
   offset = first(js) - 1,
 ) where {E<:Number}
-  householder(A, js, k, nonzero_index, offset, work)
+  vector=zeros(E,length(js))
+  householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   js::UnitRange{Int},
   k::Int,
@@ -249,7 +249,7 @@ end
   householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   js::UnitRange{Int},
   k::Int,
@@ -262,7 +262,7 @@ end
   householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   j::Int,
   ks::UnitRange{Int},
@@ -279,7 +279,7 @@ end
   lhouseholder(vks, nonzero_index, offset, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   j::Int,
   ks::UnitRange{Int},
@@ -291,7 +291,7 @@ end
   householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   j::Int,
   ks::UnitRange{Int},
@@ -299,10 +299,11 @@ end
   nonzero_index = 1,
   offset = first(ks) - 1,
 ) where {E<:Number}
-  householder(A, j, ks, nonzero_index, offset, work)
+  vector=zeros(E,length(ks))
+  householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   j::Int,
   ks::UnitRange{Int},
@@ -315,7 +316,7 @@ end
   householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 
-@propagate_inbounds function householder(
+Base.@propagate_inbounds function householder(
   A::AbstractArray{E,2},
   j::Int,
   ks::UnitRange{Int},
