@@ -1,104 +1,101 @@
-print("""
+for E ∈ [Float64, Complex{Float64}]
+  let
+    print("""
 
-Testing Real WY Transformations
-
-""")
-
-
-tol = 1e-14
-max_num_hs=3
-m=10
-n=10
-
-E = Float64
-A = randn(E, m, n)
-A0 = copy(A)
-wy1 = WYTrans(
-  E,
-  max_WY_size = m,
-  work_size = n * max_num_hs,
-  max_num_hs = max_num_hs,
-)
-resetWYBlock!(wy1, offset=0, sizeWY=m)
-wy2 = WYTrans(
-  E,
-  max_WY_size = m,
-  work_size = n * max_num_hs,
-  max_num_hs = max_num_hs,
-)
-resetWYBlock!(wy2, offset=0, sizeWY=m)
-Im=Matrix{E}(I,m,m)
-Q=copy(Im)
-work=zeros(E,m)
-for j=1:3
-  local h = lhouseholder(A[j:m,j],1,j-1,work)
-  h ⊘ A
-  Q ⊛ h
-  SelectWY(wy1,1) ⊛ h
-  h ⊘ SelectWY(wy2, 1)
+          Testing Random WY Transformations """)
+    println("of type ", E, ".")
+    println()
+    tol = 1e-14
+    max_num_hs=2
+    m=10
+    n=10
+    num_blocks=2
+    bs = m ÷ num_blocks
+    A = randn(E, m, n)
+    A0 = copy(A)
+    wy1 = WYTrans(
+      E,
+      max_num_WY = num_blocks,
+      max_WY_size = bs,
+      work_size = n * max_num_hs,
+      max_num_hs = max_num_hs,
+    )
+    for l ∈ 1:num_blocks
+      resetWYBlock!(
+        wy1,
+        block = l,
+        offset = (l - 1) * bs,
+        sizeWY = bs,
+      )
+      wy1.num_hs[l] = max_num_hs
+    end
+    rand!(wy1)
+    SweepForward(wy1) ⊛ A
+    SweepForward(wy1) ⊘ A
+    show_error_result(
+      "Random WY multiply and inverse error", 
+      norm(A-A0),
+      tol,
+    )
+  end
 end
-Q1 = Matrix{E}(I,m,m)
-Q1 ⊛ SelectWY(wy1,1)
-Q2 = Matrix{E}(I,m,m)
-Q2 ⊘ SelectWY(wy2,1)
-show_error_result(
-  "WY factorization error using ⊛, Real",
-  norm(Q1*A-A0),
-  tol,
-)
-show_error_result(
-  "WY factorization error using ⊘, Real",
-  norm(Q2*A-A0),
-  tol,
-)
 
-# print("""
+for E ∈ [Float64, Complex{Float64}]
+  let
+    print("""
 
-# Testing Complex WY Transformations
+          Testing WY Transformations """)
+    println("for type ", E, ".")
+    println()
 
-# """)
+    tol = 1e-14
+    max_num_hs=3
+    m=10
+    n=10
 
-E=Complex{Float64}
-A=randn(E,m,n)
-A0=copy(A)
-wy1 = WYTrans(
-  E,
-  max_WY_size = m,
-  work_size = n * max_num_hs,
-  max_num_hs = max_num_hs,
-)
-resetWYBlock!(wy1, offset = 0, sizeWY = m)
-wy2 = WYTrans(
-  E,
-  max_WY_size = m,
-  work_size = n * max_num_hs,
-  max_num_hs = max_num_hs,
-)
-resetWYBlock!(wy2, offset = 0, sizeWY = m)
-Im=Matrix{E}(I,m,m)
-Q=copy(Im)
-work=zeros(E,m)
-for j=1:3
-  local h = lhouseholder(A[j:m,j],1,j-1,work)
-  h ⊘ A
-  Q ⊛ h
-  SelectWY(wy1,1) ⊛ h
-  h ⊘ SelectWY(wy2,1)
+    E = Float64
+    A = randn(E, m, n)
+    A0 = copy(A)
+    wy1 = WYTrans(
+      E,
+      max_WY_size = m,
+      work_size = n * max_num_hs,
+      max_num_hs = max_num_hs,
+    )
+    resetWYBlock!(wy1, offset=0, sizeWY=m)
+    wy2 = WYTrans(
+      E,
+      max_WY_size = m,
+      work_size = n * max_num_hs,
+      max_num_hs = max_num_hs,
+    )
+    resetWYBlock!(wy2, offset=0, sizeWY=m)
+    Im=Matrix{E}(I,m,m)
+    Q=copy(Im)
+    work=zeros(E,m)
+    for j=1:3
+      local h = lhouseholder(A[j:m,j],1,j-1,work)
+      h ⊘ A
+      Q ⊛ h
+      SelectWY(wy1,1) ⊛ h
+      h ⊘ SelectWY(wy2, 1)
+    end
+    Q1 = Matrix{E}(I,m,m)
+    Q1 ⊛ SelectWY(wy1,1)
+    Q2 = Matrix{E}(I,m,m)
+    Q2 ⊘ SelectWY(wy2,1)
+    show_error_result(
+      "WY factorization error using ⊛",
+      norm(Q1*A-A0),
+      tol,
+    )
+    show_error_result(
+      "WY factorization error using ⊘",
+      norm(Q2*A-A0),
+      tol,
+    )
+  end
 end
-Q1 = Matrix{E}(I,m,m)
-Q1 ⊛ SelectWY(wy1,1)
-Q2 = Matrix{E}(I,m,m)
-Q2 ⊘ SelectWY(wy2,1)
-show_error_result(
-  "WY factorization error using ⊛, Complex",
-  norm(Q1*A-A0),
-  tol,
-)
-show_error_result(
-  "WY factorization error using ⊘, Complex",
-  norm(Q2*A-A0),
-  tol,
-)
 
 function qrH(A::AbstractArray{E,2}) where {E<:Number}
   (m, n) = size(A)

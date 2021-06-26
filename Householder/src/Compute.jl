@@ -1,6 +1,7 @@
 module Compute
 
 using Printf
+using Random
 
 using LinearAlgebra
 import InPlace
@@ -61,6 +62,20 @@ struct HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}}
   # h ⊛ A requires work space of size n.
   # A ⊛ h requires work space of size m.
   work::AEW
+end
+
+function Random.rand!(rng::AbstractRNG, h::HouseholderTrans)
+  @views begin
+    rand!(rng, h.v[1:h.size])
+    x = norm(h.v[1:h.size])
+    if !iszero(h.β)
+      h.v[1:h.size] .= h.v[1:h.size] .* (sqrt(2/h.β) / x)
+    end
+  end
+end
+
+function Random.rand!(h::HouseholderTrans)
+  rand!(Random.default_rng(), h)
 end
 
 @inline function update_norm(a::R, b::E) where {R<:Real,E<:Union{R,Complex{R}}}

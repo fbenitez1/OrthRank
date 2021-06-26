@@ -1,6 +1,7 @@
 module WY
 
 using Printf
+using Random
 
 using LinearAlgebra
 using InPlace
@@ -134,6 +135,28 @@ struct WYTrans{
   # Y: max_WY_size × max_num_hs × max_num_WY
   Y::AEY
   work::AEWork
+end
+
+function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
+  v = zeros(E,wy.max_WY_size)
+  work = zeros(E,1)
+  offs = 0
+  @views for k ∈ 1:wy.num_WY[]
+    n = wy.sizes[k]
+    h = HouseholderTrans(one(E), v[1:n], 1, n, offs, work)
+    num_hs = wy.num_hs[k]
+    wy.num_hs[k] = 0
+    for j ∈ 1:num_hs
+      rand!(rng, h)
+      apply!(h, wy, k)
+    end
+    offs = offs + n
+  end
+  nothing
+end
+
+function Random.rand!(wy::WYTrans{E}) where {E <: Number}
+  rand!(Random.default_rng(), wy)
 end
 
 struct SelectWY{T}
