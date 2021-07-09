@@ -14,7 +14,7 @@ println("""
 # for LeadingBandColumn.
 
 #                 1   2       3   4
-# A =   X   X   X | U | O   O | N |
+# A =   X   X   X | U | O   O | O |
 #                 +---+-----------+
 #       X   X   X   X | U   U | O |
 #     1 ------+       |       |   |
@@ -26,10 +26,9 @@ println("""
 #     3 ------+---+---+           |
 #       O   O | O | L | X   X   X |
 #             |   |   |           +
-#       N   N | N | L | X   X   X 
+#       N   O | O | L | X   X   X 
 #     4 ------+---+---+-------+   
-#       N   N | N | N | O   L | X 
-
+#       N   N | O | O | O   L | X 
 
 lbc0_notch = copy(lbc0)
 wilk0_notch = wilk(toBandColumn(lbc0_notch))
@@ -38,14 +37,14 @@ wilk0_notch = wilk(toBandColumn(lbc0_notch))
 
 lbc14_notch = copy(lbc0_notch)
 wilk14_notch = [
-  'X' 'X' 'X' 'O' 'O' 'O' 'N'
+  'X' 'X' 'X' 'O' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 notch_upper!(lbc14_notch,1, 4)
@@ -64,14 +63,14 @@ show_equality_result(
 
 lbc26_notch = copy(lbc0_notch)
 wilk26_notch = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'O' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 notch_upper!(lbc26_notch, 2, 6)
@@ -91,14 +90,14 @@ show_equality_result(
 
 lbc32_notch = copy(lbc0_notch)
 wilk32_notch = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'O' 'X' 'X' 'U' 'U' 'O'
   'O' 'O' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 notch_lower!(lbc32_notch, 3, 2)
@@ -117,14 +116,14 @@ show_equality_result(
 
 lbc42_notch = copy(lbc0_notch)
 wilk42_notch = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'O' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 notch_lower!(lbc42_notch, 4, 2)
@@ -143,14 +142,14 @@ show_equality_result(
 
 lbcr64_notch = copy(lbc0_notch)
 wilkr64_notch = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'O' 'X' 'X' 'X'
-  'N' 'N' 'N' 'O' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'O' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 notch_lower!(lbcr64_notch, 6, 4)

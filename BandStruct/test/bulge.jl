@@ -17,7 +17,7 @@ Bulge the bandwidth of the example matrix from the documentation for
 LeadingBandColumn.
 
                 1   2       3   4
-A =   X   X   X | U | O   O | N |
+A =   X   X   X | U | O   O | O |
                 +---+-----------+
       X   X   X   X | U   U | O |
     1 ------+       |       |   |
@@ -29,9 +29,9 @@ A =   X   X   X | U | O   O | N |
     3 ------+---+---+           |
       O   O | O | L | X   X   X |
             |   |   |           +
-      N   N | N | L | X   X   X 
+      N   O | O | L | X   X   X 
     4 ------+---+---+-------+   
-      N   N | N | N | O   L | X 
+      N   N | O | O | O   L | X 
 
 =#
 
@@ -41,14 +41,14 @@ wilk0 = wilk(toBandColumn(lbc0_bulge))
 
 lbc1_bulge = copy(lbc0_bulge)
 wilk1 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
-  'X' 'X' 'X' 'X' 'U' 'U' 'O'
-  'L' 'L' 'X' 'X' 'U' 'U' 'O'
-  'L' 'L' 'X' 'X' 'X' 'X' 'U'
-  'O' 'O' 'L' 'X' 'X' 'X' 'X'
-  'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+ 'X'  'X'  'X'  'U'  'O'  'O'  'O'
+ 'X'  'X'  'X'  'X'  'U'  'U'  'O'
+ 'L'  'L'  'X'  'X'  'U'  'U'  'O'
+ 'L'  'L'  'X'  'X'  'X'  'X'  'U'
+ 'O'  'O'  'L'  'X'  'X'  'X'  'X'
+ 'O'  'O'  'O'  'L'  'X'  'X'  'X'
+ 'N'  'O'  'O'  'L'  'X'  'X'  'X'
+ 'N'  'N'  'O'  'O'  'O'  'L'  'X'
 ]
 
 bulge!(lbc1_bulge, :, 1:2)
@@ -67,14 +67,14 @@ show_equality_result(
 
 lbc2_bulge = copy(lbc0_bulge)
 wilk2 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'L' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbc2_bulge, :, 2:3)
@@ -93,14 +93,14 @@ show_equality_result(
 
 lbc4_bulge = copy(lbc0_bulge)
 wilk4 = [
-  'X' 'X' 'X' 'U' 'U' 'O' 'N'
+  'X' 'X' 'X' 'U' 'U' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbc4_bulge,:, 4:5)
@@ -118,14 +118,14 @@ show_equality_result(
 
 lbc5_bulge = copy(lbc0_bulge)
 wilk5 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'L' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'L' 'L' 'X'
 ]
 
 bulge!(lbc5_bulge,:, 5:6)
@@ -143,14 +143,14 @@ show_equality_result(
 
 lbc6_bulge = copy(lbc0_bulge)
 wilk6 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'U'
   'O' 'L' 'X' 'X' 'U' 'U' 'U'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbc6_bulge,:, 6:7)
@@ -170,14 +170,14 @@ show_equality_result(
 
 lbcr1_bulge = copy(lbc0_bulge)
 wilkr1 = [
-  'X' 'X' 'X' 'U' 'U' 'U' 'N'
+  'X' 'X' 'X' 'U' 'U' 'U' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbcr1_bulge, 1:2, :)
@@ -193,17 +193,16 @@ show_equality_result(
   wilkr1,
 )
 
-
 lbcr2_bulge = copy(lbc0_bulge)
 wilkr2 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'L' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbcr2_bulge, 2:3, :)
@@ -221,14 +220,14 @@ show_equality_result(
 
 lbcr3_bulge = copy(lbc0_bulge)
 wilkr3 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'U'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbcr3_bulge, 3:4, :)
@@ -246,14 +245,14 @@ show_equality_result(
 
 lbcr4_bulge = copy(lbc0_bulge)
 wilkr4 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'L' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbcr4_bulge, 4:5, :)
@@ -271,14 +270,14 @@ show_equality_result(
 
 lbcr5_bulge = copy(lbc0_bulge)
 wilkr5 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'L' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbcr5_bulge, 5:6, :)
@@ -296,14 +295,14 @@ show_equality_result(
 
 lbcr6_bulge = copy(lbc0_bulge)
 wilkr6 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbcr6_bulge, 6:7, :)
@@ -326,14 +325,14 @@ show_equality_result(
 
 lbci16_bulge = copy(lbc0_bulge)
 wilki16 = [
-  'X' 'X' 'X' 'U' 'U' 'U' 'N'
+  'X' 'X' 'X' 'U' 'U' 'U' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'O' 'L' 'X' 'X' 'X' 'X'
   'O' 'O' 'O' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbci16_bulge, 1, 6)
@@ -351,14 +350,14 @@ show_equality_result(
 
 lbci61_bulge = copy(lbc0_bulge)
 wilki61 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'L' 'L' 'X' 'X' 'U' 'U' 'O'
   'L' 'L' 'X' 'X' 'X' 'X' 'U'
   'L' 'L' 'L' 'X' 'X' 'X' 'X'
   'L' 'L' 'L' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbci61_bulge, 6, 1)
@@ -378,14 +377,14 @@ show_equality_result(
 
 lbci62_bulge = copy(lbc0_bulge)
 wilki62 = [
-  'X' 'X' 'X' 'U' 'O' 'O' 'N'
+  'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'X' 'X' 'U'
   'O' 'L' 'L' 'X' 'X' 'X' 'X'
   'O' 'L' 'L' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'L' 'X' 'X' 'X'
-  'N' 'N' 'N' 'N' 'O' 'L' 'X'
+  'N' 'O' 'O' 'L' 'X' 'X' 'X'
+  'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
 bulge!(lbci62_bulge, 6, 2)

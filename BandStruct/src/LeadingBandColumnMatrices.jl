@@ -25,8 +25,12 @@ export LeadingBandColumn,
   intersect_upper_block,
   setdiffᵣ,
   ∪ᵣ,
-  get_left_transform_sizes,
+  get_left_max_transform_sizes,
+  get_right_max_transform_sizes,
   get_right_transform_sizes,
+  get_left_transform_sizes,
+  get_right_transform_sizes!,
+  get_left_transform_sizes!,
   get_middle_bw_max,
   get_upper_bw_max,
   get_lower_bw_max,
@@ -45,6 +49,9 @@ export LeadingBandColumn,
 
 struct UpperBlock end
 struct LowerBlock end
+
+struct LeadingDecomp end
+struct TrailingDecomp end
 
 
 
@@ -400,74 +407,295 @@ function get_lower_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
   lower_bw_max
 end
 
-function get_right_transform_sizes(
+function get_right_transform_sizes!(
+  ::Type{LeadingDecomp},
   m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
+  n::Int;
   lower_blocks::AbstractArray{Int,2},
-  r_upper::Int,
-  r_lower::Int,
+  lower_ranks::AbstractArray{Int,1},
+  transform_sizes::AbstractArray{Int,1},
+  find_max::Bool=false
 )
   num_blocks = size(lower_blocks, 2)
-  transform_sizes = zeros(Int, num_blocks)
-
-  num_hs = 0
 
   # leading lower
   old_cols_lb = 1:0
+  old_rank = 0
   for lb ∈ 1:num_blocks
     (_, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
     dᵣ = setdiffᵣ(cols_lb, old_cols_lb)
-    tsize = length(dᵣ ∪ᵣ last(old_cols_lb, r_lower))
-    transform_sizes[lb] = tsize
-    num_hs = max(num_hs, tsize - r_lower)
+    tsize = length(dᵣ ∪ᵣ last(old_cols_lb, old_rank))
+    if find_max
+      transform_sizes[lb] = max(transform_sizes[lb], tsize)
+    else
+      transform_sizes[lb] = tsize
+    end
+    old_cols_lb = cols_lb
+    old_rank = lower_ranks[lb]
   end
+  nothing
+end
 
-  # trailing upper
-  old_cols_ub = 1:0
-  for ub ∈ num_blocks:-1:1
-    (_, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
-    dᵣ = setdiffᵣ(cols_ub, old_cols_ub)
-    tsize = length(dᵣ ∪ᵣ first(old_cols_lb, r_upper))
-    transform_sizes[ub] = max(transform_sizes[ub], tsize)
-    num_hs = max(num_hs, tsize - r_upper)
+function get_right_transform_sizes(
+  ::Type{LeadingDecomp},
+  m::Int,
+  n::Int;
+  lower_blocks::AbstractArray{Int,2},
+  lower_ranks::AbstractArray{Int,1},
+)
+  num_blocks = size(lower_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+  num_hs = zeros(Int, num_blocks)
+
+  get_right_transform_sizes!(
+    LeadingDecomp,
+    m,
+    n,
+    lower_blocks = lower_blocks,
+    lower_ranks = lower_ranks,
+    transform_sizes = transform_sizes
+  )
+
+  for lb ∈ 1:num_blocks
+    num_hs[lb] = transform_sizes[lb] - lower_ranks[lb]
   end
   num_hs, transform_sizes
 end
 
-function get_left_transform_sizes(
+function get_right_transform_sizes!(
+  ::Type{TrailingDecomp},
   m::Int,
-  n::Int,
+  n::Int;
   upper_blocks::AbstractArray{Int,2},
+  upper_ranks::AbstractArray{Int,1},
+  transform_sizes::AbstractArray{Int,1},
+  find_max::Bool=false
+)
+  num_blocks = size(upper_blocks, 2)
+
+  # trailing upper
+  old_cols_ub = 1:0
+  old_rank = 0
+  for ub ∈ num_blocks:-1:1
+    (_, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
+    dᵣ = setdiffᵣ(cols_ub, old_cols_ub)
+    tsize = length(dᵣ ∪ᵣ first(old_cols_ub, old_rank))
+    if find_max
+      transform_sizes[ub] = max(transform_sizes[ub], tsize)
+    else
+      transform_sizes[ub] = tsize
+    end
+    old_cols_ub = cols_ub
+    old_rank = upper_ranks[ub]
+  end
+  nothing
+end
+
+function get_right_transform_sizes(
+  ::Type{TrailingDecomp},
+  m::Int,
+  n::Int;
+  upper_blocks::AbstractArray{Int,2},
+  upper_ranks::AbstractArray{Int,1},
+)
+  num_blocks = size(upper_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+  num_hs = zeros(Int, num_blocks)
+
+  get_right_transform_sizes!(
+    TrailingDecomp,
+    m,
+    n,
+    upper_blocks = upper_blocks,
+    upper_ranks = upper_ranks,
+    transform_sizes = transform_sizes
+  )
+  for ub ∈ 1:num_blocks
+    num_hs[ub] = transform_sizes[ub] - upper_ranks[ub]
+  end
+  num_hs, transform_sizes
+end
+
+function get_left_transform_sizes!(
+  ::Type{TrailingDecomp},
+  m::Int,
+  n::Int;
   lower_blocks::AbstractArray{Int,2},
-  r_upper::Int,
-  r_lower::Int,
+  lower_ranks::AbstractArray{Int,1},
+  transform_sizes::AbstractArray{Int,1},
+  find_max::Bool=false
 )
   num_blocks = size(lower_blocks, 2)
-  transform_sizes = zeros(Int, num_blocks)
-
-  num_hs = 0
-
-  # leading upper
-  old_rows_ub = 1:0
-  for ub ∈ 1:num_blocks
-    rows_ub, _ = upper_block_ranges(upper_blocks, m, n, ub)
-    dᵣ = setdiffᵣ(rows_ub, old_rows_ub)
-    tsize = length(dᵣ ∪ᵣ last(old_rows_ub, r_upper))
-    transform_sizes[ub] = tsize
-    num_hs = max(num_hs, tsize - r_upper)
-  end
 
   # trailing lower
   old_rows_lb = 1:0
+  old_rank = 0
   for lb ∈ num_blocks:-1:1
     rows_lb, _ = lower_block_ranges(lower_blocks, m, n, lb)
     dᵣ = setdiffᵣ(rows_lb, old_rows_lb)
-    tsize = length(dᵣ ∪ᵣ first(old_rows_lb, r_lower))
-    transform_sizes[lb] = max(transform_sizes[lb], tsize)
-    num_hs = max(num_hs, tsize - r_lower)
+    tsize = length(dᵣ ∪ᵣ first(old_rows_lb, old_rank))
+    if find_max
+      transform_sizes[lb] = max(transform_sizes[lb], tsize)
+    else
+      transform_sizes[lb] = tsize
+    end
+    old_rows_lb = rows_lb
+    old_rank = lower_ranks[lb]
+  end
+  nothing
+end
+
+function get_left_transform_sizes(
+  ::Type{TrailingDecomp},
+  m::Int,
+  n::Int;
+  lower_blocks::AbstractArray{Int,2},
+  lower_ranks::AbstractArray{Int,1},
+)
+
+  num_blocks = size(lower_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+  num_hs = zeros(Int, num_blocks)
+
+  get_left_transform_sizes!(
+    TrailingDecomp,
+    m,
+    n,
+    lower_blocks = lower_blocks,
+    lower_ranks = lower_ranks,
+    transform_sizes = transform_sizes
+  )
+  for lb ∈ 1:num_blocks
+    num_hs[lb] = transform_sizes[lb] - lower_ranks[lb]
   end
   num_hs, transform_sizes
+end
+
+function get_left_transform_sizes!(
+  ::Type{LeadingDecomp},
+  m::Int,
+  n::Int;
+  upper_blocks::AbstractArray{Int,2},
+  upper_ranks::AbstractArray{Int,1},
+  transform_sizes::AbstractArray{Int,1},
+  find_max::Bool=false
+)
+  num_blocks = size(upper_blocks, 2)
+
+  # leading upper
+  old_rows_ub = 1:0
+  old_rank = 0
+  for ub ∈ 1:num_blocks
+    rows_ub, _ = upper_block_ranges(upper_blocks, m, n, ub)
+    dᵣ = setdiffᵣ(rows_ub, old_rows_ub)
+    tsize = length(dᵣ ∪ᵣ last(old_rows_ub, old_rank))
+    if find_max
+      transform_sizes[ub] = max(tsize, transform_sizes[ub])
+    else
+      transform_sizes[ub] = tsize
+    end
+    old_rows_ub = rows_ub
+    old_rank = upper_ranks[ub]
+  end
+  nothing
+end
+
+function get_left_transform_sizes(
+  ::Type{LeadingDecomp},
+  m::Int,
+  n::Int;
+  upper_blocks::AbstractArray{Int,2},
+  upper_ranks::AbstractArray{Int,1},
+)
+  num_blocks = size(upper_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+  num_hs = zeros(Int, num_blocks)
+
+  get_left_transform_sizes!(
+    LeadingDecomp,
+    m,
+    n,
+    upper_blocks = upper_blocks,
+    upper_ranks = upper_ranks,
+    transform_sizes = transform_sizes
+  )
+  for ub ∈ 1:num_blocks
+    num_hs[ub] = transform_sizes[ub] - upper_ranks[ub]
+  end
+  num_hs, transform_sizes
+end
+
+function get_right_max_transform_sizes(
+  m::Int,
+  n::Int;
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  upper_rank_max::Int,
+  lower_rank_max::Int,
+)
+  num_blocks = size(lower_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+  upper_ranks = fill(upper_rank_max, num_blocks)
+  lower_ranks = fill(lower_rank_max, num_blocks)
+
+  get_right_transform_sizes!(
+    TrailingDecomp,
+    m,
+    n,
+    upper_blocks = upper_blocks,
+    upper_ranks = upper_ranks,
+    transform_sizes = transform_sizes,
+    find_max=true
+  )
+
+  get_right_transform_sizes!(
+    LeadingDecomp,
+    m,
+    n,
+    lower_blocks = lower_blocks,
+    lower_ranks = lower_ranks,
+    transform_sizes = transform_sizes,
+    find_max=true
+  )
+
+  transform_sizes
+end
+
+function get_left_max_transform_sizes(
+  m::Int,
+  n::Int;
+  upper_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractArray{Int,2},
+  upper_rank_max::Int,
+  lower_rank_max::Int,
+)
+  num_blocks = size(lower_blocks, 2)
+  transform_sizes = zeros(Int, num_blocks)
+  upper_ranks = fill(upper_rank_max, num_blocks)
+  lower_ranks = fill(lower_rank_max, num_blocks)
+
+  get_left_transform_sizes!(
+    LeadingDecomp,
+    m,
+    n,
+    upper_blocks = upper_blocks,
+    upper_ranks = upper_ranks,
+    transform_sizes = transform_sizes,
+    find_max=true
+  )
+
+  get_left_transform_sizes!(
+    TrailingDecomp,
+    m,
+    n,
+    lower_blocks = lower_blocks,
+    lower_ranks = lower_ranks,
+    transform_sizes = transform_sizes,
+    find_max=true
+  )
+
+  transform_sizes
+
 end
 
 function get_cols_first_last(
@@ -700,7 +928,7 @@ function Base.fill!(
 ) where {E}
 
   for k = 1:lbc.n
-    for j = first_inband_index_storage(lbc, k):last_inband_index_storage(lbc, k)
+    for j = inband_index_range_storage(lbc, k)
       lbc.band_elements[j, k] = x
     end
   end
@@ -712,7 +940,7 @@ function Random.rand!(
 ) where {E}
 
   for k = 1:lbc.n
-    for j = first_inband_index_storage(lbc, k):last_inband_index_storage(lbc, k)
+    for j = inband_index_range_storage(lbc, k)
       lbc.band_elements[j, k] = rand(rng, E)
     end
   end
@@ -725,12 +953,26 @@ function Random.rand!(
   rand!(Random.default_rng(), lbc)
 end
 
-struct LeadingDecomp end
-struct TrailingDecomp end
+# Random elements for a particular decomposition.
+function Random.rand!(
+  ::Type{LeadingDecomp},
+  rng::AbstractRNG,
+  lbc::LeadingBandColumn{E};
+  upper_ranks::Array{Int,1},
+  lower_ranks::Array{Int,1}
+) where {E}
+
+  for k = 1:lbc.n
+    for j = inband_index_range_storage(lbc, k)
+      lbc.band_elements[j, k] = rand(rng, E)
+    end
+  end
+end
+
 
 """
     LeadingBandColumn(
-      T::Type{E},
+      ::Type{E},
       rng::AbstractRNG,
       m::Int,
       n::Int;
@@ -746,26 +988,24 @@ Generate a random band column corresponding to a specific rank
 structure in the upper and lower blocks.
 """
 function LeadingBandColumn(
-  T::Type{E},
+  ::Type{E},
   ::Type{LeadingDecomp},
   rng::AbstractRNG,
   m::Int,
   n::Int;
-  upper_rank_max::Union{Int, Nothing}=nothing,
-  lower_rank_max::Union{Int, Nothing}=nothing,
-  upper_bw_max::Union{Int, Nothing}=nothing,
-  lower_bw_max::Union{Int, Nothing}=nothing,
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
   lower_ranks::Array{Int,1},
+  upper_rank_max::Int=maximum(upper_ranks),
+  lower_rank_max::Int=maximum(lower_ranks),
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
 ) where {E<:Number}
   lbc = LeadingBandColumn(
-    T,
+    E,
     m,
     n,
-    upper_bw_max = upper_bw_max,
-    lower_bw_max = lower_bw_max,
+    upper_bw_max = nothing,
+    lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,
@@ -779,26 +1019,24 @@ function LeadingBandColumn(
 end
 
 function LeadingBandColumn(
-  T::Type{E},
+  ::Type{E},
   ::Type{LeadingDecomp},
   x::E,
   m::Int,
   n::Int;
-  upper_rank_max::Union{Int, Nothing}=nothing,
-  lower_rank_max::Union{Int, Nothing}=nothing,
-  upper_bw_max::Union{Int, Nothing}=nothing,
-  lower_bw_max::Union{Int, Nothing}=nothing,
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
   lower_ranks::Array{Int,1},
+  upper_rank_max::Int=maximum(upper_ranks),
+  lower_rank_max::Int=maximum(lower_ranks),
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
 ) where {E<:Number}
   lbc = LeadingBandColumn(
-    T,
+    E,
     m,
     n,
-    upper_bw_max = upper_bw_max,
-    lower_bw_max = lower_bw_max,
+    upper_bw_max = nothing,
+    lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,
@@ -812,26 +1050,24 @@ function LeadingBandColumn(
 end
 
 function LeadingBandColumn(
-  T::Type{E},
+  ::Type{E},
   ::Type{TrailingDecomp},
   rng::AbstractRNG,
   m::Int,
   n::Int;
-  upper_rank_max::Union{Int, Nothing}=nothing,
-  lower_rank_max::Union{Int, Nothing}=nothing,
-  upper_bw_max::Union{Int, Nothing}=nothing,
-  lower_bw_max::Union{Int, Nothing}=nothing,
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
   lower_ranks::Array{Int,1},
+  upper_rank_max::Int=maximum(upper_ranks),
+  lower_rank_max::Int=maximum(lower_ranks),
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
 ) where {E<:Number}
   lbc = LeadingBandColumn(
-    T,
+    E,
     m,
     n,
-    upper_bw_max = upper_bw_max,
-    lower_bw_max = lower_bw_max,
+    upper_bw_max = nothing,
+    lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,
@@ -845,26 +1081,24 @@ function LeadingBandColumn(
 end
 
 function LeadingBandColumn(
-  T::Type{E},
+  ::Type{E},
   ::Type{TrailingDecomp},
   x::E,
   m::Int,
   n::Int;
-  upper_rank_max::Union{Int, Nothing}=nothing,
-  lower_rank_max::Union{Int, Nothing}=nothing,
-  upper_bw_max::Union{Int, Nothing}=nothing,
-  lower_bw_max::Union{Int, Nothing}=nothing,
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
   lower_ranks::Array{Int,1},
+  upper_rank_max::Int=maximum(upper_ranks),
+  lower_rank_max::Int=maximum(lower_ranks),
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
 ) where {E<:Number}
   lbc = LeadingBandColumn(
-    T,
+    E,
     m,
     n,
-    upper_bw_max = upper_bw_max,
-    lower_bw_max = lower_bw_max,
+    upper_bw_max = nothing,
+    lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,
@@ -878,27 +1112,23 @@ function LeadingBandColumn(
 end
 
 function LeadingBandColumn(
-  T::Type{E},
+  ::Type{E},
   D::Union{Type{LeadingDecomp},Type{TrailingDecomp}},
   m::Int,
   n::Int;
-  upper_rank_max::Union{Int,Nothing} = nothing,
-  lower_rank_max::Union{Int,Nothing} = nothing,
-  upper_bw_max::Union{Int,Nothing} = nothing,
-  lower_bw_max::Union{Int,Nothing} = nothing,
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
   upper_ranks::Array{Int,1},
   lower_ranks::Array{Int,1},
+  upper_rank_max::Int=maximum(upper_ranks),
+  lower_rank_max::Int=maximum(lower_ranks),
+  upper_blocks::Array{Int,2},
+  lower_blocks::Array{Int,2},
 ) where {E<:Number}
   LeadingBandColumn(
-    T,
+    E,
     D,
     Random.default_rng(),
     m,
     n,
-    upper_bw_max = upper_bw_max,
-    lower_bw_max = lower_bw_max,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,

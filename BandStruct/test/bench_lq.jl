@@ -27,10 +27,8 @@ end
 function makeB(
   T::Type{E},
   m::Int,
-  lbw::Int,
-  ubw::Int;
-  lower_bw_max = lbw+ubw,
-  upper_bw_max = ubw,
+  lower_rank_max::Int,
+  upper_rank_max::Int;
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
 
   blocks = [k for j ∈ 1:2, k ∈ 1:m]
@@ -40,12 +38,12 @@ function makeB(
     MersenneTwister(0),
     m,
     m,
-    upper_bw_max = upper_bw_max,
-    lower_bw_max = lower_bw_max,
+    upper_rank_max = upper_rank_max,
+    lower_rank_max = lower_rank_max + upper_rank_max,
     upper_blocks = blocks,
     lower_blocks = blocks,
-    upper_ranks = [ubw for j ∈ 1:m],
-    lower_ranks = [lbw for j ∈ 1:m],
+    upper_ranks = [upper_rank_max for j ∈ 1:m],
+    lower_ranks = [lower_rank_max for j ∈ 1:m],
   )
   toBandColumn(lbc)
 end
@@ -158,8 +156,6 @@ B = makeB(
   m0,
   lbw,
   ubw,
-  upper_bw_max = ubw + bs,
-  lower_bw_max = ubw + lbw + bs,
 )
 B0 = copy(B)
 
@@ -247,8 +243,6 @@ B = makeB(
   m0,
   lbw,
   ubw,
-  upper_bw_max = ubw + bs,
-  lower_bw_max = ubw + lbw + bs,
 )
 B0 = copy(B)
 
