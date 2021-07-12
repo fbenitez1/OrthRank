@@ -6,7 +6,7 @@ using Base: @propagate_inbounds
 using Rotations.Givens
 
 using ..BandColumnMatrices
-using ..LeadingBandColumnMatrices
+using ..BlockedBandColumnMatrices
 using InPlace
 
 @propagate_inbounds function InPlace.apply!(

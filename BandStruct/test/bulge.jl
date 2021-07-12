@@ -14,7 +14,7 @@ println("""
 #=
 
 Bulge the bandwidth of the example matrix from the documentation for
-LeadingBandColumn.
+BlockedBandColumn.
 
                 1   2       3   4
 A =   X   X   X | U | O   O | O |

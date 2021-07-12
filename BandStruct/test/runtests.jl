@@ -1,5 +1,5 @@
 using BandStruct.BandColumnMatrices
-using BandStruct.LeadingBandColumnMatrices
+using BandStruct.BlockedBandColumnMatrices
 using BandStruct.BandRotations
 using BandStruct.BandHouseholder
 using Householder
@@ -22,7 +22,7 @@ upper_blocks = [
   3 4 6 7
 ]
 
-lbc0 = LeadingBandColumn(
+lbc0 = BlockedBandColumn(
   Float64,
   LeadingDecomp,
   MersenneTwister(0),
@@ -54,7 +54,7 @@ show_equality_result(
   wilk_lbc0,
 )
 
-lbc0T = LeadingBandColumn(
+lbc0T = BlockedBandColumn(
   Float64,
   TrailingDecomp,
   8,

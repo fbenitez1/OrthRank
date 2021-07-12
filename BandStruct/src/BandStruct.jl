@@ -5,8 +5,8 @@ using Reexport
 include("BandColumnMatrices.jl")
 @reexport using .BandColumnMatrices
 
-include("LeadingBandColumnMatrices.jl")
-@reexport using .LeadingBandColumnMatrices
+include("BlockedBandColumnMatrices.jl")
+@reexport using .BlockedBandColumnMatrices
 
 include("BandRotations.jl")
 @reexport using .BandRotations

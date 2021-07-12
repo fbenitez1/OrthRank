@@ -365,7 +365,7 @@ end
 A band column structure that does not include leading
 blocks but does include uniform offsets that can be changed to give
 different submatrices.  This can be used to represent submatrices of a
-LeadingBandColumn matrix.
+BlockedBandColumn matrix.
 
 # Fields
   - `m_nosub::Int`: Full matrix number of rows.
@@ -449,7 +449,7 @@ LeadingBandColumn matrix.
 
 It is assumed that the middle bandwidths and the first row subdiagonal
 and column superdiagonal will never change.  In the case of a
-`LeadingBandColumn`, these are determined by the leading blocks.
+`BlockedBandColumn`, these are determined by the leading blocks.
 
 # Example
 

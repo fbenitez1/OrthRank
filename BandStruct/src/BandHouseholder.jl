@@ -8,7 +8,7 @@ using Householder.Compute
 using Householder.WY
 
 using ..BandColumnMatrices
-using ..LeadingBandColumnMatrices
+using ..BlockedBandColumnMatrices
 using InPlace
 
 # Lifted from Octavian Benchmarks.

@@ -1,5 +1,5 @@
 using BandStruct.BandColumnMatrices
-using BandStruct.LeadingBandColumnMatrices
+using BandStruct.BlockedBandColumnMatrices
 using BandStruct.BandRotations
 using BandStruct.BandHouseholder
 using Householder
@@ -32,7 +32,7 @@ function makeB(
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
 
   blocks = [k for j ∈ 1:2, k ∈ 1:m]
-  lbc = LeadingBandColumn(
+  lbc = BlockedBandColumn(
     T,
     LeadingDecomp,
     MersenneTwister(0),
