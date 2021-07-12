@@ -1925,7 +1925,7 @@ end
 """
     leading_lower_ranks_to_cols_first_last!(
       lbc::LeadingBandColumn,
-      rs::AbstractArray{Int},
+      rs::AbstractArray{Int,1},
     )
 
 Set first_last indices appropriate for a leading decomposition
@@ -1933,7 +1933,7 @@ associated with a given lower rank sequence.
 """
 function leading_lower_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
-  rs::AbstractArray{Int},
+  rs::AbstractArray{Int,1},
 )
 
   m, n = size(lbc)
@@ -1951,7 +1951,7 @@ end
 """
     trailing_lower_ranks_to_cols_first_last!(
       lbc::LeadingBandColumn,
-      rs::AbstractArray{Int},
+      rs::AbstractArray{Int,1},
     )
 
 Set first_last indices appropriate for a trailing decomposition
@@ -1959,7 +1959,7 @@ associated with a given lower rank sequence.
 """
 function trailing_lower_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
-  rs::AbstractArray{Int},
+  rs::AbstractArray{Int,1},
 )
 
   m, n = size(lbc)
@@ -1978,7 +1978,7 @@ end
 """
     leading_upper_ranks_to_cols_first_last!(
       lbc::LeadingBandColumn,
-      rs::AbstractArray{Int},
+      rs::AbstractArray{Int,1},
     )
 
 Set first_last indices appropriate for a leading decomposition associated
@@ -1986,7 +1986,7 @@ with a given upper rank sequence
 """
 function leading_upper_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
-  rs::AbstractArray{Int},
+  rs::AbstractArray{Int,1},
 )
 
   m, n = size(lbc)
@@ -2007,7 +2007,7 @@ end
 """
     trailing_upper_ranks_to_cols_first_last!(
       lbc::LeadingBandColumn,
-      rs::AbstractArray{Int},
+      rs::AbstractArray{Int,1},
     )
 
 Set first_last indices appropriate for a leading decomposition
@@ -2015,7 +2015,7 @@ associated with a given upper rank sequence
 """
 function trailing_upper_ranks_to_cols_first_last!(
   lbc::LeadingBandColumn,
-  rs::AbstractArray{Int},
+  rs::AbstractArray{Int,1},
 )
 
   m, n = size(lbc)
