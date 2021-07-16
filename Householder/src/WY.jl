@@ -140,8 +140,8 @@ end
 function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
   v = zeros(E,wy.max_WY_size)
   work = zeros(E,1)
-  offs = 0
   @views for k ∈ 1:wy.num_WY[]
+    offs = wy.offsets[k]
     n = wy.sizes[k]
     h = HouseholderTrans(one(E), v[1:n], 1, n, offs, work)
     num_hs = wy.num_hs[k]
@@ -150,7 +150,6 @@ function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
       rand!(rng, h)
       apply!(h, wy, k)
     end
-    offs = offs + n
   end
   nothing
 end
