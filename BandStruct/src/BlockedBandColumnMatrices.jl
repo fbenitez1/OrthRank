@@ -240,7 +240,10 @@ end
     ) where {E<:Number}
 
 Construct an empty (all zero) `BlockedBandColumn` structure from the
-matrix size, bounds on the upper and lower bandwidth, and blocksizes.
+matrix size, blocksizes, and either upper/lower rank bounds or
+upper/lower bandwidth bounds.  With the upper/lower rank bounds, it
+provides enough bandwidth for either a leading or trailing
+decomposition and extra bandwidth for conversion between them.
 """
 function BlockedBandColumn(
   ::Type{E},
@@ -420,6 +423,9 @@ function get_cols_first_last(
   cols_first_last
 end
 
+# Compute cols_first_last.  This works for either a leading or
+# trailing decomposition and provides enough extra bandwidth for
+# conversion between them.
 function get_cols_first_last!(
   m::Int,
   n::Int,
@@ -454,6 +460,9 @@ function get_rows_first_last(
   rows_first_last
 end
 
+# Compute rows_first_last.  This works for either a leading or
+# trailing decomposition and provides enough extra bandwidth for
+# conversion between them.
 function get_rows_first_last!(
   m::Int,
   n::Int,
@@ -674,19 +683,22 @@ end
 """
     BlockedBandColumn(
       ::Type{E},
+      ::Type{LeadingDecomp},
       rng::AbstractRNG,
       m::Int,
       n::Int;
-      upper_bw_max::Int,
-      lower_bw_max::Int,
-      upper_blocks::Array{Int,2},
-      lower_blocks::Array{Int,2},
       upper_ranks::Array{Int,1},
       lower_ranks::Array{Int,1},
+      upper_rank_max::Int=maximum(upper_ranks),
+      lower_rank_max::Int=maximum(lower_ranks),
+      upper_blocks::Array{Int,2},
+      lower_blocks::Array{Int,2},
     ) where {E<:Number}
 
-Generate a random band column corresponding to a specific rank
-structure in the upper and lower blocks.
+Construct a random LeadingDecomp `BlockedBandColumn` structure from
+the matrix size, blocksizes, upper/lower rank bounds, and upper/lower
+ranks.  It provides enough bandwidth for conversion between leading and
+trailing decompositions.
 """
 function BlockedBandColumn(
   ::Type{E},
@@ -750,6 +762,26 @@ function BlockedBandColumn(
   bbc
 end
 
+"""
+    BlockedBandColumn(
+      ::Type{E},
+      ::Type{TrailingDecomp},
+      rng::AbstractRNG,
+      m::Int,
+      n::Int;
+      upper_ranks::Array{Int,1},
+      lower_ranks::Array{Int,1},
+      upper_rank_max::Int=maximum(upper_ranks),
+      lower_rank_max::Int=maximum(lower_ranks),
+      upper_blocks::Array{Int,2},
+      lower_blocks::Array{Int,2},
+    ) where {E<:Number}
+
+Construct a random TrailingDecomp `BlockedBandColumn` structure from
+the matrix size, blocksizes, upper/lower rank bounds, and upper/lower
+ranks.  It provides enough bandwidth for conversion between leading
+and trailing decompositions.
+"""
 function BlockedBandColumn(
   ::Type{E},
   ::Type{TrailingDecomp},
@@ -812,6 +844,26 @@ function BlockedBandColumn(
   bbc
 end
 
+"""
+    BlockedBandColumn(
+      ::Type{E},
+      D::Union{Type{LeadingDecomp},Type{TrailingDecomp}},
+      m::Int,
+      n::Int;
+      upper_ranks::Array{Int,1},
+      lower_ranks::Array{Int,1},
+      upper_rank_max::Int=maximum(upper_ranks),
+      lower_rank_max::Int=maximum(lower_ranks),
+      upper_blocks::Array{Int,2},
+      lower_blocks::Array{Int,2},
+    ) where {E<:Number}
+
+Construct a random LeadingDecomp or TrailingDecomp `BlockedBandColumn`
+structure from the matrix size, blocksizes, upper/lower rank bounds,
+and upper/lower ranks.  It provides enough bandwidth for conversion
+between leading and trailing decompositions.  This uses the standard
+random number generator.
+"""
 function BlockedBandColumn(
   ::Type{E},
   D::Union{Type{LeadingDecomp},Type{TrailingDecomp}},
