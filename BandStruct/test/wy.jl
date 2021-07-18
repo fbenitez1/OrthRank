@@ -26,13 +26,13 @@ println("""
 Matrix structure:
 """)
 
-show(wilk(lbc0))
+show(wilk(bbc0))
 println()
 
 m=8
 n=7
 
-bc0 = lbc0[:,:]
+bc0 = bbc0[:,:]
 mx_bc0 = Matrix(bc0)
 
 max_num_hs=2

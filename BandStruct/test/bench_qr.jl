@@ -32,7 +32,7 @@ function makeB(
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
 
   blocks = [k for j ∈ 1:2, k ∈ 1:m]
-  lbc = BlockedBandColumn(
+  bbc = BlockedBandColumn(
     T,
     LeadingDecomp,
     MersenneTwister(0),
@@ -46,7 +46,7 @@ function makeB(
     lower_ranks = [lower_rank_max for j ∈ 1:m],
   )
 
-  toBandColumn(lbc)
+  toBandColumn(bbc)
 end
 
 function bandQRB(

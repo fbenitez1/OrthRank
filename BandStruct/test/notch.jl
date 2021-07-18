@@ -1,5 +1,5 @@
 bc = copy(bc0)
-lbc = copy(lbc0)
+bbc = copy(bbc0)
 mx_bc = copy(mx_bc0)
 
 println("""
@@ -30,12 +30,12 @@ println("""
 #     4 ------+---+---+-------+   
 #       N   N | O | O | O   L | X 
 
-lbc0_notch = copy(lbc0)
-wilk0_notch = wilk(toBandColumn(lbc0_notch))
+bbc0_notch = copy(bbc0)
+wilk0_notch = wilk(toBandColumn(bbc0_notch))
 
 # Index (1,4) notch upper.
 
-lbc14_notch = copy(lbc0_notch)
+bbc14_notch = copy(bbc0_notch)
 wilk14_notch = [
   'X' 'X' 'X' 'O' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -47,21 +47,21 @@ wilk14_notch = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-notch_upper!(lbc14_notch,1, 4)
+notch_upper!(bbc14_notch,1, 4)
 show_bool_result(
-  "LBC notch_upper! column validate_rows_first_last, index (1,4)",
-  validate_rows_first_last(lbc14_notch),
+  "BBC notch_upper! column validate_rows_first_last, index (1,4)",
+  validate_rows_first_last(bbc14_notch),
 )
 show_equality_result(
-  "LBC notch_upper! column Wilkinson equality, index (1,4)",
+  "BBC notch_upper! column Wilkinson equality, index (1,4)",
   ==,
-  wilk(toBandColumn(lbc14_notch)).arr,
+  wilk(toBandColumn(bbc14_notch)).arr,
   wilk14_notch,
 )
 
 # Index (2,6)
 
-lbc26_notch = copy(lbc0_notch)
+bbc26_notch = copy(bbc0_notch)
 wilk26_notch = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'O' 'O'
@@ -73,22 +73,22 @@ wilk26_notch = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-notch_upper!(lbc26_notch, 2, 6)
+notch_upper!(bbc26_notch, 2, 6)
 show_bool_result(
-  "LBC notch_upper! column validate_rows_first_last, index (2,6)",
-  validate_rows_first_last(lbc26_notch),
+  "BBC notch_upper! column validate_rows_first_last, index (2,6)",
+  validate_rows_first_last(bbc26_notch),
 )
 
 show_equality_result(
-  "LBC notch_upper! column Wilkinson equality, index (2,6)",
+  "BBC notch_upper! column Wilkinson equality, index (2,6)",
   ==,
-  wilk(toBandColumn(lbc26_notch)).arr,
+  wilk(toBandColumn(bbc26_notch)).arr,
   wilk26_notch,
 )
 
 # notch_lower!, index (3,2)
 
-lbc32_notch = copy(lbc0_notch)
+bbc32_notch = copy(bbc0_notch)
 wilk32_notch = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -100,21 +100,21 @@ wilk32_notch = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-notch_lower!(lbc32_notch, 3, 2)
+notch_lower!(bbc32_notch, 3, 2)
 show_bool_result(
-  "LBC notch_lower! column validate_rows_first_last, index (3,2)",
-  validate_rows_first_last(lbc32_notch),
+  "BBC notch_lower! column validate_rows_first_last, index (3,2)",
+  validate_rows_first_last(bbc32_notch),
 )
 show_equality_result(
-  "LBC notch_lower! column Wilkinson equality, index (3,2)",
+  "BBC notch_lower! column Wilkinson equality, index (3,2)",
   ==,
-  wilk(toBandColumn(lbc32_notch)).arr,
+  wilk(toBandColumn(bbc32_notch)).arr,
   wilk32_notch,
 )
 
 # notch_lower!, index (4,2)
 
-lbc42_notch = copy(lbc0_notch)
+bbc42_notch = copy(bbc0_notch)
 wilk42_notch = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -126,21 +126,21 @@ wilk42_notch = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-notch_lower!(lbc42_notch, 4, 2)
+notch_lower!(bbc42_notch, 4, 2)
 show_bool_result(
-  "LBC notch_lower! column validate_rows_first_last, index (4,2)",
-  validate_rows_first_last(lbc42_notch),
+  "BBC notch_lower! column validate_rows_first_last, index (4,2)",
+  validate_rows_first_last(bbc42_notch),
 )
 show_equality_result(
-  "LBC notch_lower! column Wilkinson equality, index (4,2)",
+  "BBC notch_lower! column Wilkinson equality, index (4,2)",
   ==,
-  wilk(toBandColumn(lbc42_notch)).arr,
+  wilk(toBandColumn(bbc42_notch)).arr,
   wilk42_notch,
 )
 
 # notch_lower!, index (6,4).
 
-lbcr64_notch = copy(lbc0_notch)
+bbcr64_notch = copy(bbc0_notch)
 wilkr64_notch = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -152,14 +152,14 @@ wilkr64_notch = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-notch_lower!(lbcr64_notch, 6, 4)
+notch_lower!(bbcr64_notch, 6, 4)
 show_bool_result(
-  "LBC notch_lower! row validate_rows_first_last, index (6,4)",
-  validate_rows_first_last(lbcr64_notch),
+  "BBC notch_lower! row validate_rows_first_last, index (6,4)",
+  validate_rows_first_last(bbcr64_notch),
 )
 show_equality_result(
-  "LBC notch_lower! row Wilkinson equality, index (6,4)",
+  "BBC notch_lower! row Wilkinson equality, index (6,4)",
   ==,
-  wilk(toBandColumn(lbcr64_notch)).arr,
+  wilk(toBandColumn(bbcr64_notch)).arr,
   wilkr64_notch,
 )

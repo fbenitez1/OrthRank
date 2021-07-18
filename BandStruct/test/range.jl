@@ -22,7 +22,7 @@
 # L X X X X
 # O L X X X
 
-bc1 = lbc[2:6, 3:7]
+bc1 = bbc[2:6, 3:7]
 column_inband_index_ranges_bc1 = [1:4, 1:5, 1:5, 1:5, 3:5]
 
 
@@ -44,71 +44,71 @@ println("""
 
 """)
 
-column_inband_index_ranges_lbc0 = [1:2, 1:4, 1:5, 1:7, 2:7, 2:8, 4:8]
+column_inband_index_ranges_bbc0 = [1:2, 1:4, 1:5, 1:7, 2:7, 2:8, 4:8]
 
 show_equality_result(
-  "LBC Matrix column_inband_index_range",
+  "BBC Matrix column_inband_index_range",
   compare_ranges,
-  column_inband_index_ranges_lbc0,
-  [inband_index_range(lbc0, :, k) for k = 1:lbc0.n],
+  column_inband_index_ranges_bbc0,
+  [inband_index_range(bbc0, :, k) for k = 1:bbc0.n],
 )
 
 show_equality_result(
   "BC Matrix column inband_index_range",
   compare_ranges,
-  column_inband_index_ranges_lbc0,
-  [inband_index_range(bc0, :, k) for k = 1:lbc0.n],
+  column_inband_index_ranges_bbc0,
+  [inband_index_range(bc0, :, k) for k = 1:bbc0.n],
 )
 
-upper_column_inband_index_ranges_lbc0 =
+upper_column_inband_index_ranges_bbc0 =
   [1:0, 1:0, 1:0, 1:1, 2:3, 2:3, 4:4]
 
 show_equality_result(
-  "LBC Matrix column upper_inband_index_range",
+  "BBC Matrix column upper_inband_index_range",
   compare_ranges,
-  upper_column_inband_index_ranges_lbc0,
-  [upper_inband_index_range(lbc0, :, k) for k = 1:lbc0.n],
+  upper_column_inband_index_ranges_bbc0,
+  [upper_inband_index_range(bbc0, :, k) for k = 1:bbc0.n],
 )
 
 show_equality_result(
   "BC Matrix column upper_inband_index_range",
   compare_ranges,
-  upper_column_inband_index_ranges_lbc0,
-  [upper_inband_index_range(bc0, :, k) for k = 1:lbc0.n],
+  upper_column_inband_index_ranges_bbc0,
+  [upper_inband_index_range(bc0, :, k) for k = 1:bbc0.n],
 )
 
-middle_column_inband_index_ranges_lbc0 =
+middle_column_inband_index_ranges_bbc0 =
   [1:2, 1:2, 1:4, 2:5, 4:7, 4:7, 5:8]
 
 show_equality_result(
-  "LBC Matrix column middle_inband_index_range",
+  "BBC Matrix column middle_inband_index_range",
   compare_ranges,
-  middle_column_inband_index_ranges_lbc0,
-  [middle_inband_index_range(lbc0, :, k) for k = 1:lbc0.n],
+  middle_column_inband_index_ranges_bbc0,
+  [middle_inband_index_range(bbc0, :, k) for k = 1:bbc0.n],
 )
 
 show_equality_result(
   "BC Matrix column middle_inband_index_range",
   compare_ranges,
-  middle_column_inband_index_ranges_lbc0,
-  [middle_inband_index_range(bc0, :, k) for k = 1:lbc0.n],
+  middle_column_inband_index_ranges_bbc0,
+  [middle_inband_index_range(bc0, :, k) for k = 1:bbc0.n],
 )
 
-lower_column_inband_index_ranges_lbc0 =
+lower_column_inband_index_ranges_bbc0 =
   [1:0, 3:4, 5:5, 6:7, 1:0, 8:8, 1:0]
 
 show_equality_result(
-  "LBC Matrix column lower_inband_index_range",
+  "BBC Matrix column lower_inband_index_range",
   compare_ranges,
-  lower_column_inband_index_ranges_lbc0,
-  [lower_inband_index_range(lbc0, :, k) for k = 1:lbc0.n],
+  lower_column_inband_index_ranges_bbc0,
+  [lower_inband_index_range(bbc0, :, k) for k = 1:bbc0.n],
 )
 
 show_equality_result(
   "BC Matrix column lower_inband_index_range",
   compare_ranges,
-  lower_column_inband_index_ranges_lbc0,
-  [lower_inband_index_range(bc0, :, k) for k = 1:lbc0.n],
+  lower_column_inband_index_ranges_bbc0,
+  [lower_inband_index_range(bc0, :, k) for k = 1:bbc0.n],
 )
 
 # X X U U O
@@ -117,7 +117,7 @@ show_equality_result(
 # L X X X X
 # O L X X X
 
-bc1 = lbc[2:6, 3:7]
+bc1 = bbc[2:6, 3:7]
 
 column_inband_index_ranges_bc1 = [1:4, 1:5, 1:5, 1:5, 3:5]
 show_equality_result(

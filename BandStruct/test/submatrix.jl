@@ -1,5 +1,5 @@
 bc = copy(bc0)
-lbc = copy(lbc0)
+bbc = copy(bbc0)
 mx_bc = copy(mx_bc0)
 
 println("""
@@ -52,29 +52,29 @@ show_bool_result("BC View test", res)
 res = true
 for j ∈ 1:1
   global res
-  (rows, cols) = rand_range(lbc)
-  if Matrix(lbc[rows, cols]) != mx_bc[rows, cols]
+  (rows, cols) = rand_range(bbc)
+  if Matrix(bbc[rows, cols]) != mx_bc[rows, cols]
     res = false
     println()
-    println("LBC submatrix test failed with: ")
-    println("Size: ", size(lbc))
+    println("BBC submatrix test failed with: ")
+    println("Size: ", size(bbc))
     println("Ranges: ", rows, ", ", cols)
     break
   end
 end
-show_bool_result("LBC submatrix test", res)
+show_bool_result("BBC submatrix test", res)
 
 res = true
 for j ∈ 1:1
   global res
-  (rows, cols) = rand_range(lbc)
-  if Matrix(view(lbc, rows, cols)) != view(mx_bc, rows, cols)
+  (rows, cols) = rand_range(bbc)
+  if Matrix(view(bbc, rows, cols)) != view(mx_bc, rows, cols)
     res = false
     println()
-    println("LBC View test failed with: ")
-    println("Size: ", size(lbc))
+    println("BBC View test failed with: ")
+    println("Size: ", size(bbc))
     println("Ranges: ", rows, ", ", cols)
     break
   end
 end
-show_bool_result("LBC View test", res)
+show_bool_result("BBC View test", res)

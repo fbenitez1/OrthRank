@@ -22,7 +22,7 @@ upper_blocks = [
   3 4 6 7
 ]
 
-lbc0 = BlockedBandColumn(
+bbc0 = BlockedBandColumn(
   Float64,
   LeadingDecomp,
   MersenneTwister(0),
@@ -36,7 +36,7 @@ lbc0 = BlockedBandColumn(
   lower_ranks = [1, 1, 1, 1],
 )
 
-wilk_lbc0 = [
+wilk_bbc0 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'N'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'O' 'L' 'X' 'X' 'U' 'U' 'O'
@@ -48,13 +48,13 @@ wilk_lbc0 = [
 ]
 
 show_equality_result(
-  "LBC LeadingDecomp Creation Test",
+  "BBC LeadingDecomp Creation Test",
   ==,
-  wilk(toBandColumn(lbc0)).arr,
-  wilk_lbc0,
+  wilk(toBandColumn(bbc0)).arr,
+  wilk_bbc0,
 )
 
-lbc0T = BlockedBandColumn(
+bbc0T = BlockedBandColumn(
   Float64,
   TrailingDecomp,
   8,
@@ -65,7 +65,7 @@ lbc0T = BlockedBandColumn(
   lower_ranks = [1, 1, 1, 1],
 )
 
-wilk_lbc0T = [
+wilk_bbc0T = [
   'X' 'X' 'X' 'U' 'O' 'O' 'N'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
   'L' 'L' 'X' 'X' 'U' 'U' 'O'
@@ -77,19 +77,19 @@ wilk_lbc0T = [
 ]
 
 show_equality_result(
-  "LBC TrailingDecomp Creation Test",
+  "BBC TrailingDecomp Creation Test",
   ==,
-  wilk(toBandColumn(lbc0T)).arr,
-  wilk_lbc0T,
+  wilk(toBandColumn(bbc0T)).arr,
+  wilk_bbc0T,
 )
 
 
 println("Testing BandStruct operations for a matrix with structure:")
 println()
 
-show(wilk(lbc0))
+show(wilk(bbc0))
 
-bc0 = copy(toBandColumn(lbc0))
+bc0 = copy(toBandColumn(bbc0))
 mx_bc0 = Matrix(bc0)
 
 include("index.jl")

@@ -1,5 +1,5 @@
 bc = copy(bc0)
-lbc = copy(lbc0)
+bbc = copy(bbc0)
 mx_bc = copy(mx_bc0)
 
 println("""
@@ -35,11 +35,11 @@ A =   X   X   X | U | O   O | O |
 
 =#
 
-lbc0_bulge = copy(lbc0)
+bbc0_bulge = copy(bbc0)
 
-wilk0 = wilk(toBandColumn(lbc0_bulge))
+wilk0 = wilk(toBandColumn(bbc0_bulge))
 
-lbc1_bulge = copy(lbc0_bulge)
+bbc1_bulge = copy(bbc0_bulge)
 wilk1 = [
  'X'  'X'  'X'  'U'  'O'  'O'  'O'
  'X'  'X'  'X'  'X'  'U'  'U'  'O'
@@ -51,21 +51,21 @@ wilk1 = [
  'N'  'N'  'O'  'O'  'O'  'L'  'X'
 ]
 
-bulge!(lbc1_bulge, :, 1:2)
+bulge!(bbc1_bulge, :, 1:2)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (column 1)",
-  validate_rows_first_last(lbc1_bulge),
+  "BBC bulge! validate_rows_first_last (column 1)",
+  validate_rows_first_last(bbc1_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (column 1)",
+  "BBC bulge! Wilkinson equality (column 1)",
   ==,
-  wilk(toBandColumn(lbc1_bulge)).arr,
+  wilk(toBandColumn(bbc1_bulge)).arr,
   wilk1,
 )
 
 
-lbc2_bulge = copy(lbc0_bulge)
+bbc2_bulge = copy(bbc0_bulge)
 wilk2 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -77,21 +77,21 @@ wilk2 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbc2_bulge, :, 2:3)
+bulge!(bbc2_bulge, :, 2:3)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (column 2)",
-  validate_rows_first_last(lbc2_bulge),
+  "BBC bulge! validate_rows_first_last (column 2)",
+  validate_rows_first_last(bbc2_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (column 2)",
+  "BBC bulge! Wilkinson equality (column 2)",
   ==,
-  wilk(toBandColumn(lbc2_bulge)).arr,
+  wilk(toBandColumn(bbc2_bulge)).arr,
   wilk2,
 )
 
 
-lbc4_bulge = copy(lbc0_bulge)
+bbc4_bulge = copy(bbc0_bulge)
 wilk4 = [
   'X' 'X' 'X' 'U' 'U' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -103,20 +103,20 @@ wilk4 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbc4_bulge,:, 4:5)
+bulge!(bbc4_bulge,:, 4:5)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (column 4)",
-  validate_rows_first_last(lbc4_bulge),
+  "BBC bulge! validate_rows_first_last (column 4)",
+  validate_rows_first_last(bbc4_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (column 4)",
+  "BBC bulge! Wilkinson equality (column 4)",
   ==,
-  wilk(toBandColumn(lbc4_bulge)).arr,
+  wilk(toBandColumn(bbc4_bulge)).arr,
   wilk4,
 )
 
-lbc5_bulge = copy(lbc0_bulge)
+bbc5_bulge = copy(bbc0_bulge)
 wilk5 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -128,20 +128,20 @@ wilk5 = [
   'N' 'N' 'O' 'O' 'L' 'L' 'X'
 ]
 
-bulge!(lbc5_bulge,:, 5:6)
+bulge!(bbc5_bulge,:, 5:6)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (column 5)",
-  validate_rows_first_last(lbc5_bulge),
+  "BBC bulge! validate_rows_first_last (column 5)",
+  validate_rows_first_last(bbc5_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (column 5)",
+  "BBC bulge! Wilkinson equality (column 5)",
   ==,
-  wilk(toBandColumn(lbc5_bulge)).arr,
+  wilk(toBandColumn(bbc5_bulge)).arr,
   wilk5,
 )
 
-lbc6_bulge = copy(lbc0_bulge)
+bbc6_bulge = copy(bbc0_bulge)
 wilk6 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'U'
@@ -153,22 +153,22 @@ wilk6 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbc6_bulge,:, 6:7)
+bulge!(bbc6_bulge,:, 6:7)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (column 6)",
-  validate_rows_first_last(lbc6_bulge),
+  "BBC bulge! validate_rows_first_last (column 6)",
+  validate_rows_first_last(bbc6_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (column 6)",
+  "BBC bulge! Wilkinson equality (column 6)",
   ==,
-  wilk(toBandColumn(lbc6_bulge)).arr,
+  wilk(toBandColumn(bbc6_bulge)).arr,
   wilk6,
 )
 
 # Rows
 
-lbcr1_bulge = copy(lbc0_bulge)
+bbcr1_bulge = copy(bbc0_bulge)
 wilkr1 = [
   'X' 'X' 'X' 'U' 'U' 'U' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -180,20 +180,20 @@ wilkr1 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbcr1_bulge, 1:2, :)
+bulge!(bbcr1_bulge, 1:2, :)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (row 1)",
-  validate_rows_first_last(lbcr1_bulge),
+  "BBC bulge! validate_rows_first_last (row 1)",
+  validate_rows_first_last(bbcr1_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (row 1)",
+  "BBC bulge! Wilkinson equality (row 1)",
   ==,
-  wilk(lbcr1_bulge[1:end, 1:end]).arr,
+  wilk(bbcr1_bulge[1:end, 1:end]).arr,
   wilkr1,
 )
 
-lbcr2_bulge = copy(lbc0_bulge)
+bbcr2_bulge = copy(bbc0_bulge)
 wilkr2 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -205,20 +205,20 @@ wilkr2 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbcr2_bulge, 2:3, :)
+bulge!(bbcr2_bulge, 2:3, :)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (row 2)",
-  validate_rows_first_last(lbcr2_bulge),
+  "BBC bulge! validate_rows_first_last (row 2)",
+  validate_rows_first_last(bbcr2_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (row 2)",
+  "BBC bulge! Wilkinson equality (row 2)",
   ==,
-  wilk(lbcr2_bulge[1:end, 1:end]).arr,
+  wilk(bbcr2_bulge[1:end, 1:end]).arr,
   wilkr2,
 )
 
-lbcr3_bulge = copy(lbc0_bulge)
+bbcr3_bulge = copy(bbc0_bulge)
 wilkr3 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -230,20 +230,20 @@ wilkr3 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbcr3_bulge, 3:4, :)
+bulge!(bbcr3_bulge, 3:4, :)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (row 3)",
-  validate_rows_first_last(lbcr3_bulge),
+  "BBC bulge! validate_rows_first_last (row 3)",
+  validate_rows_first_last(bbcr3_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (row 3)",
+  "BBC bulge! Wilkinson equality (row 3)",
   ==,
-  wilk(lbcr3_bulge[1:end, 1:end]).arr,
+  wilk(bbcr3_bulge[1:end, 1:end]).arr,
   wilkr3,
 )
 
-lbcr4_bulge = copy(lbc0_bulge)
+bbcr4_bulge = copy(bbc0_bulge)
 wilkr4 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -255,20 +255,20 @@ wilkr4 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbcr4_bulge, 4:5, :)
+bulge!(bbcr4_bulge, 4:5, :)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (row 4)",
-  validate_rows_first_last(lbcr4_bulge),
+  "BBC bulge! validate_rows_first_last (row 4)",
+  validate_rows_first_last(bbcr4_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (row 4)",
+  "BBC bulge! Wilkinson equality (row 4)",
   ==,
-  wilk(lbcr4_bulge[1:end, 1:end]).arr,
+  wilk(bbcr4_bulge[1:end, 1:end]).arr,
   wilkr4,
 )
 
-lbcr5_bulge = copy(lbc0_bulge)
+bbcr5_bulge = copy(bbc0_bulge)
 wilkr5 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -280,20 +280,20 @@ wilkr5 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbcr5_bulge, 5:6, :)
+bulge!(bbcr5_bulge, 5:6, :)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (row 5)",
-  validate_rows_first_last(lbcr5_bulge),
+  "BBC bulge! validate_rows_first_last (row 5)",
+  validate_rows_first_last(bbcr5_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (row 5)",
+  "BBC bulge! Wilkinson equality (row 5)",
   ==,
-  wilk(lbcr5_bulge[1:end, 1:end]).arr,
+  wilk(bbcr5_bulge[1:end, 1:end]).arr,
   wilkr5,
 )
 
-lbcr6_bulge = copy(lbc0_bulge)
+bbcr6_bulge = copy(bbc0_bulge)
 wilkr6 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -305,16 +305,16 @@ wilkr6 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbcr6_bulge, 6:7, :)
+bulge!(bbcr6_bulge, 6:7, :)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (row 6)",
-  validate_rows_first_last(lbcr6_bulge),
+  "BBC bulge! validate_rows_first_last (row 6)",
+  validate_rows_first_last(bbcr6_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (row 6)",
+  "BBC bulge! Wilkinson equality (row 6)",
   ==,
-  wilk(lbcr6_bulge[1:end, 1:end]).arr,
+  wilk(bbcr6_bulge[1:end, 1:end]).arr,
   wilkr6,
 )
 
@@ -323,7 +323,7 @@ show_equality_result(
 ####
 # 16
 
-lbci16_bulge = copy(lbc0_bulge)
+bbci16_bulge = copy(bbc0_bulge)
 wilki16 = [
   'X' 'X' 'X' 'U' 'U' 'U' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -335,20 +335,20 @@ wilki16 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbci16_bulge, 1, 6)
+bulge!(bbci16_bulge, 1, 6)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (index (1,6))",
-  validate_rows_first_last(lbci16_bulge),
+  "BBC bulge! validate_rows_first_last (index (1,6))",
+  validate_rows_first_last(bbci16_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (index (1,6))",
+  "BBC bulge! Wilkinson equality (index (1,6))",
   ==,
-  wilk(toBandColumn(lbci16_bulge)).arr,
+  wilk(toBandColumn(bbci16_bulge)).arr,
   wilki16,
 )
 
-lbci61_bulge = copy(lbc0_bulge)
+bbci61_bulge = copy(bbc0_bulge)
 wilki61 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -360,22 +360,22 @@ wilki61 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbci61_bulge, 6, 1)
+bulge!(bbci61_bulge, 6, 1)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (index (6,1))",
-  validate_rows_first_last(lbci61_bulge),
+  "BBC bulge! validate_rows_first_last (index (6,1))",
+  validate_rows_first_last(bbci61_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (index (6,1))",
+  "BBC bulge! Wilkinson equality (index (6,1))",
   ==,
-  wilk(toBandColumn(lbci61_bulge)).arr,
+  wilk(toBandColumn(bbci61_bulge)).arr,
   wilki61,
 )
 
 # Scalar (6,2)
 
-lbci62_bulge = copy(lbc0_bulge)
+bbci62_bulge = copy(bbc0_bulge)
 wilki62 = [
   'X' 'X' 'X' 'U' 'O' 'O' 'O'
   'X' 'X' 'X' 'X' 'U' 'U' 'O'
@@ -387,15 +387,15 @@ wilki62 = [
   'N' 'N' 'O' 'O' 'O' 'L' 'X'
 ]
 
-bulge!(lbci62_bulge, 6, 2)
+bulge!(bbci62_bulge, 6, 2)
 show_bool_result(
-  "LBC bulge! validate_rows_first_last (index (6,2))",
-  validate_rows_first_last(lbci62_bulge),
+  "BBC bulge! validate_rows_first_last (index (6,2))",
+  validate_rows_first_last(bbci62_bulge),
 )
 
 show_equality_result(
-  "LBC bulge! Wilkinson equality (index (6,2))",
+  "BBC bulge! Wilkinson equality (index (6,2))",
   ==,
-  wilk(toBandColumn(lbci62_bulge)).arr,
+  wilk(toBandColumn(bbci62_bulge)).arr,
   wilki62,
 )

@@ -26,10 +26,10 @@ println("""
 Matrix structure:
 """)
 
-show(wilk(lbc0))
+show(wilk(bbc0))
 println()
 
-bc0 = lbc0[1:end,1:end]
+bc0 = bbc0[1:end,1:end]
 mx_bc0 = Matrix(bc0)
 
 # Zero element 26 with a right rotation.

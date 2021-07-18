@@ -1,5 +1,5 @@
 bc = copy(bc0)
-lbc = copy(lbc0)
+bbc = copy(bbc0)
 mx_bc = copy(mx_bc0)
 
 println("""
@@ -12,30 +12,30 @@ println("""
 
 println()
 show_equality_result(
-  "eachindex equality BC/LBC",
+  "eachindex equality BC/BBC",
   ==,
   collect(eachindex(bc)),
-  collect(eachindex(lbc)),
+  collect(eachindex(bbc)),
 )
 show_equality_result(
-  "Get elements equality BC/LBC",
+  "Get elements equality BC/BBC",
   ==,
   collect(get_elements(bc)),
-  collect(get_elements(lbc)),
+  collect(get_elements(bbc)),
 )
 
 resbc = true
-reslbc = true
+resbbc = true
 for ix in (ix for ix ∈ eachindex(bc) if rand() > 0.75)
-  global resbc, reslbc
+  global resbc, resbbc
   x = rand()
   bc[ix] = x
-  lbc[ix] = x
+  bbc[ix] = x
   mx_bc[ix] = x
   resbc = resbc && validate_rows_first_last(bc)
-  reslbc = reslbc && validate_rows_first_last(lbc)
+  resbbc = resbbc && validate_rows_first_last(bbc)
 end
 show_bool_result("Validate BC bandwidths after setindex", resbc)
-show_bool_result("Validate LBC bandwidths after setindex", reslbc)
+show_bool_result("Validate BBC bandwidths after setindex", resbbc)
 show_equality_result("Leading BC Matrix Set Index", ==, Matrix(bc), mx_bc)
-show_equality_result("Leading LBC Matrix Set Index", ==, Matrix(lbc), mx_bc)
+show_equality_result("Leading BBC Matrix Set Index", ==, Matrix(bbc), mx_bc)

@@ -26,10 +26,10 @@ println("""
 Matrix structure:
 """)
 
-show(wilk(lbc0))
+show(wilk(bbc0))
 println()
 
-bc0 = lbc0[:,:]
+bc0 = bbc0[:,:]
 mx_bc0 = Matrix(bc0)
 
 work = zeros(Float64, maximum(size(bc)))

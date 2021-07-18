@@ -43,8 +43,9 @@ struct WYWeight{Step<:Union{BigStep,SmallStep},LWY,B,RWY}
   lower_ranks::Array{Int,1}
 end
 
-# Generic BigStep WYWeight with zero ranks but room for either type of
-# decomposition with ranks up to upper_rank_max and Lower_rank_max.
+# Generic BigStep WYWeight with zero ranks but room for either a
+# leading or trailing decomposition with ranks up to
+# upper_rank_max and Lower_rank_max.
 function WYWeight(
   ::Type{E},
   ::Type{BigStep},
@@ -56,7 +57,7 @@ function WYWeight(
   lower_blocks::Array{Int,2},
 ) where {E<:Number}
   
-  lbc = BlockedBandColumn(
+  bbc = BlockedBandColumn(
     E,
     m,
     n,
@@ -119,12 +120,12 @@ function WYWeight(
   upper_ranks = zeros(Int, num_blocks)
   lower_ranks = zeros(Int, num_blocks)
   ref = Base.RefValue{Union{Nothing, LeadingDecomp, TrailingDecomp}}(nothing)
-  WYWeight(ref, BigStep(), leftWY, lbc, rightWY, upper_ranks, lower_ranks)
+  WYWeight(ref, BigStep(), leftWY, bbc, rightWY, upper_ranks, lower_ranks)
 
 end
 
-# Generic BigStep WYWeight with zero ranks but room for either type of
-# decomposition with ranks up to upper_rank_max and Lower_rank_max.
+# A random BigStep, LeadingDecomp, WYWeight with specified upper and
+# lower ranks.
 function WYWeight(
   ::Type{E},
   ::Type{BigStep},
@@ -140,7 +141,7 @@ function WYWeight(
   lower_blocks::Array{Int,2},
 ) where {E<:Number}
 
-  lbc = BlockedBandColumn(
+  bbc = BlockedBandColumn(
     E,
     LeadingDecomp,
     rng,
@@ -234,7 +235,7 @@ function WYWeight(
   rand!(rng, rightWY)
 
   ref = Base.RefValue{Union{Nothing, LeadingDecomp, TrailingDecomp}}(nothing)
-  WYWeight(ref, BigStep(), leftWY, lbc, rightWY, upper_ranks, lower_ranks)
+  WYWeight(ref, BigStep(), leftWY, bbc, rightWY, upper_ranks, lower_ranks)
 end
 
 function get_transform_params(
