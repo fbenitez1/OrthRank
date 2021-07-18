@@ -1,19 +1,18 @@
-#                 1   2       3   4
-# A =   X   X   X | U | O   O | N |
-#                 +---+-----------+
-#       X   X   X   X | U   U | O |
-#     1 ------+       |       |   |
-#       O   L | X   X | U   U | O |
-#             |       +-------+---+
-#       O   L | X   X   X   X | U |
-#     2 ------+---+           +---+
-#       O   O | L | X   X   X   X |
-#     3 ------+---+---+           |
-#       O   O | O | L | X   X   X |
-#             |   |   |           +
-#       N   N | N | L | X   X   X 
-#     4 ------+---+---+-------+   
-#       N   N | N | N | O   L | X 
+# X   X   X | U | O   O | N | 
+#           + - + - - - + - + 
+# X   X   X   X | U   U | O | 
+# - - - +       |       |   | 
+# O   L | X   X | U   U | O | 
+#       |       + - - - + - + 
+# N   L | X   X   X   X | U | 
+# - - - + - +           + - + 
+# N   O | L | X   X   X   X | 
+# - - - + - + - +           | 
+# N   N | O | L | X   X   X | 
+#       |   |   |           + 
+# N   N | N | L | X   X   X   
+# - - - + - + - + - - - +     
+# N   N | N | O | O   L | X   
 
 tol = 1e-15
 
@@ -26,10 +25,24 @@ println("""
 Matrix structure:
 """)
 
-show(wilk(bbc0))
+bbc0_r = BlockedBandColumn(
+  Float64,
+  LeadingDecomp,
+  MersenneTwister(0),
+  8,
+  7,
+  upper_blocks = upper_blocks,
+  lower_blocks = lower_blocks,
+  upper_rank_max = 2,
+  lower_rank_max = 1,
+  upper_ranks = [1, 2, 1, 0],
+  lower_ranks = [1, 1, 1, 1],
+)
+
+show(wilk(bbc0_r))
 println()
 
-bc0 = bbc0[1:end,1:end]
+bc0 = toBandColumn(bbc0_r)
 mx_bc0 = Matrix(bc0)
 
 # Zero element 26 with a right rotation.
