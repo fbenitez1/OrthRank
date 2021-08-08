@@ -79,9 +79,10 @@ Base.@propagate_inbounds function Compute.householder(
 
   storage_offs = storage_offset(bc, k)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
 
   @inbounds for j ∈ 1:ljs
-    v[j] = bc_els[j + offs - storage_offs, k]
+    v[j] = bc_els[j + offs - storage_offs, k + coffs]
   end
 
   @views lhouseholder(v[1:ljs], l, offs, work)
@@ -112,10 +113,11 @@ Base.@propagate_inbounds function Compute.householder(
   end
 
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
 
   @inbounds for k ∈ 1:lks
     storage_offs = storage_offset(bc, k + offs)
-    v[k] = bc_els[j - storage_offs, k + offs]
+    v[k] = bc_els[j - storage_offs, k + offs + coffs]
   end
   @views rhouseholder(v[1:lks], l, offs, work)
 end
@@ -142,6 +144,7 @@ end
   m_bc = length(js)
 
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
 
   if m_bc > 0 && n_bc > 0
     j_first = first(js)
@@ -174,7 +177,7 @@ end
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
         @simd for j ∈ j_first:j_last
-          work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
+          work[j - j_first + 1] += bc_els[j - storage_offs, k + offs + coffs] * x
         end
       end
       # Subtract β * w * vᴴ from bc.
@@ -182,7 +185,7 @@ end
         storage_offs = storage_offset(bc, k + offs)
         x = β * conj(v[k])
         @simd for j ∈ j_first:j_last
-          bc_els[j - storage_offs, k + offs] -= work[j - j_first + 1] * x
+          bc_els[j - storage_offs, k + offs + coffs] -= work[j - j_first + 1] * x
         end
       end
     end
@@ -208,6 +211,7 @@ end
 
   n_bc = length(ks)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
 
   if m_bc > 0 && n_bc > 0
     k_first = first(ks)
@@ -224,12 +228,12 @@ end
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
         @simd for j ∈ j_first:j_last
-          x += conj(v[j - offs]) * bc_els[j - storage_offs, k]
+          x += conj(v[j - offs]) * bc_els[j - storage_offs, k + coffs]
         end
         # Subtract v * x from bc[:,k].
         x = β * x
         @simd for j ∈ 1:m
-          bc_els[offs + j - storage_offs, k] -= v[j] * x
+          bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
       end
     end
@@ -258,6 +262,7 @@ end
   m_bc = length(js)
 
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
 
   if m_bc > 0 && n_bc > 0
     j_first = first(js)
@@ -291,7 +296,7 @@ end
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
         @simd for j ∈ j_first:j_last
-          work[j - j_first + 1] += bc_els[j - storage_offs, k + offs] * x
+          work[j - j_first + 1] += bc_els[j - storage_offs, k + offs + coffs] * x
         end
       end
       # Subtract β̄ * w * vᴴ from bc.
@@ -299,7 +304,7 @@ end
         storage_offs = storage_offset(bc, k + offs)
         x = β̄ * conj(v[k])
         @simd for j ∈ j_first:j_last
-          bc_els[j - storage_offs, k + offs] -=
+          bc_els[j - storage_offs, k + offs + coffs] -=
             work[j - j_first + 1] * x
         end
       end
@@ -326,6 +331,7 @@ end
   n_bc = length(ks)
 
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
 
   if m_bc > 0 && n_bc > 0
     k_first = first(ks)
@@ -343,7 +349,7 @@ end
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
         @simd for j ∈ 1:m
-          x += conj(v[j]) * bc_els[j - storage_offs+offs, k]
+          x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
         work[k-k_first+1]=x
       end
@@ -352,7 +358,8 @@ end
         storage_offs = storage_offset(bc, k)
         x = β̄ * work[k-k_first+1] 
         @simd for j ∈ 1:m
-          bc_els[offs + j - storage_offs, k] -= v[j] * x
+          l = offs + j - storage_offs
+          bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
       end
     end

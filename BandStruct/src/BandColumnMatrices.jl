@@ -1964,8 +1964,9 @@ Insert hard zeros into elements above index ``(j,k)`` or indices
   end
   bc_els = band_elements(bc)
   offs = storage_offset(bc, k)
+  coffs = col_offset(bc)
   js = inband_index_range(bc, :, k) ∩ (1:j)
-  bc_els[js .- offs,k] .= zero(E)
+  bc_els[js .- offs, k + coffs] .= zero(E)
 end
 
 @inline function zero_above!(
@@ -1980,7 +1981,7 @@ end
   bc_els = band_elements(bc)
   offs = storage_offset(NonSub, bc, k)
   js = inband_index_range(NonSub, bc, :, k) ∩ (1:j)
-  bc_els[js .- offs,k] .= zero(E)
+  bc_els[js .- offs, k] .= zero(E)
 end
 
 @inline function zero_above!(
@@ -1993,11 +1994,12 @@ end
     is_inband(bc, j, ks) || throw(IndexNotInband((j, ks)))
   end
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   z = zero(E)
   for k ∈ ks
     offs = storage_offset(bc, k)
     js = inband_index_range(bc, :, k) ∩ (1:j)
-    bc_els[js .- offs, k] .= z
+    bc_els[js .- offs, k + coffs] .= z
   end
 end
 
@@ -2047,9 +2049,10 @@ Insert hard zeros into elements below index ``(j,k)`` or indices
   end
   m = row_size(bc)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   offs = storage_offset(bc, k)
   js = inband_index_range(bc, :, k) ∩ (j:m)
-  bc_els[js .- offs, k] .= zero(E)
+  bc_els[js .- offs, k + coffs] .= zero(E)
 end
 
 @inline function zero_below!(
@@ -2080,11 +2083,12 @@ end
   end
   m = row_size(bc)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   z = zero(E)
   for kk ∈ ks
     offs = storage_offset(bc, kk)
     js = inband_index_range(bc, :, kk) ∩ (j:m)
-    bc_els[js .- offs, kk] .= z
+    bc_els[js .- offs, kk + coffs] .= z
   end
 end
 
@@ -2136,11 +2140,12 @@ indices ``(j,ks)``.  This does not adjust the structural bandwidth.
   n = col_size(bc)
   ks1 = isempty(js) ? js : inband_index_range(bc, last(js), :) ∩ (k:n)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   z = zero(E)
   for kk ∈ ks1
     offs = storage_offset(bc, kk)
     jjs = inband_index_range(bc, :, kk) ∩ js
-    bc_els[jjs .- offs, kk] .= z
+    bc_els[jjs .- offs, kk + coffs] .= z
   end
 end
 
@@ -2177,10 +2182,11 @@ end
   n = col_size(bc)
   ks = inband_index_range(bc, j, :) ∩ (k:n)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   z = zero(E)
   for kk ∈ ks
     offs = storage_offset(bc, kk)
-    bc_els[j - offs, kk] = z
+    bc_els[j - offs, kk + coffs] = z
   end
 end
 
@@ -2231,11 +2237,12 @@ indices ``(j,ks)``.  This does not adjust the structural bandwidth.
   end
   ks0 = isempty(js) ? js : inband_index_range(bc, first(js), :) ∩ (1:k)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   z = zero(E)
   for kk ∈ ks0
     offs = storage_offset(bc, kk)
     jjs = inband_index_range(bc, :, kk) ∩ js
-    bc_els[jjs .- offs, kk] .= z
+    bc_els[jjs .- offs, kk + coffs] .= z
   end
 end
 
@@ -2270,10 +2277,11 @@ end
   end
   ks = inband_index_range(bc, j, :) ∩ (1:k)
   bc_els = band_elements(bc)
+  coffs = col_offset(bc)
   z = zero(E)
   for kk ∈ ks
     offs = storage_offset(bc, kk)
-    bc_els[j - offs, kk] = z
+    bc_els[j - offs, kk + coffs] = z
   end
 end
 
@@ -2746,13 +2754,14 @@ Base.@propagate_inbounds function Base.copyto!(
   (m, n) = size(bc)
   bc_els = band_elements(bc)
   coffs = col_offset(bc)
+  coffs = col_offset(bc)
   zeroE = zero(E)
   for k ∈ 1:n
     storage_offs = storage_offset(bc, k)
     js = inband_index_range(bc, :, k)
     kk = k + coffs
     @simd for j ∈ 1:m
-      a[j, k] = j ∈ js ? bc_els[j - storage_offs, kk] : zeroE
+      a[j, k] = j ∈ js ? bc_els[j - storage_offs, kk + coffs] : zeroE
     end
   end
   a
