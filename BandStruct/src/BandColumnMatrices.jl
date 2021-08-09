@@ -2754,14 +2754,13 @@ Base.@propagate_inbounds function Base.copyto!(
   (m, n) = size(bc)
   bc_els = band_elements(bc)
   coffs = col_offset(bc)
-  coffs = col_offset(bc)
   zeroE = zero(E)
   for k ∈ 1:n
     storage_offs = storage_offset(bc, k)
     js = inband_index_range(bc, :, k)
     kk = k + coffs
     @simd for j ∈ 1:m
-      a[j, k] = j ∈ js ? bc_els[j - storage_offs, kk + coffs] : zeroE
+      a[j, k] = j ∈ js ? bc_els[j - storage_offs, kk] : zeroE
     end
   end
   a
