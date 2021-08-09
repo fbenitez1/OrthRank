@@ -110,6 +110,7 @@ function lhouseholder(
   offs::Int64,
   work::AbstractArray{E,1}
 ) where {E<:Number}
+
   m = length(a)
   a1 = a[l]
   if m == 1
@@ -122,6 +123,11 @@ function lhouseholder(
     norm_a = update_norm(norm_a2, a1)
     if iszero(norm_a)
       HouseholderTrans(zero(E), a, l, m, offs, work)
+    elseif iszero(norm_a2)
+      a[l] = 1
+      sign_a1 = iszero(a1) ? one(a1) : sign(a1)
+      β = (sign_a1 - one(a1)) / sign_a1
+      HouseholderTrans(conj(β), a, l, m, offs, work)
     else
       alpha = if real(a1) <= 0
         a1 - norm_a
@@ -177,6 +183,12 @@ function rhouseholder(
     norm_a = update_norm(norm_a2, a1)
     if iszero(norm_a)
       HouseholderTrans(zero(E), a, l, m, offs, work)
+    elseif iszero(norm_a2)
+      a[l] = 1
+      sign_a1 = iszero(a1) ? one(a1) : sign(a1)
+      β = (sign_a1 - one(a1)) / sign_a1
+      conj!(a)
+      HouseholderTrans(β, a, l, m, offs, work)
     else
       alpha = if real(a1) <= 0
         a1 - norm_a
