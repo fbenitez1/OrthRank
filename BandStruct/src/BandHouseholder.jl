@@ -421,7 +421,7 @@ end
       work .= zero(E)
 
       tmp0 = reshape(
-        work[(m_bc0 * num_hs + 1):(m_bc0 * num_hs + m_bc0 * n_bc0)],
+        wy.work[(m_bc0 * num_hs + 1):(m_bc0 * num_hs + m_bc0 * n_bc0)],
         m_bc0,
         n_bc0,
       )
@@ -490,7 +490,7 @@ end
       work .= zero(E)
 
       tmp0 = reshape(
-        work[(m_bc0 * num_hs + 1):(m_bc0 * num_hs + m_bc0 * n_bc0)],
+        wy.work[(m_bc0 * num_hs + 1):(m_bc0 * num_hs + m_bc0 * n_bc0)],
         m_bc0,
         n_bc0,
       )
@@ -560,7 +560,7 @@ end
       work .= zero(E)
 
       tmp0 = reshape(
-        work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
+        wy.work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
         m_bc0,
         n_bc0,
       )
@@ -630,7 +630,7 @@ end
       work .= zero(E)
 
       tmp0 = reshape(
-        work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
+        wy.work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
         m_bc0,
         n_bc0,
       )
