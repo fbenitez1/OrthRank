@@ -167,8 +167,8 @@ end
     end
 
     @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
       work[1:m_bc] .= zero(E)
 
       # Accumulate w = bc * v in work array by a linear combination of
@@ -221,8 +221,8 @@ end
       check_bc_storage_bounds(bc, j_last, k_first)
     end
     @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
       for k ∈ k_first:k_last
         x = zero(E)
         storage_offs = storage_offset(bc, k)
@@ -286,8 +286,8 @@ end
     end
 
     @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
       work[1:m_bc] .= zero(E)
 
       # Accumulate w = bc * v in work array by a linear combination of
@@ -342,8 +342,8 @@ end
     end
     work=h.work
     @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
@@ -412,8 +412,8 @@ end
     end
 
     @views @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
       work = reshape(wy.work[1:m_bc0*num_hs], m_bc0, num_hs)
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
@@ -480,8 +480,8 @@ end
     end
 
     @views @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
 
       work = reshape(wy.work[1:m_bc0*num_hs], m_bc0, num_hs)
       W = wy.W[inds, 1:num_hs, k]
@@ -550,8 +550,8 @@ end
     end
     
     @views @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
 
       work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
       W = wy.W[inds, 1:num_hs, k]
@@ -620,8 +620,8 @@ end
     end
     
     @views @inbounds begin
-      bulge_upper!(bc, j_first, k_last)
-      bulge_lower!(bc, j_last, k_first)
+      bulge_maybe_upper!(bc, j_first, k_last)
+      bulge_maybe_lower!(bc, j_last, k_first)
 
       work = reshape(wy.work[1:n_bc0*num_hs], num_hs, n_bc0)
       W = wy.W[inds, 1:num_hs, k]
