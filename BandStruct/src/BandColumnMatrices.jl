@@ -1614,7 +1614,6 @@ end
   @boundscheck begin
     checkbounds(bc, j, k)
     check_bc_storage_bounds(bc, j, k)
-    is_upper_index(bc, j, k) || throw(IndexNotUpper((j, k)))
   end
   @inbounds bulge_maybe_upper!(NonSub, bc, j + row_offset(bc), k + col_offset(bc))
 end
