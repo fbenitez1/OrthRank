@@ -175,18 +175,18 @@ end
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      for k ∈ 1:m
+      @tturbo for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
-        @simd for j ∈ j_first:j_last
+        for j ∈ j_first:j_last
           work[j - j_first + 1] += bc_els[j - storage_offs, k + offs + coffs] * x
         end
       end
       # Subtract β * w * vᴴ from bc.
-      for k ∈ 1:m
+      @tturbo for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β * conj(v[k])
-        @simd for j ∈ j_first:j_last
+        for j ∈ j_first:j_last
           bc_els[j - storage_offs, k + offs + coffs] -= work[j - j_first + 1] * x
         end
       end
@@ -222,19 +222,25 @@ end
       check_bc_storage_bounds(bc, j_first, k_last)
       check_bc_storage_bounds(bc, j_last, k_first)
     end
+    work=h.work
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      for k ∈ k_first:k_last
-        x = zero(E)
+      @tturbo for k ∈ k_first:k_last
+        x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        @simd for j ∈ j_first:j_last
-          x += conj(v[j - offs]) * bc_els[j - storage_offs, k + coffs]
+        for j ∈ 1:m
+          x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
-        # Subtract v * x from bc[:,k].
-        x = β * x
-        @simd for j ∈ 1:m
+        work[k-k_first+1]=x
+      end
+      # Subtract v * x from bc[:,k].
+      @tturbo for k ∈ k_first:k_last
+        storage_offs = storage_offset(bc, k)
+        x = β * work[k-k_first+1] 
+        for j ∈ 1:m
+          l = offs + j - storage_offs
           bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
       end
@@ -294,18 +300,18 @@ end
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      for k ∈ 1:m
+      @tturbo for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
-        @simd for j ∈ j_first:j_last
+        for j ∈ j_first:j_last
           work[j - j_first + 1] += bc_els[j - storage_offs, k + offs + coffs] * x
         end
       end
       # Subtract β̄ * w * vᴴ from bc.
-      for k ∈ 1:m
+      @tturbo for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β̄ * conj(v[k])
-        @simd for j ∈ j_first:j_last
+        for j ∈ j_first:j_last
           bc_els[j - storage_offs, k + offs + coffs] -=
             work[j - j_first + 1] * x
         end
@@ -346,20 +352,20 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      for k ∈ k_first:k_last
+      @tturbo for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        @simd for j ∈ 1:m
+        for j ∈ 1:m
           x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      for k ∈ k_first:k_last
+      @tturbo for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β̄ * work[k-k_first+1] 
-        @simd for j ∈ 1:m
+        for j ∈ 1:m
           l = offs + j - storage_offs
           bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
