@@ -3,6 +3,7 @@ module BandHouseholder
 using LinearAlgebra
 using Printf
 using LoopVectorization
+using Octavian
 
 using Householder.Compute
 using Householder.WY
@@ -11,7 +12,8 @@ using ..BandColumnMatrices
 using ..BlockedBandColumnMatrices
 using InPlace
 
-# Lifted from Octavian Benchmarks.
+# Lifted from Octavian Benchmarks.  Currently not used, but it has
+# been a reasonable alternative when having problems with matmul!.
 function lvmul_threads!(C, A, B)
     @avxt for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
         Cmn = zero(eltype(C))
@@ -426,10 +428,14 @@ end
         n_bc0,
       )
 
+      o = one(E)
       copyto!(tmp0, bc[js, k_first:k_last])
-      lvmul_threads!(work, tmp0, W)
+      # lvmul_threads!(work, tmp0, W)
+      matmul!(work, tmp0, W)
 
-      lvmul_minus_threads!(tmp0, work, Y')
+      # lvmul_minus_threads!(tmp0, work, Y')
+      matmul!(tmp0, work, Y', -o, o)
+
       copyto!(bc[js, k_first:k_last], tmp0)
     end
   end
@@ -496,9 +502,13 @@ end
       )
 
       copyto!(tmp0, bc[js, k_first:k_last])
-      lvmul_threads!(work,tmp0,Y)
+      o = one(E)
+      # lvmul_threads!(work,tmp0,Y)
+      matmul!(work, tmp0, Y)
       
-      lvmul_minus_threads!(tmp0, work, W')
+      # lvmul_minus_threads!(tmp0, work, W')
+      matmul!(tmp0, work, W', -o, o)
+
       copyto!(bc[js, k_first:k_last], tmp0)
     end
   end
@@ -627,18 +637,21 @@ end
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
 
-      work .= zero(E)
+      # work .= zero(E)
 
       tmp0 = reshape(
         wy.work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
         m_bc0,
         n_bc0,
       )
-
+      o = one(E)
       copyto!(tmp0, bc[j_first:j_last, ks])
-      lvmul_threads!(work, W', tmp0)
+      # lvmul_threads!(work, W', tmp0)
+      matmul!(work, W', tmp0)
 
-      lvmul_minus_threads!(tmp0, Y, work)
+      # lvmul_minus_threads!(tmp0, Y, work)
+      matmul!(tmp0, Y, work, -o, o)
+
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
