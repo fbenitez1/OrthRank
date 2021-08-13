@@ -4,8 +4,9 @@ using Printf
 using Random
 
 using LinearAlgebra
-using InPlace
+using LoopVectorization
 
+using InPlace
 using ..Compute
 
 export WYTrans,
@@ -702,8 +703,22 @@ throw_WYMaxHouseholderError(block) =
     Y1[:,:] .= zero(E)
     W1[indshwy,:] .= h.β .* h.v
     Y1[indshwy,:] .= h.v
-    mul!(work, Y0', W1)
-    mul!(W1, W0, work, -one(E), one(E))
+
+    # mul!(work, Y0', W1)
+    # mul!(W1, W0, work, -one(E), one(E))
+    mwy = length(indswy)
+    @tturbo for j ∈ 1:num_hs
+      work[j]=zero(E)
+      for k ∈ 1:mwy
+        work[j] += conj(Y0[k,j]) * W1[k,1]
+      end
+    end
+
+    @tturbo for j ∈ 1:mwy
+      for k ∈ 1:num_hs
+        W1[j] -= W0[j, k] * work[k]
+      end
+    end
 
     wy.num_hs[k] += 1
   end
@@ -765,8 +780,23 @@ end
     Y1[:,:] .= zero(E)
     W1[indshwy,:] .= conj(h.β) .* h.v
     Y1[indshwy,:] = h.v
-    mul!(work, Y0', W1)
-    mul!(W1, W0, work, -one(E), one(E))
+    # mul!(work, Y0', W1)
+    # mul!(W1, W0, work, -one(E), one(E))
+
+    mwy = length(indswy)
+    @tturbo for j ∈ 1:num_hs
+      work[j]=zero(E)
+      for k ∈ 1:mwy
+        work[j] += conj(Y0[k,j]) * W1[k,1]
+      end
+    end
+
+    @tturbo for j ∈ 1:mwy
+      for k ∈ 1:num_hs
+        W1[j] -= W0[j, k] * work[k]
+      end
+    end
+
     wy.num_hs[k] += 1
   end
   nothing
@@ -828,8 +858,21 @@ end
     W1[indshwy,:] = h.v
     Y1[indshwy,:] .= conj(h.β) .* h.v
 
-    mul!(work, W0', Y1)
-    mul!(Y1, Y0, work, -one(E), one(E))
+    # mul!(work, W0', Y1)
+    # mul!(Y1, Y0, work, -one(E), one(E))
+    mwy = length(indswy)
+    @tturbo for j ∈ 1:num_hs
+      work[j]=zero(E)
+      for k ∈ 1:mwy
+        work[j] += conj(W0[k,j]) * Y1[k,1]
+      end
+    end
+
+    @tturbo for j ∈ 1:mwy
+      for k ∈ 1:num_hs
+        Y1[j] -= Y0[j, k] * work[k]
+      end
+    end
 
     wy.num_hs[k] += 1
   end
@@ -894,8 +937,21 @@ end
     W1[indshwy,:] = v
     Y1[indshwy,:] .= h.β .* v
 
-    mul!(work, W0', Y1)
-    mul!(Y1, Y0, work, -one(E), one(E))
+    # mul!(work, W0', Y1)
+    # mul!(Y1, Y0, work, -one(E), one(E))
+    mwy = length(indswy)
+    @tturbo for j ∈ 1:num_hs
+      work[j]=zero(E)
+      for k ∈ 1:mwy
+        work[j] += conj(W0[k,j]) * Y1[k,1]
+      end
+    end
+
+    @tturbo for j ∈ 1:mwy
+      for k ∈ 1:num_hs
+        Y1[j] -= Y0[j, k] * work[k]
+      end
+    end
 
     wy.num_hs[k] += 1
   end

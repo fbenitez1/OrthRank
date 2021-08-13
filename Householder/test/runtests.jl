@@ -8,7 +8,7 @@ using ShowTests
 using Profile
 using BenchmarkTools
 
-tol = 1e-14
+tol = 5e-14
 l=2
 m=3
 

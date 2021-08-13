@@ -5,7 +5,7 @@ for E ∈ [Float64, Complex{Float64}]
           Testing Random WY Transformations """)
     println("of type ", E, ".")
     println()
-    tol = 1e-14
+    tol = 5e-14
     max_num_hs=2
     m=10
     n=10
@@ -48,7 +48,7 @@ for E ∈ [Float64, Complex{Float64}]
     println("for type ", E, ".")
     println()
 
-    tol = 1e-14
+    tol = 5e-14
     max_num_hs=3
     m=10
     n=10
