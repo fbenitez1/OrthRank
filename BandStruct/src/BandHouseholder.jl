@@ -12,48 +12,6 @@ using ..BandColumnMatrices
 using ..BlockedBandColumnMatrices
 using InPlace
 
-# Lifted from Octavian Benchmarks.  Currently not used, but it has
-# been a reasonable alternative when having problems with matmul!.
-function lvmul_threads!(C, A, B)
-    @avxt for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
-        Cmn = zero(eltype(C))
-        for k ∈ indices((A,B), (2,1))
-            Cmn += A[m,k] * B[k,n]
-        end
-        C[m,n] = Cmn
-    end
-end
-
-@inline function lvmul_minus_threads!(C, A, B)
-    @avxt for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
-        Cmn = C[m,n]
-        for k ∈ indices((A,B), (2,1))
-            Cmn -= A[m,k] * B[k,n]
-        end
-        C[m,n] = Cmn
-    end
-end
-
-@inline function lvmul_no_threads!(C, A, B)
-    @avx for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
-        Cmn = zero(eltype(C))
-        for k ∈ indices((A,B), (2,1))
-            Cmn += A[m,k] * B[k,n]
-        end
-        C[m,n] = Cmn
-    end
-end
-
-function lvmul_minus_no_threads!(C, A, B)
-    @avx for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
-        Cmn = C[m,n]
-        for k ∈ indices((A,B), (2,1))
-            Cmn -= A[m,k] * B[k,n]
-        end
-        C[m,n] = Cmn
-    end
-end
-
 # vector and work.
 Base.@propagate_inbounds function Compute.householder(
   bc::AbstractBandColumn{S,E},
@@ -436,10 +394,7 @@ end
 
       o = one(E)
       copyto!(tmp0, bc[js, k_first:k_last])
-      # lvmul_threads!(work, tmp0, W)
       matmul!(work, tmp0, W)
-
-      # lvmul_minus_threads!(tmp0, work, Y')
       matmul!(tmp0, work, Y', -o, o)
 
       copyto!(bc[js, k_first:k_last], tmp0)
@@ -509,10 +464,7 @@ end
 
       copyto!(tmp0, bc[js, k_first:k_last])
       o = one(E)
-      # lvmul_threads!(work,tmp0,Y)
       matmul!(work, tmp0, Y)
-      
-      # lvmul_minus_threads!(tmp0, work, W')
       matmul!(tmp0, work, W', -o, o)
 
       copyto!(bc[js, k_first:k_last], tmp0)
@@ -582,9 +534,8 @@ end
       )
 
       copyto!(tmp0, bc[j_first:j_last, ks])
-      lvmul_threads!(work, Y', tmp0)
-
-      lvmul_minus_threads!(tmp0, W, work)
+      matmul!(work, Y', tmp0)
+      matmul!(tmp0, W, work, -one(E), one(E))
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
@@ -652,12 +603,8 @@ end
       )
       o = one(E)
       copyto!(tmp0, bc[j_first:j_last, ks])
-      # lvmul_threads!(work, W', tmp0)
       matmul!(work, W', tmp0)
-
-      # lvmul_minus_threads!(tmp0, Y, work)
       matmul!(tmp0, Y, work, -o, o)
-
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end

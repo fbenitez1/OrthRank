@@ -408,15 +408,15 @@ end
   v = h.v
   β = h.β
   work = h.work
-  @inbounds begin
-    @avx for k ∈ 1:na
+  if na > 0 && m > 0
+    @tturbo for k ∈ 1:na
       x = zero(E)
       for j ∈ 1:m
         x += conj(v[j]) * A[offs+j,k]
       end
       work[k] = x
     end
-    @avx for k ∈ 1:na
+    @tturbo for k ∈ 1:na
       x = work[k]
       for j ∈ 1:m
         A[offs + j, k] -= β * v[j] * x
@@ -458,15 +458,15 @@ end
   v = reshape(h.v, m, 1)
   α = conj(h.β)
   work=h.work
-  @inbounds begin
-    @avx for k ∈ 1:na
+  if na > 0 && m > 0
+    @tturbo for k ∈ 1:na
       x = zero(E)
       for j ∈ 1:m
         x += conj(v[j]) * A[offs+j,k]
       end
       work[k] = x
     end
-    @avx for k ∈ 1:na
+    @tturbo for k ∈ 1:na
       x = work[k]
       for j ∈ 1:m
         A[offs+j,k] -= α * v[j] * x
@@ -511,14 +511,14 @@ end
 
   work[1:ma] .= zero(E)
   β = h.β
-  @inbounds begin
-    @avx for k ∈ 1:m
+  if ma > 0 && m > 0
+    @tturbo for k ∈ 1:m
       x = v[k]
       for j ∈ 1:ma
         work[j] += A[j,k+offs] * x
       end
     end
-    @avx for k ∈ 1:m
+    @tturbo for k ∈ 1:m
       x=conj(v[k])
       for j ∈ 1:ma
         A[j,k+offs] -= β * work[j] * x
@@ -561,20 +561,20 @@ end
   end
   work[1:ma] .= zero(E)
   β̃ = conj(h.β)
-  @inbounds begin
-    @avx for k ∈ 1:m
+  if ma > 0 && m > 0
+    @tturbo for k ∈ 1:m
       x = v[k]
       for j ∈ 1:ma
         work[j] += A[j,k+offs] * x
       end
     end
-    @avx for k ∈ 1:m
+    @tturbo for k ∈ 1:m
       x = conj(v[k])
       for j ∈ 1:ma
         A[j,k+offs] -= β̃ * work[j] * x
       end
     end
-  end
+  end  
   nothing
 end
 
@@ -614,14 +614,14 @@ end
   end
   work[1:na] .= zero(E)
   β = h.β
-  @inbounds begin
-    @avx for j ∈ 1:m
+  if na > 0 && m > 0
+    @tturbo for j ∈ 1:m
       x = conj(v[j])
       for k ∈ 1:na
         work[k] += Aᴴ[j + offs, k] * x
       end
     end
-    @avx for j ∈ 1:m
+    @tturbo for j ∈ 1:m
       x = v[j]
       for k ∈ 1:na
         Aᴴ[j + offs, k] -= β * work[k] * x
@@ -665,14 +665,14 @@ end
   end
   work[1:na] .= zero(E)
   β̃ = conj(h.β)
-  @inbounds begin
-    @avx for j ∈ 1:m
+  if na > 0 && m > 0
+    @tturbo for j ∈ 1:m
       x = conj(v[j])
       for k ∈ 1:na
         work[k] += Aᴴ[j + offs, k] * x
       end
     end
-    @avx for j ∈ 1:m
+    @tturbo for j ∈ 1:m
       x = v[j]
       for k ∈ 1:na
         Aᴴ[j + offs, k] -= β̃ * work[k] * x
@@ -713,15 +713,15 @@ end
   end
   β = h.β
   work=h.work
-  @inbounds begin
-    @avx for j ∈ 1:ma
+  if ma > 0 && m > 0
+    @tturbo for j ∈ 1:ma
       x = zero(E)
       for k ∈ 1:m
         x = x + Aᴴ[j,k+offs] * v[k]
       end
       work[j] = x
     end
-    @avx for j ∈ 1:ma
+    @tturbo for j ∈ 1:ma
       x = work[j]
       for k ∈ 1:m
         Aᴴ[j, k + offs] -= β * conj(v[k]) * x
@@ -763,15 +763,15 @@ end
     )))
   end
   β̃ = conj(h.β)
-  @inbounds begin
-    @avx for j ∈ 1:ma
+  if ma > 0 && m > 0
+    @tturbo for j ∈ 1:ma
       x = zero(E)
       for k ∈ 1:m
         x = x + Aᴴ[j, k + offs] * v[k]
       end
       work[j] = x
     end
-    @avx for j ∈ 1:ma
+    @tturbo for j ∈ 1:ma
       x = work[j]
       for k ∈ 1:m
         Aᴴ[j, k + offs] -= β̃ * conj(v[k]) * x

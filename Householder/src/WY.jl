@@ -5,6 +5,7 @@ using Random
 
 using LinearAlgebra
 using LoopVectorization
+using Octavian
 
 using InPlace
 using ..Compute
@@ -466,8 +467,10 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
       A0 = A[:,inds .+ offset]
     end
     oneE = one(E)
-    mul!(work, A0, W)
-    mul!(A0, work, Y', -oneE, oneE)
+    num_hs > 0 && length(inds) > 0 && begin
+      matmul!(work, A0, W)
+      matmul!(A0, work, Y', -oneE, oneE)
+    end
   end
   nothing
 end
@@ -521,8 +524,10 @@ end
       A0 = A[:, inds .+ offset]
     end
     oneE = one(E)
-    mul!(work, A0, Y)
-    mul!(A0, work, W', -oneE, oneE)
+    num_hs > 0 && length(inds) > 0 && begin
+      matmul!(work, A0, Y)
+      matmul!(A0, work, W', -oneE, oneE)
+    end
   end
   nothing
 end
@@ -576,8 +581,10 @@ end
       A0 = A[inds .+ offset, :]
     end
     oneE = one(E)
-    mul!(work, Y', A0)
-    mul!(A0, W, work, -oneE, oneE)
+    num_hs > 0 && length(inds) > 0 && begin
+      matmul!(work, Y', A0)
+      matmul!(A0, W, work, -oneE, oneE)
+    end
   end
   nothing
 end
@@ -630,8 +637,10 @@ end
       A0 = A[inds .+ offset, :]
     end
     oneE = one(E)
-    mul!(work, W', A0)
-    mul!(A0, Y, work, -oneE, oneE)
+    num_hs > 0 && length(inds) > 0 && begin
+      matmul!(work, W', A0)
+      matmul!(A0, Y, work, -oneE, oneE)
+    end
   end
   nothing
 end
@@ -703,23 +712,10 @@ throw_WYMaxHouseholderError(block) =
     Y1[:,:] .= zero(E)
     W1[indshwy,:] .= h.β .* h.v
     Y1[indshwy,:] .= h.v
-
-    # mul!(work, Y0', W1)
-    # mul!(W1, W0, work, -one(E), one(E))
-    mwy = length(indswy)
-    @tturbo for j ∈ 1:num_hs
-      work[j]=zero(E)
-      for k ∈ 1:mwy
-        work[j] += conj(Y0[k,j]) * W1[k,1]
-      end
+    num_hs > 0 && length(indswy) > 0 && begin
+      matmul!(work, Y0', W1)
+      matmul!(W1, W0, work, -one(E), one(E))
     end
-
-    @tturbo for j ∈ 1:mwy
-      for k ∈ 1:num_hs
-        W1[j] -= W0[j, k] * work[k]
-      end
-    end
-
     wy.num_hs[k] += 1
   end
   nothing
@@ -780,21 +776,9 @@ end
     Y1[:,:] .= zero(E)
     W1[indshwy,:] .= conj(h.β) .* h.v
     Y1[indshwy,:] = h.v
-    # mul!(work, Y0', W1)
-    # mul!(W1, W0, work, -one(E), one(E))
-
-    mwy = length(indswy)
-    @tturbo for j ∈ 1:num_hs
-      work[j]=zero(E)
-      for k ∈ 1:mwy
-        work[j] += conj(Y0[k,j]) * W1[k,1]
-      end
-    end
-
-    @tturbo for j ∈ 1:mwy
-      for k ∈ 1:num_hs
-        W1[j] -= W0[j, k] * work[k]
-      end
+    num_hs > 0 && length(indswy) > 0 && begin
+      matmul!(work, Y0', W1)
+      matmul!(W1, W0, work, -one(E), one(E))
     end
 
     wy.num_hs[k] += 1
@@ -832,7 +816,7 @@ end
   @inbounds begin
     num_hs = wy.num_hs[k]
     wy_offset = wy.offsets[k]
-
+    v=reshape(h.v,length(h.v),1)
     indsh = (h.offs + 1):(h.offs + h.size)
     indswy = 1:wy.sizes[k]
     indshwy = (h.offs - wy_offset + 1):(h.offs - wy_offset + h.size)
@@ -855,23 +839,12 @@ end
     end
     W1[:,:] .= zero(E)
     Y1[:,:] .= zero(E)
-    W1[indshwy,:] = h.v
-    Y1[indshwy,:] .= conj(h.β) .* h.v
-
-    # mul!(work, W0', Y1)
-    # mul!(Y1, Y0, work, -one(E), one(E))
-    mwy = length(indswy)
-    @tturbo for j ∈ 1:num_hs
-      work[j]=zero(E)
-      for k ∈ 1:mwy
-        work[j] += conj(W0[k,j]) * Y1[k,1]
-      end
-    end
-
-    @tturbo for j ∈ 1:mwy
-      for k ∈ 1:num_hs
-        Y1[j] -= Y0[j, k] * work[k]
-      end
+    W1[indshwy,:] = v
+    Y1[indshwy,:] .= conj(h.β) .* v
+    
+    num_hs > 0 && length(indswy) > 0 && begin
+      matmul!(work, W0', Y1)
+      matmul!(Y1, Y0, work, -one(E), one(E))
     end
 
     wy.num_hs[k] += 1
@@ -937,20 +910,9 @@ end
     W1[indshwy,:] = v
     Y1[indshwy,:] .= h.β .* v
 
-    # mul!(work, W0', Y1)
-    # mul!(Y1, Y0, work, -one(E), one(E))
-    mwy = length(indswy)
-    @tturbo for j ∈ 1:num_hs
-      work[j]=zero(E)
-      for k ∈ 1:mwy
-        work[j] += conj(W0[k,j]) * Y1[k,1]
-      end
-    end
-
-    @tturbo for j ∈ 1:mwy
-      for k ∈ 1:num_hs
-        Y1[j] -= Y0[j, k] * work[k]
-      end
+    num_hs > 0 && length(indswy) > 0 && begin
+      matmul!(work, W0', Y1)
+      matmul!(Y1, Y0, work, -one(E), one(E))
     end
 
     wy.num_hs[k] += 1
