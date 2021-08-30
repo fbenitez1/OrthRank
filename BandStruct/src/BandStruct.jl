@@ -5,6 +5,9 @@ using Reexport
 include("BandColumnMatrices.jl")
 @reexport using .BandColumnMatrices
 
+include("BandwidthInit.jl")
+@reexport using .BandwidthInit
+
 include("BlockedBandColumnMatrices.jl")
 @reexport using .BlockedBandColumnMatrices
 

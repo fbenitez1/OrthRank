@@ -3,43 +3,16 @@ using Printf
 using Random
 
 using ..BandColumnMatrices
+using ..BandwidthInit
 
 export BlockedBandColumn,
   UpperBlock,
   LowerBlock,
   LeadingDecomp,
   TrailingDecomp,
-  leading_lower_ranks_to_cols_first_last!,
-  leading_upper_ranks_to_cols_first_last!,
-  leading_constrain_lower_ranks,
-  leading_constrain_upper_ranks,
-  trailing_lower_ranks_to_cols_first_last!,
-  trailing_upper_ranks_to_cols_first_last!,
-  trailing_constrain_lower_ranks,
-  trailing_constrain_upper_ranks,
-  lower_block_ranges,
-  upper_block_ranges,
-  size_lower_block,
-  size_upper_block,
-  intersect_lower_block,
-  intersect_upper_block,
-  setdiffᵣ,
-  ∪ᵣ,
   get_middle_bw_max,
   get_upper_bw_max,
-  get_lower_bw_max,
-  get_cols_first_last,
-  get_cols_first_last!,
-  get_cols_first_last_lower,
-  get_cols_first_last_lower!,
-  get_cols_first_last_upper,
-  get_cols_first_last_upper!,
-  get_rows_first_last,
-  get_rows_first_last!,
-  get_rows_first_last_lower,
-  get_rows_first_last_lower!,
-  get_rows_first_last_upper,
-  get_rows_first_last_upper!
+  get_lower_bw_max
 
 struct UpperBlock end
 struct LowerBlock end
@@ -260,6 +233,7 @@ function BlockedBandColumn(
   num_blocks = size(lower_blocks,2)
   cols_first_last = zeros(Int, 6, n)
   rows_first_last = zeros(Int, m, 6)
+  # Upper and lower ranks
   if isa(upper_rank_max, Int) && isa(lower_rank_max, Int) &&
     isa(upper_bw_max, Nothing) && isa(lower_bw_max, Nothing)
 
@@ -286,6 +260,7 @@ function BlockedBandColumn(
     lbw_max = get_lower_bw_max(m, n, cols_first_last)
     bw_max = ubw_max + middle_bw_max + lbw_max
 
+  #Upper and lower bandwidths  
   elseif isa(upper_rank_max, Nothing) && isa(lower_rank_max, Nothing) &&
     isa(upper_bw_max, Int) && isa(lower_bw_max, Int)
 
@@ -341,39 +316,154 @@ function BlockedBandColumn(
   )
 end
 
-function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
-  x0 = first(xs)
-  x1 = last(xs)
-  y0 = first(ys)
-  y1 = last(ys)
-  if isempty(ys)
-    xs
-  elseif y0 == x0 
-    y1+1:x1
-  elseif y1 == x1
-    x0:y0-1
-  else
-    error("setdiffᵣ produces non-UnitRange")
-  end
+"""
+    function lower_block_ranges(
+      bbc::BlockedBandColumn,
+      l::Integer,
+    )
+
+Get ranges for lower block ``l``.
+"""
+@inline function BandwidthInit.lower_block_ranges(
+  bbc::BlockedBandColumn,
+  l::Int,
+)
+  
+  (m, n) = size(bbc)
+  lower_block_ranges(bbc.lower_blocks, m, n, l)
 end
 
-function ∪ᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
-  x0 = first(xs)
-  x1 = last(xs)
-  y0 = first(ys)
-  y1 = last(ys)
-  if isempty(xs)
-    ys
-  elseif isempty(ys)
-    xs
-  elseif x1 ∈ ys || x1 == y0 - 1
-    x0:y1
-  elseif x0 ∈ ys || x0 == y1 + 1
-    y0:x1
-  else
-    error("∪ᵣ produces non-UnitRange")
-  end
+"""
+    size_lower_block(
+      bbc::BlockedBandColumn,
+      l::Int,
+    ) 
+
+Compute the size of lower block ``l`` for a `BlockedBandColumn.
+"""
+@inline function BandwidthInit.size_lower_block(
+  bbc::BlockedBandColumn,
+  l::Int,
+)
+  (rows, cols) = lower_block_ranges(bbc, l)
+  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
+
+"""
+    function intersect_lower_block(
+      bbc::BlockedBandColumn,
+      l::Integer,
+      ::Colon,
+      k::Int
+    )
+
+Determine if column ``k`` intersects with lower block ``l``
+in a `BlockedBandColumn`.
+"""
+@inline function BandwidthInit.intersect_lower_block(
+  bbc::BlockedBandColumn,
+  l::Integer,
+  ::Colon,
+  k::Int
+)
+  (_, cols) = lower_block_ranges(bbc, l)
+  k ∈ cols
+end
+
+"""
+    intersect_lower_block(
+      bbc::BlockedBandColumn,
+      l::Integer,
+      j::Int,
+      ::Colon,
+    )
+
+Determine if row ``j`` intersects with lower block ``l``
+in a `BlockedBandColumn`.
+"""
+@inline function BandwidthInit.intersect_lower_block(
+  bbc::BlockedBandColumn,
+  l::Integer,
+  j::Int,
+  ::Colon,
+)
+  (rows, _) = lower_block_ranges(bbc, l)
+  j ∈ rows
+ end
+
+"""
+    function upper_block_ranges(
+      bbc::BlockedBandColumn,
+      l::Integer,
+    )
+
+Get ranges for upper block ``l``.
+"""
+@inline function BandwidthInit.upper_block_ranges(
+  bbc::BlockedBandColumn,
+  l::Integer,
+)
+  (m, n) = size(bbc)
+  upper_block_ranges(bbc.upper_blocks, m, n, l)
+end
+
+"""
+    size_upper_block(
+      bbc::BlockedBandColumn,
+      l::Int,
+    ) 
+
+Compute the size of lower block ``l`` for a `BlockedBandColumn.
+"""
+@inline function BandwidthInit.size_upper_block(
+  bbc::BlockedBandColumn,
+  l::Int,
+)
+  (rows, cols) = upper_block_ranges(bbc, l)
+  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
+end
+
+"""
+    function intersect_upper_block(
+      bbc::BlockedBandColumn,
+      l::Integer,
+      ::Colon,
+      k::Int
+    )
+
+Determine if column ``k`` intersects with upper block ``l``
+in a `BlockedBandColumn`.
+"""
+@inline function BandwidthInit.intersect_upper_block(
+  bbc::BlockedBandColumn,
+  l::Integer,
+  ::Colon,
+  k::Int
+)
+  (_, cols) = upper_block_ranges(bbc, l)
+  k ∈ cols
+ end
+
+"""
+    intersect_upper_block(
+      bbc::BlockedBandColumn,
+      l::Integer,
+      j::Int,
+      ::Colon,
+    )
+
+Determine if row ``j`` intersects with upper block ``l``
+in a `BlockedBandColumn`.
+"""
+@inline function BandwidthInit.intersect_upper_block(
+  bbc::BlockedBandColumn,
+  l::Integer,
+  j::Int,
+  ::Colon,
+)
+  (rows, _) = upper_block_ranges(bbc, l)
+  j ∈ rows
+ end
 
 function get_middle_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
   middle_bw_max = 0
@@ -400,236 +490,6 @@ function get_lower_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
       max(lower_bw_max, cols_first_last[6, k] - cols_first_last[4, k] + 1)
   end
   lower_bw_max
-end
-
-function get_cols_first_last(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
-  r_upper::Int,
-  r_lower::Int
-)
-  cols_first_last = zeros(Int, 6, n)
-  get_cols_first_last!(
-    m,
-    n,
-    upper_blocks,
-    lower_blocks,
-    r_upper,
-    r_lower,
-    cols_first_last,
-  )
-  cols_first_last
-end
-
-# Compute cols_first_last.  This works for either a leading or
-# trailing decomposition and provides enough extra bandwidth for
-# conversion between them.
-function get_cols_first_last!(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
-  r_upper::Int,
-  r_lower::Int,
-  cols_first_last::AbstractArray{Int,2}
-)
-  get_cols_first_last_upper!(m, n, upper_blocks, r_upper, cols_first_last)
-  get_cols_first_last_lower!(m, n, lower_blocks, r_lower, cols_first_last)
-end
-
-function get_rows_first_last(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
-  r_upper::Int,
-  r_lower::Int
-)
-  rows_first_last = zeros(Int, m, 6)
-  get_rows_first_last!(
-    m,
-    n,
-    upper_blocks,
-    lower_blocks,
-    r_upper,
-    r_lower,
-    rows_first_last,
-  )
-  rows_first_last
-end
-
-# Compute rows_first_last.  This works for either a leading or
-# trailing decomposition and provides enough extra bandwidth for
-# conversion between them.
-function get_rows_first_last!(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
-  r_upper::Int,
-  r_lower::Int,
-  rows_first_last::AbstractArray{Int,2}
-)
-  get_rows_first_last_upper!(m, n, upper_blocks, r_upper, rows_first_last)
-  get_rows_first_last_lower!(m, n, lower_blocks, r_lower, rows_first_last)
-end
-
-
-function get_cols_first_last_lower(
-  m::Int,
-  n::Int,
-  lower_blocks::AbstractArray{Int,2},
-  r::Int
-)
-  first_last_lower = zeros(Int, 6, n)
-  get_cols_first_last_lower!(m, n, lower_blocks, r, first_last_lower)
-  first_last_lower[4:6, :]
-end
-
-function get_cols_first_last_lower!(
-  m::Int,
-  n::Int,
-  lower_blocks::AbstractArray{Int,2},
-  r::Int,
-  first_last_lower::AbstractArray{Int,2}
-)
-  
-  num_blocks = size(lower_blocks, 2)
-  first_last_lower[4, :] .= m+1
-  first_last_lower[5, :] .= m
-  first_last_lower[6, :] .= m
-  old_cols_lb = 1:0
-  for lb ∈ 1:num_blocks
-    (rows_lb, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
-    if !isempty(rows_lb)
-      dᵣ = setdiffᵣ(cols_lb, old_cols_lb)
-      first_last_lower[4, dᵣ] .= first(rows_lb)
-      first_last_lower[5, dᵣ] .= first(rows_lb) - 1
-      first_last_lower[6, dᵣ ∪ᵣ last(old_cols_lb, r)] .=
-        min(m, first(rows_lb) + r - 1)
-    end
-    old_cols_lb = cols_lb
-  end
-  first_last_lower[6, last(old_cols_lb,r)] .= m
-  nothing
-end
-
-function get_cols_first_last_upper(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  r::Int
-)
-  first_last_upper = zeros(Int, 6, n)
-  get_cols_first_last_upper!(m, n, upper_blocks, r, first_last_upper)
-  first_last_upper[1:3, :]
-end
-
-function get_cols_first_last_upper!(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  r::Int,
-  first_last_upper::AbstractArray{Int,2}
-)
-  num_blocks = size(upper_blocks, 2)
-  first_last_upper[1, :] .= 1
-  first_last_upper[2, :] .= 1
-  first_last_upper[3, :] .= 0
-  old_cols_ub = 1:0
-  for ub ∈ num_blocks:-1:1
-    (rows_ub, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
-    if !isempty(rows_ub)
-      dᵣ = setdiffᵣ(cols_ub, old_cols_ub)
-      first_last_upper[3, dᵣ] .= last(rows_ub)
-      first_last_upper[2, dᵣ] .= last(rows_ub) + 1
-      first_last_upper[1, dᵣ ∪ᵣ first(old_cols_ub, r)] .=
-        max(1, last(rows_ub) - r + 1)
-    end
-    old_cols_ub = cols_ub
-  end
-  first_last_upper[1, first(old_cols_ub,r)] .= 1
-  nothing
-end
-
-function get_rows_first_last_lower(
-  m::Int,
-  n::Int,
-  lower_blocks::AbstractArray{Int,2},
-  r::Int
-)
-  first_last_lower = zeros(Int, m, 6)
-  get_rows_first_last_lower!(m, n, lower_blocks, r, first_last_lower)
-  first_last_lower[:, 1:3]
-end
-
-function get_rows_first_last_lower!(
-  m::Int,
-  n::Int,
-  lower_blocks::AbstractArray{Int,2},
-  r::Int,
-  first_last_lower::AbstractArray{Int,2}
-)
-  
-  num_blocks = size(lower_blocks, 2)
-  first_last_lower[:, 1] .= 1
-  first_last_lower[:, 2] .= 1
-  first_last_lower[:, 3] .= 0
-  old_rows_lb = 1:0
-  for lb ∈ num_blocks:-1:1
-    (rows_lb, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
-    if !isempty(cols_lb)
-      dᵣ = setdiffᵣ(rows_lb, old_rows_lb)
-      first_last_lower[dᵣ,3] .= last(cols_lb)
-      first_last_lower[dᵣ,2] .= last(cols_lb) + 1
-      first_last_lower[dᵣ ∪ᵣ first(old_rows_lb, r), 1] .=
-        max(1, last(cols_lb) - r + 1)
-    end
-    old_rows_lb = rows_lb
-  end
-  first_last_lower[first(old_rows_lb,r),1] .= 1
-  nothing
-end
-
-function get_rows_first_last_upper(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  r::Int
-)
-  first_last_upper = zeros(Int, m, 6)
-  get_rows_first_last_upper!(m, n, upper_blocks, r, first_last_upper)
-  first_last_upper[:, 4:6]
-end
-
-function get_rows_first_last_upper!(
-  m::Int,
-  n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  r::Int,
-  first_last_upper::AbstractArray{Int,2}
-)
-  
-  num_blocks = size(upper_blocks, 2)
-  first_last_upper[:, 4] .= n+1
-  first_last_upper[:, 5] .= n
-  first_last_upper[:, 6] .= n
-  old_rows_ub = 1:0
-  for ub ∈ 1:num_blocks
-    (rows_ub, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
-    if !isempty(cols_ub)
-      dᵣ = setdiffᵣ(rows_ub, old_rows_ub)
-      first_last_upper[dᵣ,4] .= first(cols_ub)
-      first_last_upper[dᵣ,5] .= first(cols_ub) - 1
-      first_last_upper[dᵣ ∪ᵣ last(old_rows_ub, r), 6] .=
-        min(n, first(cols_ub) + r - 1)
-    end
-    old_rows_ub = rows_ub
-  end
-  first_last_upper[last(old_rows_ub, r), 6] .= n
-  nothing
 end
 
 function Base.fill!(
@@ -1839,6 +1699,5 @@ function Base.copy(bbc::BlockedBandColumn)
     bbc.lower_blocks,
   )
 end
-
 
 end

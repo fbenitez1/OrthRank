@@ -2,6 +2,7 @@ using BandStruct.BandColumnMatrices
 using BandStruct.BlockedBandColumnMatrices
 using BandStruct.BandRotations
 using BandStruct.BandHouseholder
+using BandStruct.BandwidthInit
 using Householder
 
 using Random
