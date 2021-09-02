@@ -527,9 +527,7 @@ end
 function Random.rand!(
   ::Type{LeadingDecomp},
   rng::AbstractRNG,
-  bbc::BlockedBandColumn{E};
-  upper_ranks::Array{Int,1},
-  lower_ranks::Array{Int,1}
+  bbc::BlockedBandColumn{E}
 ) where {E}
 
   for k = 1:bbc.n
