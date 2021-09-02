@@ -1843,6 +1843,7 @@ end
     NonSub,
     bc,
     js .+ row_offset(bc),
+    :,
     k_first + col_offset(bc),
   )
   nothing
