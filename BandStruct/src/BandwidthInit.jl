@@ -157,43 +157,173 @@ function get_rows_first_last!(
   get_rows_first_last_lower!(m, n, lower_blocks, r_lower, rows_first_last)
 end
 
-
 function get_cols_first_last_lower(
   m::Int,
   n::Int,
   lower_blocks::AbstractArray{Int,2},
   r::Int
 )
-  first_last_lower = zeros(Int, 6, n)
-  get_cols_first_last_lower!(m, n, lower_blocks, r, first_last_lower)
-  first_last_lower[4:6, :]
+  cols_first_last = zeros(Int, 6, n)
+  get_cols_first_last_lower!(m, n, lower_blocks, r, cols_first_last)
+  cols_first_last[4:6, :]
 end
+
+# O = Old elements
+# X = active region
+# N = New elements
+#
+# One block:
+#
+# -----------+     -----------+    -----------+
+#         OOO|             XXX|    NNNNNNNNNNN|
+#         OOO|             XXX|    NNNNNNNNNNN|
+#         OOO|             XXX|    NNNNNNNNNNN|
+#         OOO|                |               \
+
+# Start: Note there should be a row compression step before this.
+
+# --+               --+               --+            
+# OO|               OO|               OO|            
+# OO|               OO|               OO|            
+# --+--+            --+--+            --+--+         
+#  O|OO|             O|OO|             O|OO|         
+#  O|OO|             O|OO|             O|OO|         
+# --+--+--+         --+--+--+         --+--+--+      
+#   | O|OO|           | O|OO|           | O|OO|      
+#   | O|OO|           | O|OO|           | O|OO|      
+# --+--+--+--+      --+--+--+--+      --+--+--+--+   
+#   |  | O|OO|        |  | O|OO|    <   |  | X|XX|   
+#   |  | O|OO|        |  | O|OO|    <   |  | X|XX|   
+# --+--+--+--+--+   --+--+--+--+--+ < --+--+--+--+--+
+#   |  |  | O|OO|     |  | X|XX|NN| <   |  | X|XX|NN|
+#   |  |  | O|OO|     |  | X|XX|NN| <   |  |  |  |NN|
+#   1  2  3  4  5     1  2  3  4  5     1  2  3  4  5
+#        ^^^^^^^
+
+# Generic lower leading to trailing step: ub=3 to ub=2.
+#
+# uncompress 3:   compress block 2:  Repeat with ub=2:
+#
+#   
+# --+                --+                  --+            
+# OO|                OO|                  OO|            
+# OO|                OO|                  OO|            
+# --+--+             --+--+               --+--+         
+#  O|OO|              O|OO|          <     X|XX|         
+#  O|OO|              O|OO|          <     X|XX|         
+# --+--+--+          --+--+--+       <    --+--+--+      
+#   | X|XX|           X|XX|XX|       <     X|XX|NN|      
+#   | X|XX|           X|XX|XX|       <      |  |NN|      
+# --+--+--+--+       --+--+--+--+    <    --+--+--+--+   
+#   | X|XX|NN|        X|XX|XX|NN|    <      |  |NN|NN|   
+#   |  |  |NN|         |  |  |NN|           |  |  |NN|   
+# --+--+--+--+--+    --+--+--+--+--+      --+--+--+--+--+
+#   |  |  |NN|NN|      |  |  |NN|NN|        |  |  |NN|NN|
+#   |  |  |  |NN|      |  |  |  |NN|        |  |  |  |NN|
+#   1  2  3  4  5      1  2  3  4  5        1  2  3  4  5
+#  ^^^^^^^
+
+# End:
+#   
+# --+              --+            
+# OO|              OO|            <    --+            
+# OO|              OO|            <    NN|            
+# --+--+           --+--+         <    NN|            
+#  X|XX|           XX|NN|         <    --+--+         
+#  X|XX|           XX|NN|         <    NN|NN|         
+# --+--+--+        --+--+--+      <      |NN|         
+#  X|XX|NN|        XX|NN|NN|      <    --+--+--+      
+#   |  |NN|          |  |NN|             |NN|NN|      
+# --+--+--+--+     --+--+--+--+          |  |NN|      
+#   |  |NN|NN|       |  |NN|NN|        --+--+--+--+   
+#   |  |  |NN|       |  |  |NN|          |  |NN|NN|   
+# --+--+--+--+--+  --+--+--+--+--+       |  |  |NN|   
+#   |  |  |NN|NN|    |  |  |NN|NN|     --+--+--+--+--+
+#   |  |  |  |NN|    |  |  |  |NN|       |  |  |NN|NN|
+#   1  2  3  4  5    1  2  3  4  5       |  |  |  |NN|
+# ^^^^^                                  1  2  3  4  5
 
 function get_cols_first_last_lower!(
   m::Int,
   n::Int,
   lower_blocks::AbstractArray{Int,2},
   r::Int,
-  first_last_lower::AbstractArray{Int,2}
+  cols_first_last::AbstractArray{Int,2}
 )
-  
+  # Trace through a leading to trailing conversion to fill in last
+  # storable in cols_first_last suitable for a decomposition with
+  # lower ranks bounded by r.  This can be done by tracing through
+  # trailing to leading conversion as well.
+
+  function extend_to(k, range)
+    @views cols_first_last[6, range] .=
+      (x -> max(x, k)).(cols_first_last[6, range])
+    nothing
+  end
+
+  # default to nothing storable and extend as needed.
+  cols_first_last[6, :] .= 0
+
   num_blocks = size(lower_blocks, 2)
-  first_last_lower[4, :] .= m+1
-  first_last_lower[5, :] .= m
-  first_last_lower[6, :] .= m
+
+  num_blocks == 0 && return extend_to(m, 1:n)
+
+  rows_lb, cols_lb = lower_block_ranges(lower_blocks, m, n, num_blocks)
+  compressed_rows_lb = first(rows_lb, r)
+  compressed_cols_lb = last(cols_lb, r)
+  last_compressed_row_lb =
+    isempty(compressed_rows_lb) ? m : last(compressed_rows_lb)
+
+  extend_to(m, compressed_cols_lb)
+  extend_to(m, setdiffᵣ(1:n, cols_lb))
+
+  num_blocks == 1 &&
+    return extend_to(last_compressed_row_lb, setdiffᵣ(cols_lb, compressed_cols_lb))
+
+  @views for lb ∈ num_blocks:-1:2
+    # At the start block lb is both row and column compressed. After
+    # block lb is column uncompressed, block lb-1 has nonzero rows
+    # given by hull(compressed_rows_lb, compressed_rows_lb_minus_1).
+    # Block lb has nonzero columns given by hull(compressed_cols_lb,
+    # compressed_cols_lb_minus_1) extending down to
+    # last(compressed_rows_lb).  Set the last storable index in these
+    # columns to accommdate the last compressed row elements for block
+    # lb.
+
+    rows_lb_minus_1, cols_lb_minus_1 =
+      lower_block_ranges(lower_blocks, m, n, lb - 1)
+    compressed_rows_lb_minus_1 = first(rows_lb_minus_1, r)
+    compressed_cols_lb_minus_1 = last(cols_lb_minus_1, r)
+    last_compressed_row_lb_minus_1 =
+      isempty(compressed_rows_lb_minus_1) ? m : last(compressed_rows_lb_minus_1)
+
+    hull_of_compressed_cols = hull(compressed_cols_lb, compressed_cols_lb_minus_1)
+    extend_to(last_compressed_row_lb, hull_of_compressed_cols)
+
+    rows_lb, cols_lb = rows_lb_minus_1, cols_lb_minus_1
+    compressed_rows_lb, compressed_cols_lb =
+      compressed_rows_lb_minus_1, compressed_cols_lb_minus_1
+    last_compressed_row_lb = last_compressed_row_lb_minus_1
+
+  end
+  # fill in the bounds for the column uncompressed block 1
+  # so it can accommodate r nonzero rows.  (In case it wasn't already.)
+  extend_to(last_compressed_row_lb, cols_lb)
+
+  # Fill in the first lower and last inband elements.
+
+  cols_first_last[4, :] .= m+1   # Default for isempty(rows_lb).
+  cols_first_last[5, :] .= m
   old_cols_lb = 1:0
   for lb ∈ 1:num_blocks
-    (rows_lb, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
+    rows_lb, cols_lb = lower_block_ranges(lower_blocks, m, n, lb)
     if !isempty(rows_lb)
       dᵣ = setdiffᵣ(cols_lb, old_cols_lb)
-      first_last_lower[4, dᵣ] .= first(rows_lb)
-      first_last_lower[5, dᵣ] .= first(rows_lb) - 1
-      first_last_lower[6, dᵣ ∪ᵣ last(old_cols_lb, r)] .=
-        min(m, first(rows_lb) + r - 1)
+      cols_first_last[4, dᵣ] .= first(rows_lb)
+      cols_first_last[5, dᵣ] .= first(rows_lb) - 1
     end
     old_cols_lb = cols_lb
   end
-  first_last_lower[6, last(old_cols_lb,r)] .= m
   nothing
 end
 
@@ -203,35 +333,172 @@ function get_cols_first_last_upper(
   upper_blocks::AbstractArray{Int,2},
   r::Int
 )
-  first_last_upper = zeros(Int, 6, n)
-  get_cols_first_last_upper!(m, n, upper_blocks, r, first_last_upper)
-  first_last_upper[1:3, :]
+  cols_first_last = zeros(Int, 6, n)
+  get_cols_first_last_upper!(m, n, upper_blocks, r, cols_first_last)
+  cols_first_last[1:3, :]
 end
+
+# Upper leading to trailing:
+#
+# O = Old elements
+# X = active region
+# N = New elements
+
+# One Block
+#
+# |                     |                <     |NNN            
+# |OOOOOOOOOOOOOOO      |XXX             <     |NNN            
+# |OOOOOOOOOOOOOOO      |XXX             <     |NNN            
+# |OOOOOOOOOOOOOOO      |XXX             <     |NNN            
+# +---------------      +---------------       +---------------
+#  ^^^^^^^^^^^^^^^
+
+# First step:
+
+# 1  2  3  4  5       1  2  3  4  5         1  2  3  4  5  
+# |OO|  |  |  |       |OO|  |  |  |         |OO|  |  |  |  
+# |OO|OO|  |  |       |OO|OO|  |  |         |OO|OO|  |  |  
+# +--+--+--+--+--     +--+--+--+--+--       +--+--+--+--+--
+#    |OO|  |  |          |OO|  |  |            |OO|  |  |  
+#    |OO|OO|  |          |OO|OO|  |            |OO|OO|  |  
+#    +--+--+--+--        +--+--+--+--          +--+--+--+--
+#       |OO|  |             |OO|  |               |OO|  |  
+#       |OO|OO|   <         |OO|OO|XX             |OO|XX|X 
+#       +--+--+-- <         +--+--+--             +--+--+--
+#          |OO|   <            |OO|XX                |XX|X 
+#          |OO|OO <            |OO|XX                |XX|X 
+#          +--+-- <            +--+--                +--+--
+#             |OO <               |NN                   |NN
+#             |OO <               |NN                   |NN
+#             +--                 +--                   +--
+#                               ^^^^^
+
+# Basic upper leading to trailing step: ub=3 to ub=2.
+
+# row uncompress        col compress        Repeat with ub=2:
+# block 3:              block 2:
+# 1  2  3  4  5          1  2  3  4  5      1  2  3  4  5  
+# |OO|  |  |  |          |OO|  |  |  |      |OO|  |  |  |  
+# |OO|OO|  |  |   <      |OO|OO|XX|X |      |OO|XX|X |  |  
+# +--+--+--+--+-- <      +--+--+--+--+--    +--+--+--+--+--
+#    |OO|  |  |   <         |OO|XX|X |         |XX|X |  |  
+#    |OO|XX|X |   <         |OO|XX|X |         |XX|X |  |  
+#    +--+--+--+-- <         +--+--+--+--       +--+--+--+--
+#       |XX|X |   <            |NN|N |            |NN|N |  
+#       |XX|X |   <            |NN|N |            |NN|N |  
+#       +--+--+--              +--+--+--          +--+--+--
+#          |NN|N                  |NN|N              |NN|N 
+#          |NN|N                  |NN|N              |NN|N 
+#          +--+--                 +--+--             +--+--
+#             |NN                    |NN                |NN
+#             |NN                    |NN                |NN
+#             +--                    +--                +--
+#                            ^^^^^^^  
+
+# End
+
+# 1  2  3  4  5       1  2  3  4  5     1  2  3  4  5  
+# |OO|  |  |  |   <   |OO|XX|X |  |     |NN|N |  |  |  
+# |OO|XX|X |  |   <   |OO|XX|X |  |     |NN|N |  |  |  
+# +--+--+--+--+-- <   +--+--+--+--+--   +--+--+--+--+--
+#    |XX|X |  |   <      |NN|N |  |        |NN|N |  |  
+#    |XX|X |  |   <      |NN|N |  |        |NN|N |  |  
+#    +--+--+--+--        +--+--+--+--      +--+--+--+--
+#       |NN|N |             |NN|N |           |NN|N |  
+
+#       |NN|N |             |NN|N |           |NN|N |  
+#       +--+--+--           +--+--+--         +--+--+--
+#          |NN|N               |NN|N             |NN|N 
+#          |NN|N               |NN|N             |NN|N 
+#          +--+--              +--+--            +--+--
+#             |NN                 |NN               |NN
+#             |NN                 |NN               |NN
+#             +--                 +--               +--
+#                      ^^^^^^^
 
 function get_cols_first_last_upper!(
   m::Int,
   n::Int,
   upper_blocks::AbstractArray{Int,2},
   r::Int,
-  first_last_upper::AbstractArray{Int,2}
+  cols_first_last::AbstractArray{Int,2}
 )
+
+  # Trace through a leading to trailing conversion to fill in first
+  # storable in cols_first_last_upper suitable for a decomposition with
+  # lower ranks bounded by r.
+
+  function extend_to(k, range)
+    @views cols_first_last[1, range] .=
+      (x -> min(x, k)).(cols_first_last[1, range])
+    nothing
+  end
+
+  # default to nothing storable and extend as needed.
+  cols_first_last[1, :] .= m+1
+
   num_blocks = size(upper_blocks, 2)
-  first_last_upper[1, :] .= 1
-  first_last_upper[2, :] .= 1
-  first_last_upper[3, :] .= 0
+
+  num_blocks == 0 && return extend_to(1, 1:n)
+
+  rows_ub, cols_ub = upper_block_ranges(upper_blocks, m, n, num_blocks)
+  compressed_rows_ub = last(rows_ub, r)
+  compressed_cols_ub = first(cols_ub, r)
+
+  first_compressed_row_ub = isempty(rows_ub) ? 0 : first(compressed_rows_ub)
+
+  extend_to(first_compressed_row_ub, cols_ub)
+  num_blocks == 1 && return extend_to(1, compressed_cols_ub)
+
+  @views for ub ∈ num_blocks:-1:2
+    # At the start block ub is both row and column compressed. After
+    # block ub is row uncompressed, it has nonzero columns
+    # given by compressed_cols_ub and nonzero rows given by
+    # hull(compressed_rows_ub_minus_1, compressed_rows_ub).
+    # Block ub-1 then has nonzero columns given by hull(compressed_cols_ub,
+    # compressed_cols_ub_minus_1) and nonzero rows given by
+    # compressed_rows_ub_minus_1.  Set the last storable index in these
+    # columns to accommdate the first compressed row elements for block
+    # ub after it is uncompressed.
+
+    rows_ub_minus_1, cols_ub_minus_1 =
+      upper_block_ranges(upper_blocks, m, n, ub - 1)
+    compressed_rows_ub_minus_1 = last(rows_ub_minus_1, r)
+    compressed_cols_ub_minus_1 = first(rows_ub_minus_1, r)
+
+    hull_of_compressed_cols = hull(compressed_cols_ub, compressed_cols_ub_minus_1)
+
+    first_compressed_row_ub_minus_1 =
+      isempty(compressed_rows_ub_minus_1) ? 0 : first(compressed_rows_ub_minus_1)
+
+    extend_to(first_compressed_row_ub_minus_1, hull_of_compressed_cols)
+
+    rows_ub, cols_ub = rows_ub_minus_1, cols_ub_minus_1
+    compressed_rows_ub, compressed_cols_ub =
+      compressed_rows_ub_minus_1, compressed_cols_ub_minus_1
+  end
+
+  # Columns to the left of block 1 go to the top.
+  extend_to(1, setdiffᵣ(1:n, cols_ub))
+
+  # Fill in the first inband and last upper elements.
+  cols_first_last[2, :] .= 1
+  cols_first_last[3, :] .= 0 # Default for isempty(rows_ub).
+
   old_cols_ub = 1:0
   for ub ∈ num_blocks:-1:1
-    (rows_ub, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
+    rows_ub, cols_ub = upper_block_ranges(upper_blocks, m, n, ub)
     if !isempty(rows_ub)
       dᵣ = setdiffᵣ(cols_ub, old_cols_ub)
-      first_last_upper[3, dᵣ] .= last(rows_ub)
-      first_last_upper[2, dᵣ] .= last(rows_ub) + 1
-      first_last_upper[1, dᵣ ∪ᵣ first(old_cols_ub, r)] .=
+      cols_first_last[3, dᵣ] .= last(rows_ub)
+      cols_first_last[2, dᵣ] .= last(rows_ub) + 1
+      cols_first_last[1, dᵣ ∪ᵣ first(old_cols_ub, r)] .=
         max(1, last(rows_ub) - r + 1)
     end
     old_cols_ub = cols_ub
   end
-  first_last_upper[1, first(old_cols_ub,r)] .= 1
+  cols_first_last[1, first(old_cols_ub,r)] .= 1
+
   nothing
 end
 
@@ -241,9 +508,9 @@ function get_rows_first_last_lower(
   lower_blocks::AbstractArray{Int,2},
   r::Int
 )
-  first_last_lower = zeros(Int, m, 6)
-  get_rows_first_last_lower!(m, n, lower_blocks, r, first_last_lower)
-  first_last_lower[:, 1:3]
+  rows_first_last = zeros(Int, m, 6)
+  get_rows_first_last_lower!(m, n, lower_blocks, r, rows_first_last)
+  rows_first_last[:, 1:3]
 end
 
 function get_rows_first_last_lower!(
@@ -251,26 +518,70 @@ function get_rows_first_last_lower!(
   n::Int,
   lower_blocks::AbstractArray{Int,2},
   r::Int,
-  first_last_lower::AbstractArray{Int,2}
+  rows_first_last::AbstractArray{Int,2}
 )
-  
+
+  function extend_to(k, range)
+    @views rows_first_last[range, 1] .=
+      (x -> min(x, k)).(rows_first_last[range, 1])
+    nothing
+  end
+
   num_blocks = size(lower_blocks, 2)
-  first_last_lower[:, 1] .= 1
-  first_last_lower[:, 2] .= 1
-  first_last_lower[:, 3] .= 0
+
+  # default to nothing storable and extend as needed.
+  rows_first_last[:, 1] .= n+1
+
+  num_blocks == 0 && return extend_to(1, 1:m)
+
+  # Trace through leading to trailing.  (As in get_cols_first_last_lower!)
+
+  rows_lb, cols_lb = lower_block_ranges(lower_blocks, m, n, num_blocks)
+  compressed_rows_lb = first(rows_lb, r)
+  compressed_cols_lb = last(cols_lb, r)
+  
+  first_compressed_col_lb =
+    isempty(compressed_cols_lb) ? 1 : first(compressed_cols_lb)
+
+  extend_to(first_compressed_col_lb, rows_lb)
+
+  num_blocks == 1 &&
+    return extend_to(1, compressed_rows_lb)
+
+  @views for lb ∈ num_blocks:-1:2
+    rows_lb_minus_1, cols_lb_minus_1 =
+      lower_block_ranges(lower_blocks, m, n, lb - 1)
+    compressed_rows_lb_minus_1 = first(rows_lb_minus_1, r)
+    compressed_cols_lb_minus_1 = last(cols_lb_minus_1, r)
+    first_compressed_col_lb_minus_1 =
+      isempty(compressed_cols_lb_minus_1) ? 1 : first(compressed_cols_lb_minus_1)
+
+    hull_of_compressed_rows = hull(compressed_rows_lb, compressed_rows_lb_minus_1)
+    extend_to(first_compressed_col_lb_minus_1, hull_of_compressed_rows)
+
+    rows_lb, cols_lb = rows_lb_minus_1, cols_lb_minus_1
+    compressed_rows_lb, compressed_cols_lb =
+      compressed_rows_lb_minus_1, compressed_cols_lb_minus_1
+    first_compressed_col_lb = first_compressed_col_lb_minus_1
+
+  end
+
+  extend_to(1, compressed_rows_lb)
+  extend_to(1, setdiffᵣ(1:m, rows_lb))
+
+  # Fill in first inband and last lower indices.
+  rows_first_last[:, 2] .= 1
+  rows_first_last[:, 3] .= 0
   old_rows_lb = 1:0
   for lb ∈ num_blocks:-1:1
     (rows_lb, cols_lb) = lower_block_ranges(lower_blocks, m, n, lb)
     if !isempty(cols_lb)
       dᵣ = setdiffᵣ(rows_lb, old_rows_lb)
-      first_last_lower[dᵣ,3] .= last(cols_lb)
-      first_last_lower[dᵣ,2] .= last(cols_lb) + 1
-      first_last_lower[dᵣ ∪ᵣ first(old_rows_lb, r), 1] .=
-        max(1, last(cols_lb) - r + 1)
+      rows_first_last[dᵣ,3] .= last(cols_lb)
+      rows_first_last[dᵣ,2] .= last(cols_lb) + 1
     end
     old_rows_lb = rows_lb
   end
-  first_last_lower[first(old_rows_lb,r),1] .= 1
   nothing
 end
 
@@ -280,9 +591,9 @@ function get_rows_first_last_upper(
   upper_blocks::AbstractArray{Int,2},
   r::Int
 )
-  first_last_upper = zeros(Int, m, 6)
-  get_rows_first_last_upper!(m, n, upper_blocks, r, first_last_upper)
-  first_last_upper[:, 4:6]
+  rows_first_last = zeros(Int, m, 6)
+  get_rows_first_last_upper!(m, n, upper_blocks, r, rows_first_last)
+  rows_first_last[:, 4:6]
 end
 
 function get_rows_first_last_upper!(
@@ -290,26 +601,65 @@ function get_rows_first_last_upper!(
   n::Int,
   upper_blocks::AbstractArray{Int,2},
   r::Int,
-  first_last_upper::AbstractArray{Int,2}
+  rows_first_last::AbstractArray{Int,2}
 )
-  
+
+  function extend_to(k, range)
+    @views rows_first_last[range, 6] .=
+      (x -> max(x, k)).(rows_first_last[range, 6])
+    nothing
+  end
+
   num_blocks = size(upper_blocks, 2)
-  first_last_upper[:, 4] .= n+1
-  first_last_upper[:, 5] .= n
-  first_last_upper[:, 6] .= n
+  # default to nothing storable and extend as needed.
+  rows_first_last[:, 6] .= 0
+
+  num_blocks == 0 && return extend_to(n, 1:m)
+
+  rows_ub, cols_ub = upper_block_ranges(upper_blocks, m, n, num_blocks)
+  compressed_rows_ub = last(rows_ub, r)
+  compressed_cols_ub = first(cols_ub, r)
+  last_compressed_col_ub = isempty(compressed_cols_ub) ? n : last(compressed_cols_ub)
+  
+  extend_to(n, setdiffᵣ(1:m, rows_ub))
+  extend_to(n, compressed_rows_ub)
+
+  num_blocks == 1 && return extend_to(last_compressed_col_ub, rows_ub)
+
+  @views for ub ∈ num_blocks:-1:2
+    rows_ub_minus_1, cols_ub_minus_1 =
+      upper_block_ranges(upper_blocks, m, n, ub - 1)
+    compressed_rows_ub_minus_1 = last(rows_ub_minus_1, r)
+    compressed_cols_ub_minus_1 = first(rows_ub_minus_1, r)
+
+    hull_of_compressed_rows = hull(compressed_rows_ub, compressed_rows_ub_minus_1)
+    last_compressed_col_ub_minus_1 =
+      isempty(compressed_cols_ub_minus_1) ? n : last(compressed_cols_ub_minus_1)
+    
+    extend_to(last_compressed_col_ub, hull_of_compressed_rows)
+    rows_ub, cols_ub = rows_ub_minus_1, cols_ub_minus_1
+    compressed_rows_ub, compressed_cols_ub =
+      compressed_rows_ub_minus_1, compressed_cols_ub_minus_1
+    last_compressed_col_ub = last_compressed_col_ub_minus_1
+
+  end
+
+  extend_to(last_compressed_col_ub, rows_ub)
+
+  rows_first_last[:, 4] .= n+1
+  rows_first_last[:, 5] .= n
   old_rows_ub = 1:0
   for ub ∈ 1:num_blocks
     (rows_ub, cols_ub) = upper_block_ranges(upper_blocks, m, n, ub)
     if !isempty(cols_ub)
       dᵣ = setdiffᵣ(rows_ub, old_rows_ub)
-      first_last_upper[dᵣ,4] .= first(cols_ub)
-      first_last_upper[dᵣ,5] .= first(cols_ub) - 1
-      first_last_upper[dᵣ ∪ᵣ last(old_rows_ub, r), 6] .=
+      rows_first_last[dᵣ,4] .= first(cols_ub)
+      rows_first_last[dᵣ,5] .= first(cols_ub) - 1
+      rows_first_last[dᵣ ∪ᵣ last(old_rows_ub, r), 6] .=
         min(n, first(cols_ub) + r - 1)
     end
     old_rows_ub = rows_ub
   end
-  first_last_upper[last(old_rows_ub, r), 6] .= n
   nothing
 end
 
@@ -773,5 +1123,6 @@ function trailing_upper_ranks_to_cols_first_last!(
     end
   end
 end
+
 
 end
