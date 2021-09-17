@@ -12,13 +12,23 @@ export BlockedBandColumn,
   TrailingDecomp,
   get_middle_bw_max,
   get_upper_bw_max,
-  get_lower_bw_max
+  get_lower_bw_max,
+  singleton
 
 struct UpperBlock end
 struct LowerBlock end
 
 struct LeadingDecomp end
+Base.iterate(t::Type{LeadingDecomp}) = (t, nothing)
+Base.iterate(::Type{LeadingDecomp}, ::Any) = nothing
+singleton(::Type{LeadingDecomp}) = LeadingDecomp()
+
+
 struct TrailingDecomp end
+Base.iterate(t::Type{TrailingDecomp}) = (t, nothing)
+Base.iterate(::Type{TrailingDecomp}, ::Any) = nothing
+singleton(::Type{TrailingDecomp}) = TrailingDecomp()
+
 
 """
 
