@@ -3,6 +3,7 @@ using BandStruct
 using Householder
 using OrthWeight
 using Random
+using InPlace
 
 lower_blocks = [
   2 4 5 7
@@ -16,7 +17,7 @@ upper_blocks = [
 
 wyw = WYWeight(
   Float64,
-  BigStep,
+  SpanStep,
   8,
   7,
   upper_rank_max = 2,
@@ -27,7 +28,7 @@ wyw = WYWeight(
 
 wywl = WYWeight(
   Float64,
-  BigStep,
+  SpanStep,
   LeadingDecomp,
   Random.default_rng(),
   8,
@@ -42,3 +43,4 @@ sweep = SweepForward(wywl.leftWY)
 A = Matrix{Float64}(I, 8, 8)
 sweep ⊛ A
 sweep ⊘ A
+display(A)

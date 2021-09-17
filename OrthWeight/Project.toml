@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 BandStruct = "839fd882-bd41-41b1-9826-d7cfd97ab335"
 Householder = "c865288b-f3c9-4f4c-a1b9-0a546e45b448"
+InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 ShowTests = "18e42089-513e-4f41-93b9-af293e7a89dc"
