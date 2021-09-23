@@ -13,7 +13,9 @@ export BlockedBandColumn,
   get_middle_bw_max,
   get_upper_bw_max,
   get_lower_bw_max,
-  singleton
+  singleton,
+  view_lower_block,
+  view_upper_block
 
 struct UpperBlock end
 struct LowerBlock end
@@ -344,6 +346,22 @@ Get ranges for lower block ``l``.
 end
 
 """
+    function BandwidthInit.view_lower_block(
+      bbc::BlockedBandColumn,
+      l::Int,
+    )
+
+Get a view of lower block l.
+"""
+@inline function view_lower_block(
+  bbc::BlockedBandColumn,
+  l::Int,
+)
+  (rows, cols) = lower_block_ranges(bbc, l)
+  view(bbc, rows, cols)
+end
+
+"""
     size_lower_block(
       bbc::BlockedBandColumn,
       l::Int,
@@ -415,6 +433,22 @@ Get ranges for upper block ``l``.
 )
   (m, n) = size(bbc)
   upper_block_ranges(bbc.upper_blocks, m, n, l)
+end
+
+"""
+    function BandwidthInit.view_upper_block(
+      bbc::BlockedBandColumn,
+      l::Int,
+    )
+
+Get a view of upper block l.
+"""
+@inline function view_upper_block(
+  bbc::BlockedBandColumn,
+  l::Int,
+)
+  (rows, cols) = upper_block_ranges(bbc, l)
+  view(bbc, rows, cols)
 end
 
 """
