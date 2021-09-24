@@ -11,6 +11,8 @@ export WYWeight,
 
 using BandStruct
 using Householder: WYTrans
+using InPlace: apply!, apply_inv!
+using LinearAlgebra
 
 using Random
 
@@ -796,6 +798,45 @@ function get_WYWeight_max_transform_params(
   end
   length(result) == 1 ? result[1] : tuple(result...)
 
+end
+
+Base.size(wyw::WYWeight) = size(wyw.b)
+
+
+# Matrix construction.
+
+function LinearAlgebra.Matrix(wyw::WYWeight)
+  Matrix(typeof(wyw.decomp[]), wyw)
+end
+
+function LinearAlgebra.Matrix(::Type{LeadingDecomp}, wyw::WYWeight)
+  bbc = wyw.b
+  a = Matrix(bbc)
+  lwy = wyw.leftWY
+  rwy = wyw.rightWY
+  num_blocks = bbc.num_blocks
+  @views for l ∈ num_blocks:-1:1
+    rows, _ = lower_block_ranges(bbc, l)
+    apply_inv!(a[rows, :], rwy, l)
+    _, cols = upper_block_ranges(bbc, l)
+    apply!(lwy, l, a[:, cols])
+  end
+  a
+end
+
+function LinearAlgebra.Matrix(::Type{TrailingDecomp}, wyw::WYWeight)
+  bbc = wyw.b
+  a = Matrix(bbc)
+  lwy = wyw.leftWY
+  rwy = wyw.rightWY
+  num_blocks = bbc.num_blocks
+  @views for l ∈ 1:num_blocks
+    _, cols = lower_block_ranges(bbc, l)
+    apply!(lwy, l, a[:, cols])
+    rows, _ = upper_block_ranges(bbc, l)
+    apply_inv!(a[rows, :], rwy, l)
+  end
+  a
 end
 
 end
