@@ -227,7 +227,8 @@ end
     ) where {E<:Number}
 
 A random WYWeight with specified upper and lower ranks.  The structure provides
-enough bandwidth for conversion.
+enough bandwidth for conversion.  If no upper or lower ranks are given, use `upper_rank_max`
+and `lower_rank_max`.
 """
 function WYWeight(
   ::Type{E},
@@ -236,13 +237,20 @@ function WYWeight(
   rng::AbstractRNG,
   m::Int,
   n::Int;
-  upper_ranks::Vector{Int},
-  lower_ranks::Vector{Int},
+  upper_ranks::Union{Vector{Int}, Nothing}=nothing,
+  lower_ranks::Union{Vector{Int}, Nothing}=nothing,
   upper_rank_max::Int = maximum(upper_ranks),
   lower_rank_max::Int = maximum(lower_ranks),
   upper_blocks::Array{Int,2},
   lower_blocks::Array{Int,2},
 ) where {E<:Number}
+
+  num_blocks = size(upper_blocks, 2)
+
+  upper_ranks =
+    isnothing(upper_ranks) ? fill(upper_rank_max, num_blocks) : upper_ranks
+  lower_ranks =
+    isnothing(lower_ranks) ? fill(lower_rank_max, num_blocks) : lower_ranks
 
   bbc = BlockedBandColumn(
     E,
