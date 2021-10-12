@@ -3,6 +3,8 @@ module WYWeightMatrices
 export WYWeight,
   SpanStep,
   NullStep,
+  LowerCompressed,
+  UpperCompressed,
   Left,
   Right,
   set_WYWeight_transform_params!,
@@ -69,6 +71,7 @@ Base.iterate(t::Type{Offsets}) = (t, nothing)
 Base.iterate(::Type{Offsets}, ::Any) = nothing
 BandStruct.singleton(::Type{Offsets}) = Offsets()
 
+
 """
     UnionOrTuple{A,B} = Union{A, B, Tuple{DataType,DataType}}
 """
@@ -106,7 +109,9 @@ struct WYWeight{LWY,B,RWY}
   b::B
   rightWY::RWY
   upper_ranks::Vector{Int}
+  upper_compressed::Vector{Bool}
   lower_ranks::Vector{Int}
+  lower_compressed::Vector{Bool}
 end
 
 """
@@ -209,7 +214,19 @@ function WYWeight(
   lower_ranks = zeros(Int, num_blocks)
   decomp_ref = Base.RefValue{Union{Nothing, LeadingDecomp, TrailingDecomp}}(nothing)
   step_ref = Base.RefValue{Union{Nothing, NullStep, SpanStep}}(singleton(step))
-  WYWeight(decomp_ref, step_ref, leftWY, bbc, rightWY, upper_ranks, lower_ranks)
+  upper_compressed = fill(true, num_blocks)
+  lower_compressed = fill(true, num_blocks)
+  WYWeight(
+    decomp_ref,
+    step_ref,
+    leftWY,
+    bbc,
+    rightWY,
+    upper_ranks,
+    upper_compressed,
+    lower_ranks,
+    lower_compressed,
+  )
 end
 
 """
@@ -358,8 +375,134 @@ function WYWeight(
   decomp_ref =
     Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}(singleton(decomp))
   step_ref = Base.RefValue{Union{Nothing,NullStep,SpanStep}}(singleton(step))
+  upper_compressed = fill(true, num_blocks)
+  lower_compressed = fill(true, num_blocks)
 
-  WYWeight(decomp_ref, step_ref, leftWY, bbc, rightWY, upper_ranks, lower_ranks)
+  WYWeight(
+    decomp_ref,
+    step_ref,
+    leftWY,
+    bbc,
+    rightWY,
+    upper_ranks,
+    upper_compressed,
+    lower_ranks,
+    lower_compressed,
+  )
+end
+
+# Iterators over blocks.
+
+struct LowerCompressed{WY}
+  wy::WY
+end
+
+function Base.length(lc::LowerCompressed{<:WYWeight})
+  l = 1
+  len = 0
+  while l <= lc.wy.b.num_blocks
+    lc.wy.lower_compressed[l] && (len += 1)
+    l += 1
+  end
+  len
+end
+
+@inline function Base.length(
+  rlc::Iterators.Reverse{<:LowerCompressed{<:WYWeight}},
+)
+  length(rlc.itr)
+end
+
+@inline function Base.iterate(lc::LowerCompressed{<:WYWeight})
+  l = 1
+  while (l <= lc.wy.b.num_blocks) && (!lc.wy.lower_compressed[l])
+    l += 1
+  end
+  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
+end
+
+@inline function Base.iterate(
+  rlc::Iterators.Reverse{<:LowerCompressed{<:WYWeight}},
+)
+  lc = rlc.itr
+  l = lc.wy.b.num_blocks
+  while (l >= 1) && (!lc.wy.lower_compressed[l])
+    l -= 1
+  end
+  l < 1 ? nothing : (l, l - 1)
+end
+
+@inline function Base.iterate(lc::LowerCompressed{<:WYWeight}, l::Int)
+  while (l <= lc.wy.b.num_blocks) && (!lc.wy.lower_compressed[l])
+    l += 1
+  end
+  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
+end
+
+@inline function Base.iterate(
+  rlc::Iterators.Reverse{<:LowerCompressed{<:WYWeight}},
+  l::Int,
+)
+  while (l >= 1) && (!rlc.itr.wy.lower_compressed[l])
+    l -= 1
+  end
+  l < 1 ? nothing : (l, l - 1)
+end
+
+struct UpperCompressed{WY}
+  wy::WY
+end
+
+@inline function Base.length(lc::UpperCompressed{<:WYWeight})
+  l = 1
+  len = 0
+  while l <= lc.wy.b.num_blocks
+    lc.wy.upper_compressed[l] && (len += 1)
+    l += 1
+  end
+  len
+end
+
+@inline function Base.length(
+  rlc::Iterators.Reverse{<:UpperCompressed{<:WYWeight}},
+)
+  length(rlc.itr)
+end
+
+@inline function Base.iterate(lc::UpperCompressed{<:WYWeight})
+  l = 1
+  while (l <= lc.wy.b.num_blocks) && (!lc.wy.upper_compressed[l])
+    l += 1
+  end
+  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
+end
+
+@inline function Base.iterate(
+  rlc::Iterators.Reverse{<:UpperCompressed{<:WYWeight}},
+)
+  lc = rlc.itr
+  l = lc.wy.b.num_blocks
+  while (l >= 1) && (!lc.wy.upper_compressed[l])
+    l -= 1
+  end
+  l < 1 ? nothing : (l, l - 1)
+end
+
+@inline function Base.iterate(lc::UpperCompressed{<:WYWeight}, l::Int)
+  while (l <= lc.wy.b.num_blocks) && (!lc.wy.upper_compressed[l])
+    l += 1
+  end
+  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
+end
+
+@inline function Base.iterate(
+  rlc::Iterators.Reverse{<:UpperCompressed{<:WYWeight}},
+  l::Int,
+)
+  while (l >= 1) && (!rlc.itr.wy.upper_compressed[l])
+    l -= 1
+  end
+  l < 1 ? nothing : (l, l - 1)
 end
 
 # Set or increase xref[k] to y.
@@ -814,10 +957,11 @@ function LinearAlgebra.Matrix(::Type{LeadingDecomp}, wyw::WYWeight)
   a = Matrix(bbc)
   lwy = wyw.leftWY
   rwy = wyw.rightWY
-  num_blocks = bbc.num_blocks
-  @views for l ∈ num_blocks:-1:1
+  @views for l ∈ Iterators.reverse(LowerCompressed(wyw))
     rows, _ = lower_block_ranges(bbc, l)
     apply_inv!(a[rows, :], rwy, l)
+  end
+  @views for l ∈ Iterators.reverse(UpperCompressed(wyw))
     _, cols = upper_block_ranges(bbc, l)
     apply!(lwy, l, a[:, cols])
   end
@@ -829,10 +973,11 @@ function LinearAlgebra.Matrix(::Type{TrailingDecomp}, wyw::WYWeight)
   a = Matrix(bbc)
   lwy = wyw.leftWY
   rwy = wyw.rightWY
-  num_blocks = bbc.num_blocks
-  @views for l ∈ 1:num_blocks
+  @views for l ∈ LowerCompressed(wyw)
     _, cols = lower_block_ranges(bbc, l)
     apply!(lwy, l, a[:, cols])
+  end
+  @views for l ∈ UpperCompressed(wyw)
     rows, _ = upper_block_ranges(bbc, l)
     apply_inv!(a[rows, :], rwy, l)
   end
