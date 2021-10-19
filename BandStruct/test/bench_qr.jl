@@ -9,6 +9,7 @@ using Rotations
 using InPlace
 using ShowTests
 using LinearAlgebra
+using BenchmarkTools
 
 # Generate a random banded matrix in unstructured form.
 function makeA(
@@ -24,31 +25,34 @@ function makeA(
   a
 end
 
+# make a band matrix with space for a QR factorization.
 function makeB(
   T::Type{E},
   m::Int,
-  lower_rank_max::Int,
-  upper_rank_max::Int,
+  lower_rank::Int,
+  upper_rank::Int,
+  block_size::Int
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
 
-  blocks = [k for j ∈ 1:2, k ∈ 1:m]
+  blocks = [k for _ ∈ 1:2, k ∈ 1:m]
   bbc = BlockedBandColumn(
     T,
     LeadingDecomp,
     MersenneTwister(0),
     m,
     m,
-    upper_rank_max = lower_rank_max + upper_rank_max,
-    lower_rank_max = lower_rank_max,
+    upper_rank_max = lower_rank + upper_rank + block_size,
+    lower_rank_max = lower_rank,
     upper_blocks = blocks,
     lower_blocks = blocks,
-    upper_ranks = [upper_rank_max for j ∈ 1:m],
-    lower_ranks = [lower_rank_max for j ∈ 1:m],
+    upper_ranks = [upper_rank for j ∈ 1:m],
+    lower_ranks = [lower_rank for j ∈ 1:m],
   )
 
   toBandColumn(bbc)
 end
 
+# Simple Householder band QR.
 function bandQRB(
   B::AbstractBandColumn{S,E},
   lbw::Int,
@@ -58,7 +62,6 @@ function bandQRB(
   work = zeros(E, lbw + ubw + 1)
   v = zeros(E, lbw + 1)
   @inbounds for k ∈ 1:(n - 1)
-    j_end = min(k + lbw, m)
     h = householder(B, k:min(k + lbw, m), k, v, work)
     h ⊘ B
     notch_lower!(B, k + 1, k)
@@ -66,6 +69,7 @@ function bandQRB(
   nothing
 end
 
+# Unstructured band QR
 function bandQRA(A::AbstractArray{E,2}, lbw::Int, ubw::Int) where {E<:Number}
   (ma, _) = size(A)
   work = zeros(E, lbw + ubw + 1)
@@ -79,6 +83,70 @@ function bandQRA(A::AbstractArray{E,2}, lbw::Int, ubw::Int) where {E<:Number}
   nothing
 end
 
+# get an appropriately sized WYTrans for a blocked band QR factorization.
+function get_WY(
+  B::AbstractBandColumn{S,E},
+  lbw::Int,
+  ubw::Int;
+  block_size::Int=16
+) where {S,E<:Number}
+  m, n = size(B)
+  blocks, rem = divrem(n, block_size)
+  blocks = rem > 0 ? blocks + 1 : blocks
+  WYTrans(
+    E,
+    max_num_WY = blocks,
+    max_WY_size = m,
+    work_size = m * (block_size + 2) + m * (block_size + lbw),
+    max_num_hs = block_size,
+  )
+end
+
+function qrBWYSweep(
+  B::AbstractBandColumn{S,E},
+  lbw::Int,
+  ubw::Int;
+  block_size::Int=16
+) where {S,E<:Number}
+  wy = get_WY(B, lbw, ubw, block_size = block_size)
+  qrBWYSweep(wy, B, lbw, ubw, block_size = block_size)
+end
+
+function qrBWYSweep(
+  wy, # Orthogonal Q stored as overlapping WY transformations.
+  B::AbstractBandColumn{S,E},
+  lbw::Int, # Lower Bandwidth
+  ubw::Int; # Upper Bandwidth
+  block_size::Int=32
+) where {S,E<:Number}
+  m, n = size(B)
+  blocks, rem = divrem(n, block_size)
+  blocks = rem > 0 ? blocks + 1 : blocks
+  v = zeros(E, lbw + 1)
+  workh = zeros(E, m)
+  @views for b ∈ 1:blocks
+    selectWY!(wy, b)
+    offs = (b - 1) * block_size
+    resetWYBlock!(
+      wy,
+      block = b,
+      offset = offs,
+      sizeWY = min(block_size + lbw, m - offs),
+    )
+    block_end = min(b * block_size, n)
+    for k ∈ ((b - 1) * block_size + 1):block_end
+      j_end = min(k + lbw, m)
+      h = householder(B, k:j_end, k, v, workh)
+      h ⊘ B[:, k: block_end] 
+      k < m && notch_lower!(B, k+1, k)
+      wy ⊛ h
+    end
+    wy ⊘ B[:, (block_end + 1):n]
+  end
+  (SweepForward(wy), B)
+end
+
+
 tol = 1e-13
 
 
@@ -90,7 +158,7 @@ ubw=100
 # The benchmarks.
 println()
 println("Testing and benchmarking bandQRB:")
-B = makeB(Float64, m0, lbw, ubw)
+B = makeB(Float64, m0, lbw, ubw, 1)
 B0=copy(B)
 bandQRB(B, lbw, ubw)
 
@@ -106,7 +174,7 @@ show_error_result(
   tol
 )
 
-B = makeB(Float64, m, lbw, ubw)
+B = makeB(Float64, m, lbw, ubw, 1)
 @time bandQRB(B, lbw, ubw)
 
 println()
@@ -129,3 +197,20 @@ show_error_result(
 
 A = makeA(Float64, m, lbw, ubw);
 @time bandQRA(A, lbw, ubw)
+
+
+m=10000
+lbw=400
+ubw=400
+bs = 16
+B = makeB(Float64, m, lbw, ubw, 32)
+B0=copy(B)
+wy = get_WY(B, lbw, ubw, block_size=bs)
+q,r = qrBWYSweep(wy, B, lbw, ubw, block_size=bs)
+display(
+  @benchmark qrBWYSweep(wy1, B1, $lbw, $ubw, block_size = $bs) evals = 1 setup =
+  begin
+    B1 = copy(B0)
+    wy1 = get_WY(B1, $lbw, $ubw, block_size = $bs)
+  end)
+GC.gc()

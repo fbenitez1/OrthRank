@@ -4,6 +4,7 @@ authors = ["Michael Stewart <mastewart@mastewart.org>"]
 version = "0.1.0"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Householder = "c865288b-f3c9-4f4c-a1b9-0a546e45b448"
 InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
