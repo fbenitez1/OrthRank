@@ -83,7 +83,7 @@ Base.@propagate_inbounds function Compute.householder(
 end
 
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E},
 ) where {E<:Number,S}
@@ -153,7 +153,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E},
 ) where {E<:Number,S}
@@ -207,7 +207,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E},
 ) where {E<:Number,S}
@@ -279,7 +279,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E},
 ) where {E<:Number,S}
@@ -333,7 +333,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E},
   k::Int,
@@ -404,7 +404,7 @@ end
 end
 
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E},
   k::Int
@@ -473,7 +473,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   wy::WYTrans{E},
   k::Int,
   bc::AbstractBandColumn{S,E}
@@ -542,7 +542,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   wy::WYTrans{E},
   k::Int,
   bc::AbstractBandColumn{S,E}

@@ -64,6 +64,11 @@ struct HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}}
   work::AEW
 end
 
+InPlace.product_side(::Type{<:HouseholderTrans}, _) = InPlace.LeftProduct()
+InPlace.product_side(::Type{<:HouseholderTrans}, _, _) = InPlace.LeftProduct()
+InPlace.product_side(_, ::Type{<:HouseholderTrans}) = InPlace.RightProduct()
+InPlace.product_side(_, _, ::Type{<:HouseholderTrans}) = InPlace.RightProduct()
+
 function Random.rand!(rng::AbstractRNG, h::HouseholderTrans)
   @views begin
     rand!(rng, h.v[1:h.size])
@@ -376,7 +381,7 @@ end
   A[j, (l + 1):n] .= zero(E)
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   h::HouseholderTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -426,7 +431,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   h :: HouseholderTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -477,7 +482,7 @@ end
 end
 
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   A::AbstractArray{E,2},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -528,7 +533,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   A::AbstractArray{E,2},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -580,7 +585,7 @@ end
 
 # Adjoint operations.
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
 ) where {E<:Number}
@@ -631,7 +636,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
 ) where {E<:Number}
@@ -682,7 +687,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -731,7 +736,7 @@ end
   nothing
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
@@ -780,6 +785,5 @@ end
   end
   nothing
 end
-
 
 end # module

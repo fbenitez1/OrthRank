@@ -7,7 +7,7 @@ using LinearAlgebra
 using LoopVectorization
 using Octavian
 
-using InPlace
+import InPlace
 using ..Compute
 
 export WYTrans,
@@ -139,6 +139,28 @@ struct WYTrans{
   work::AEWork
 end
 
+InPlace.product_side(::Type{<:WYTrans}, _) = InPlace.LeftProduct()
+InPlace.product_side(::Type{<:WYTrans}, ::Type{<:Integer}, _) =
+  InPlace.LeftProduct()
+InPlace.product_side(_, ::Type{<:WYTrans}) = InPlace.RightProduct()
+InPlace.product_side(_, ::Type{<:WYTrans}, ::Type{<:Integer}) =
+  InPlace.RightProduct()
+
+InPlace.product_side(::Type{<:WYTrans}, ::Type{<:HouseholderTrans}) =
+  InPlace.RightProduct()
+InPlace.product_side(
+  ::Type{<:WYTrans},
+  ::Type{<:Integer},
+  ::Type{<:HouseholderTrans},
+) = InPlace.RightProduct()
+InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{<:WYTrans}) =
+  InPlace.LeftProduct()
+InPlace.product_side(
+  ::Type{<:HouseholderTrans},
+  ::Type{<:WYTrans},
+  ::Type{<:Integer},
+) = InPlace.LeftProduct()
+
 function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
   v = zeros(E,wy.max_WY_size)
   work = zeros(E,1)
@@ -150,7 +172,7 @@ function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
     wy.num_hs[k] = 0
     for j ∈ 1:num_hs
       rand!(rng, h)
-      apply!(h, wy, k)
+      InPlace.apply!(h, wy, k)
     end
   end
   nothing
@@ -169,6 +191,14 @@ end
   @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
   wy.active_WY[]=k
 end
+
+InPlace.product_side(::Type{<:SelectWY}, _) = InPlace.LeftProduct()
+InPlace.product_side(_, ::Type{<:SelectWY}) = InPlace.RightProduct()
+
+InPlace.product_side(::Type{<:SelectWY}, ::Type{<:HouseholderTrans}) =
+  InPlace.RightProduct()
+InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{<:SelectWY}) =
+  InPlace.LeftProduct()
 
 
 """
@@ -434,7 +464,7 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
       last(inds)
     )))
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
   k::Int,
@@ -475,23 +505,23 @@ throw_RowRange_DimensionMismatch(ma, na, inds) =
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_right!(
   A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
-  apply!(A, wy, k)
+  InPlace.apply_right!(A, wy, k)
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_right!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
 ) where {E<:Number}
-  apply!(A, wy, wy.active_WY[])
+  InPlace.apply_right!(A, wy, wy.active_WY[])
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
   k::Int
@@ -532,23 +562,23 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_right_inv!(
   A::AbstractArray{E,2},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
-  apply_inv!(A, wy, k)
+  InPlace.apply_right_inv!(A, wy, k)
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_right_inv!(
   A::AbstractArray{E,2},
   wy::WYTrans{E},
 ) where {E<:Number}
-  apply_inv!(A, wy, wy.active_WY[])
+  apply_right_inv!(A, wy, wy.active_WY[])
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   wy::WYTrans{E},
   k::Int,
   A::AbstractArray{E,2},
@@ -589,23 +619,23 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_left!(
   wyk::SelectWY{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
-  apply!(wy, k, A)
+  InPlace.apply_left!(wy, k, A)
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_left!(
   wy::WYTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
-  apply!(wy, wy.active_WY[], A)
+  InPlace.apply_left!(wy, wy.active_WY[], A)
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   wy::WYTrans{E},
   k::Int,
   A::AbstractArray{E,2},
@@ -645,20 +675,20 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_left_inv!(
   wyk::SelectWY{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
   k=wyk.block
   wy=wyk.wy
-  apply_inv!(wy, k, A)
+  InPlace.apply_left_inv!(wy, k, A)
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_left_inv!(
   wy::WYTrans{E},
   A::AbstractArray{E,2},
 ) where {E<:Number}
-  apply_inv!(wy, wy.active_WY[], A)
+  InPlace.apply_left_inv!(wy, wy.active_WY[], A)
 end
 
 # Updating functions for adding a Householder.
@@ -675,7 +705,7 @@ throw_WYMaxHouseholderError(block) =
     block
   )))
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   wy::WYTrans{E},
   k::Int,
   h::HouseholderTrans{E},
@@ -721,25 +751,25 @@ throw_WYMaxHouseholderError(block) =
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_right!(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
-  apply!(wy, k, h)
+  InPlace.apply_right!(wy, k, h)
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_right!(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
 
-  apply!(wy, wy.active_WY[], h)
+  InPlace.apply_right!(wy, wy.active_WY[], h)
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   wy::WYTrans{E},
   k::Int,
   h::HouseholderTrans{E},
@@ -786,25 +816,25 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_right_inv!(
   wyk::SelectWY{<:WYTrans{E}},
   h::HouseholderTrans{E},
 ) where {E<:Number}
   
   k=wyk.block
   wy=wyk.wy
-  apply_inv!(wy, k, h)
+  InPlace.apply_right_inv!(wy, k, h)
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_right_inv!(
   wy::WYTrans{E},
   h::HouseholderTrans{E},
 ) where {E<:Number}
   
-  apply_inv!(wy, wy.active_WY[], h)
+  InPlace.apply_right_inv!(wy, wy.active_WY[], h)
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
   k::Int,
@@ -852,7 +882,7 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_left!(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
@@ -860,18 +890,18 @@ Base.@propagate_inbounds function InPlace.apply!(
   k=wyk.block
   wy=wyk.wy
 
-  apply!(h, wy, k)
+  InPlace.apply_left!(h, wy, k)
 end
 
-Base.@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply_left!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
 
-  apply!(h, wy, wy.active_WY[])
+  InPlace.apply_left!(h, wy, wy.active_WY[])
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
   k::Int,
@@ -921,23 +951,79 @@ end
 
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_left_inv!(
   h::HouseholderTrans{E},
   wyk::SelectWY{<:WYTrans{E}},
 ) where {E<:Number}
 
   k=wyk.block
   wy=wyk.wy
-  apply_inv!(h, wy, k)
+  InPlace.apply_left_inv!(h, wy, k)
 end
 
-Base.@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_left_inv!(
   h::HouseholderTrans{E},
   wy::WYTrans{E},
 ) where {E<:Number}
 
-  apply_inv!(h, wy, wy.active_WY[])
+  InPlace.apply_left_inv!(h, wy, wy.active_WY[])
 end
+
+# WY times WY
+
+# Apply transform l2 of wy2 to transform l1 of wy1.
+# function apply_right!(
+#   wy1::WYTrans{E},
+#   l1,
+#   wy2::WYTrans{E},
+#   l2,
+# ) where {E<:Number}
+
+#   num_WY1 = wy1.num_WY[]
+#   num_WY2 = wy2.num_WY[]
+  
+#   wy1_num_hs = wy1.num_hs[l1]
+#   wy2_num_hs = wy2.num_hs[l2]
+
+#   @boundscheck l1 ∈ 1:num_WY1 || throw_WYBlockNotAvilable(l1, num_WY1)
+#   @boundscheck l2 ∈ 1:num_WY2 || throw_WYBlockNotAvilable(l2, num_WY2)
+
+#   wy1_offset = wy1.offsets[l1]
+#   wy2_offset = wy2.offsets[l2]
+
+#   wy1_size=wy1.sizes[l1]
+#   wy2_size=wy2.sizes[l2]
+  
+#   # Active indices for each transformation.
+#   wy1_inds = (wy1_offset + 1):(wy1_offset + wy1_size)
+#   wy2_inds = (wy2_offset + 1):(wy2_offset + wy2_size)
+
+#   # Indices of wy2 within wy1, without the wy1_offset.
+#   inds_wy12 = wy2_inds .- wy1_offset
+
+#   @boundscheck begin
+#     wy2_inds ⊆ wy1_inds || throw(WYIndexSubsetError)
+#     wy1_num_hs + wy2_num_hs <= wy1.max_num_hs || throw_WYMaxHouseholderError(l1)
+#   end
+
+#   @inbounds begin
+#     @views begin
+#       wy2.offsets[l2] = wy2_offset - wy1_offset
+#       apply_inv!(wy2, l2, wy1.Y[1:wy1_size, 1:wy1_num_hs, l1])
+#       wy2.offsets[l2] = wy2_offset
+
+#       wy1.num_hs[l1] = wy1_num_hs + wy2_num_hs
+#       col_inds2 = wy1_num_hs + 1 : wy1_num_hs + wy2_num_hs
+#       wy1.W[1:wy1_size, col_inds2, l1] .= zero(E)
+#       wy1.Y[1:wy1_size, col_inds2, l1] .= zero(E)
+#       wy1.W[inds_wy12, col_inds2, l1] .= wy2.W[1:wy2_size, 1:wy2_num_hs, l2]
+#       wy1.Y[inds_wy12, col_inds2, l1] .= wy2.Y[1:wy2_size, 1:wy2_num_hs, l2]
+#     end
+
+#   end
+  
+# end
+
 
 # Sweeps
 
@@ -967,7 +1053,12 @@ struct SweepBackward{T}
   wy::T
 end
 
-@inline function InPlace.apply!(
+InPlace.product_side(::Type{<:SweepForward}, _) = InPlace.LeftProduct()
+InPlace.product_side(::Type{<:SweepBackward}, _) = InPlace.LeftProduct()
+InPlace.product_side(_, ::Type{<:SweepForward}) = InPlace.RightProduct()
+InPlace.product_side(_, ::Type{<:SweepBackward}) = InPlace.RightProduct()
+
+@inline function InPlace.apply_right!(
   A::AbstractArray{E,2},
   sfwy::SweepForward{<:WYTrans{E}},
 ) where {E<:Number}
@@ -975,11 +1066,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    apply!(A, wy, k)
+    InPlace.apply_right!(A, wy, k)
   end
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   sfwy::SweepForward{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -987,11 +1078,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    apply!(wy, k, A)
+    InPlace.apply_left!(wy, k, A)
   end
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   A::AbstractArray{E,2},
   sfwy::SweepForward{<:WYTrans{E}},
 ) where {E<:Number}
@@ -999,11 +1090,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    apply_inv!(A, wy, k)
+    InPlace.apply_right_inv!(A, wy, k)
   end
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   sfwy::SweepForward{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -1011,11 +1102,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    apply_inv!(wy, k, A)
+    InPlace.apply_left_inv!(wy, k, A)
   end
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_right!(
   A::AbstractArray{E,2},
   sfwy::SweepBackward{<:WYTrans{E}},
 ) where {E<:Number}
@@ -1023,11 +1114,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    apply!(A, wy, k)
+    InPlace.apply_right!(A, wy, k)
   end
 end
 
-@inline function InPlace.apply!(
+@inline function InPlace.apply_left!(
   sfwy::SweepBackward{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -1035,11 +1126,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    apply!(wy, k, A)
+    InPlace.apply_left!(wy, k, A)
   end
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_right_inv!(
   A::AbstractArray{E,2},
   sfwy::SweepBackward{<:WYTrans{E}},
 ) where {E<:Number}
@@ -1047,11 +1138,11 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    apply_inv!(A, wy, k)
+    InPlace.apply_right_inv!(A, wy, k)
   end
 end
 
-@inline function InPlace.apply_inv!(
+@inline function InPlace.apply_left_inv!(
   sfwy::SweepBackward{<:WYTrans{E}},
   A::AbstractArray{E,2},
 ) where {E<:Number}
@@ -1059,9 +1150,8 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    apply_inv!(wy, k, A)
+    InPlace.apply_left_inv!(wy, k, A)
   end
 end
-
 
 end # module
