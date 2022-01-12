@@ -85,12 +85,13 @@ end
 
 @inline function InPlace.apply_right!(
   bc::AbstractBandColumn{S,E},
-  h::HouseholderTrans{E},
+  h::HouseholderTrans{E};
+  offset = 0
 ) where {E<:Number,S}
 
   m = h.size
   v = h.v
-  offs = h.offs
+  offs = h.offs + offset
   β = h.β
 
   work = h.work
@@ -155,12 +156,13 @@ end
 
 @inline function InPlace.apply_left!(
   h::HouseholderTrans{E},
-  bc::AbstractBandColumn{S,E},
+  bc::AbstractBandColumn{S,E};
+  offset = 0
 ) where {E<:Number,S}
 
   m = h.size
   v = h.v
-  offs = h.offs
+  offs = h.offs + offset
   β = h.β
 
   j_first = offs + 1
@@ -209,12 +211,13 @@ end
 
 @inline function InPlace.apply_right_inv!(
   bc::AbstractBandColumn{S,E},
-  h::HouseholderTrans{E},
+  h::HouseholderTrans{E};
+  offset = 0
 ) where {E<:Number,S}
 
   m = h.size
   v = h.v
-  offs = h.offs
+  offs = h.offs + offset
   β̄ = conj(h.β)
 
   work = h.work
@@ -281,12 +284,13 @@ end
 
 @inline function InPlace.apply_left_inv!(
   h::HouseholderTrans{E},
-  bc::AbstractBandColumn{S,E},
+  bc::AbstractBandColumn{S,E};
+  offset = 0
 ) where {E<:Number,S}
 
   m = h.size
   v=h.v
-  offs = h.offs
+  offs = h.offs + offset
   β̄ = conj(h.β)
 
   j_first = offs + 1
@@ -336,28 +340,29 @@ end
 @inline function InPlace.apply_right!(
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E},
-  k::Int,
+  k::Int;
+  offset = 0
 ) where {E<:Number,S}
 
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     inds = 1:wy.sizes[k]
-    offset = wy.offsets[k]
+    wy_offset = wy.offsets[k] + offset
     (mbc,nbc) = size(bc)
     num_hs= wy.num_hs[k]
   end
 
   @boundscheck begin
-    inds .+ offset ⊆ 1:nbc ||
-      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds .+ offset)
+    inds .+ wy_offset ⊆ 1:nbc ||
+      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds .+ wy_offset)
   end
 
   lw = length(wy.work)
 
   n_bc0 = wy.sizes[k]
-  k_first = offset + 1
-  k_last = offset + n_bc0
+  k_first = wy_offset + 1
+  k_last = wy_offset + n_bc0
 
   js = inband_hull(bc, :, k_first:k_last)
   m_bc0 = length(js)
@@ -407,27 +412,28 @@ end
 @inline function InPlace.apply_right_inv!(
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E},
-  k::Int
+  k::Int;
+  offset = 0
 ) where {E<:Number,S}
 
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     inds = 1:wy.sizes[k]
-    offset = wy.offsets[k]
+    wy_offset = wy.offsets[k] + offset
     (mbc,nbc) = size(bc)
     num_hs= wy.num_hs[k]
   end
 
   @boundscheck begin
-    inds .+ offset ⊆ 1:nbc ||
-      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds .+ offset)
+    inds .+ wy_offset ⊆ 1:nbc ||
+      throw_ColumnRange_DimensionMismatch(mbc, nbc, inds .+ wy_offset)
   end
 
   lw = length(wy.work)
   n_bc0 = wy.sizes[k]
-  k_first = offset + 1
-  k_last = offset + n_bc0
+  k_first = wy_offset + 1
+  k_last = wy_offset + n_bc0
 
   js = inband_hull(bc, :, k_first:k_last)
   m_bc0 = length(js)
@@ -476,28 +482,29 @@ end
 @inline function InPlace.apply_left!(
   wy::WYTrans{E},
   k::Int,
-  bc::AbstractBandColumn{S,E}
+  bc::AbstractBandColumn{S,E};
+  offset = 0
 ) where {E<:Number,S}
 
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     inds = 1:wy.sizes[k]
-    offset = wy.offsets[k]
+    wy_offset = wy.offsets[k] + offset
     (mbc,nbc) = size(bc)
     m_bc0 = wy.sizes[k]
     num_hs= wy.num_hs[k]
   end
 
   @boundscheck begin
-    inds .+ offset ⊆ 1:mbc ||
-      throw_RowRange_DimensionMismatch(mbc, nbc, inds .+ offset)
+    inds .+ wy_offset ⊆ 1:mbc ||
+      throw_RowRange_DimensionMismatch(mbc, nbc, inds .+ wy_offset)
   end
 
   lw = length(wy.work)
 
-  j_first = offset + 1
-  j_last = offset + m_bc0
+  j_first = wy_offset + 1
+  j_last = wy_offset + m_bc0
 
   ks = inband_hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)
@@ -545,28 +552,29 @@ end
 @inline function InPlace.apply_left_inv!(
   wy::WYTrans{E},
   k::Int,
-  bc::AbstractBandColumn{S,E}
+  bc::AbstractBandColumn{S,E};
+  offset = 0
 ) where {E<:Number,S}
 
   num_WY = wy.num_WY[]
   @boundscheck k ∈ 1:num_WY || throw_WYBlockNotAvailable(k, num_WY)
   @inbounds begin
     inds = 1:wy.sizes[k]
-    offset = wy.offsets[k]
+    wy_offset = wy.offsets[k] + offset
     (mbc,nbc) = size(bc)
     m_bc0 = wy.sizes[k]
     num_hs= wy.num_hs[k]
   end
 
   @boundscheck begin
-    inds .+ offset ⊆ 1:mbc ||
-      throw_RowRange_DimensionMismatch(mbc, nbc, inds .+ offset)
+    inds .+ wy_offset ⊆ 1:mbc ||
+      throw_RowRange_DimensionMismatch(mbc, nbc, inds .+ wy_offset)
   end
 
   lw = length(wy.work)
 
-  j_first = offset + 1
-  j_last = offset + m_bc0
+  j_first = wy_offset + 1
+  j_last = wy_offset + m_bc0
 
   ks = inband_hull(bc, j_first:j_last, :)
   n_bc0 = length(ks)

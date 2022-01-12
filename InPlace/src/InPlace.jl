@@ -32,24 +32,33 @@ end
 product_side(::Type{Linear{A}}, _) where A = LeftProduct()
 product_side(_, ::Type{Linear{A}}) where A = RightProduct()
 
-apply!(a::A, b::B) where {A,B} = apply!(product_side(A, B), a, b)
-apply!(a::A, b::B, c::C) where {A,B,C} = apply!(product_side(A, B, C), a, b, c)
+apply!(a::A, b::B; offset = 0) where {A,B} =
+  apply!(product_side(A, B), a, b, offset = offset)
+apply!(a::A, b::B, c::C, offset = 0) where {A,B,C} =
+  apply!(product_side(A, B, C), a, b, c, offset = offset)
 
-apply!(::LeftProduct, a, b) = apply_left!(a,b)
-apply!(::LeftProduct, a, b, c) = apply_left!(a, b, c)
+apply!(::LeftProduct, a, b; offset = 0) = apply_left!(a, b, offset = offset)
+apply!(::LeftProduct, a, b, c; offset = 0) =
+  apply_left!(a, b, c, offset = offset)
 
-apply!(::RightProduct, a, b) = apply_right!(a,b)
-apply!(::RightProduct, a, b, c) = apply_right!(a, b, c)
+apply!(::RightProduct, a, b; offset = 0) = apply_right!(a, b, offset = offset)
+apply!(::RightProduct, a, b, c; offset = 0) =
+  apply_right!(a, b, c, offset = offset)
 
-apply_inv!(a::A, b::B) where {A,B} = apply_inv!(product_side(A, B), a, b)
-apply_inv!(a::A, b::B, c::C) where {A,B,C} =
-  apply_inv!(product_side(A, B, C), a, b, c)
+apply_inv!(a::A, b::B; offset = 0) where {A,B} =
+  apply_inv!(product_side(A, B), a, b, offset = offset)
+apply_inv!(a::A, b::B, c::C; offset = 0) where {A,B,C} =
+  apply_inv!(product_side(A, B, C), a, b, c, offset = offset)
 
-apply_inv!(::LeftProduct, a, b) = apply_left_inv!(a,b)
-apply_inv!(::LeftProduct, a, b, c) = apply_left_inv!(a, b, c)
+apply_inv!(::LeftProduct, a, b; offset = 0) =
+  apply_left_inv!(a, b, offset = offset)
+apply_inv!(::LeftProduct, a, b, c; offset = 0) =
+  apply_left_inv!(a, b, c, offset = offset)
 
-apply_inv!(::RightProduct, a, b) = apply_right_inv!(a,b)
-apply_inv!(::RightProduct, a, b, c) = apply_right_inv!(a, b, c)
+apply_inv!(::RightProduct, a, b; offset = 0) =
+  apply_right_inv!(a, b, offset = offset)
+apply_inv!(::RightProduct, a, b, c; offset = 0) =
+  apply_right_inv!(a, b, c, offset = offset)
 
 @inline function ⊛(a, b)
   apply!(a, b)
@@ -67,51 +76,60 @@ end
   apply_inv!(a, b, c)
 end
 
-@inline function apply!(t::Linear{A}, b) where {A}
-  apply_left!(t.trans, b)
+@inline function apply!(t::Linear{A}, b; offset = 0) where {A}
+  apply_left!(t.trans, b, offset = offset)
 end
 
-@inline function apply!(b, t::Linear{A}) where {A}
-  apply_right!(b, t.trans)
+@inline function apply!(b, t::Linear{A}; offset = 0) where {A}
+  apply_right!(b, t.trans, offset = offset)
 end
 
-@inline function apply_inv!(t::Linear{A}, b) where {A}
-  apply_left_inv!(t.trans, b)
+@inline function apply_inv!(t::Linear{A}, b; offset = 0) where {A}
+  apply_left_inv!(t.trans, b, offset = offset)
 end
 
-@inline function apply_inv!(b, t::Linear{A}) where {A}
-  apply_right_inv!(b, t.trans)
+@inline function apply_inv!(b, t::Linear{A}; offset = 0) where {A}
+  apply_right_inv!(b, t.trans, offset = offset)
 end
 
+# TODO: Make these minimally allocating.
 @inline function apply_left!(
   t::AbstractArray{E,2},
-  b::AbstractArray{E,2}
+  b::AbstractArray{E,2};
+  offset = 0,
 ) where {E<:Number}
-  b[1:end,1:end] = t * b
+  @views b[(offset + 1):end, (offset + 1):end] =
+    t * b[(offset + 1):end, (offset + 1):end]
   nothing
 end
 
 @inline function apply_right!(
   b::AbstractArray{E,2},
-  t::AbstractArray{E,2}
+  t::AbstractArray{E,2};
+  offset = 0,
 ) where {E<:Number}
-  b[1:end,1:end] = b * t 
+  @views b[(offset + 1):end, (offset + 1):end] =
+    b[(offset + 1):end, (offset + 1):end] * t
   nothing
 end
 
 @inline function apply_left_inv!(
   t::AbstractArray{E,2},
-  b::AbstractArray{E,2}
+  b::AbstractArray{E,2};
+  offset = 0,
 ) where {E<:Number}
-  b[1:end,1:end] = t \ b
+  @views b[(offset + 1):end, (offset + 1):end] =
+    t \ b[(offset + 1):end, (offset + 1):end]
   nothing
 end
 
 @inline function apply_right_inv!(
   b::AbstractArray{E,2},
-  t::AbstractArray{E,2}
+  t::AbstractArray{E,2};
+  offset = 0,
 ) where {E<:Number}
-  b[1:end,1:end] = b / t 
+  @views b[(offset + 1):end, (offset + 1):end] =
+    b[(offset + 1):end, (offset + 1):end] / t
   nothing
 end
 

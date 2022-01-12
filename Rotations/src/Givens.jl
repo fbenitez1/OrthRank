@@ -248,13 +248,14 @@ Apply a rotation, acting in-place to modify a.
 """
 @inline function InPlace.apply_left!(
   r::Rot{R,T},
-  a::AbstractArray{T,2},
+  a::AbstractArray{T,2};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (_, n) = size(a)
-  j1 = r.j1
-  j2 = r.j2
+  j1 = r.j1 + offset
+  j2 = r.j2 + offset
   @inbounds for k = 1:n
     tmp = a[j1, k]
     a[j1, k] = c * tmp + conj(s) * a[j2, k]
@@ -265,13 +266,14 @@ end
 
 @inline function InPlace.apply_right!(
   a::AbstractArray{T,2},
-  r::Rot{R,T},
+  r::Rot{R,T};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (m, _) = size(a)
-  k1 = r.j1
-  k2 = r.j2
+  k1 = r.j1 + offset
+  k2 = r.j2 + offset
   @inbounds for j = 1:m
     tmp = a[j, k1]
     a[j, k1] = c * tmp - s * a[j, k2]
@@ -282,12 +284,13 @@ end
 
 @inline function InPlace.apply_left!(
   r::AdjRot{R,T},
-  a::AbstractArray{T,2},
+  a::AbstractArray{T,2};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (_, n) = size(a)
-  j = r.j
+  j = r.j + offset
   @inbounds for k = 1:n
     tmp = a[j, k]
     a[j, k] = c * tmp + conj(s) * a[j + 1, k]
@@ -298,12 +301,13 @@ end
 
 @inline function InPlace.apply_right!(
   a::AbstractArray{T,2},
-  r::AdjRot{R,T},
+  r::AdjRot{R,T};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (m, _) = size(a)
-  k = r.j
+  k = r.j + offset
   for j = 1:m
     tmp = a[j, k]
     a[j, k] = c * tmp - s * a[j, k + 1]
@@ -319,13 +323,14 @@ Apply an inverse rotation, acting in-place to modify a.
 """
 @inline function InPlace.apply_left_inv!(
   r::Rot{R,T},
-  a::AbstractArray{T,2},
+  a::AbstractArray{T,2};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (_, n) = size(a)
-  j1 = r.j1
-  j2 = r.j2
+  j1 = r.j1 + offset
+  j2 = r.j2 + offset
   @inbounds for k = 1:n
     tmp = a[j1, k]
     a[j1, k] = c * tmp - conj(s) * a[j2, k]
@@ -336,13 +341,14 @@ end
 
 @inline function InPlace.apply_right_inv!(
   a::AbstractArray{T,2},
-  r::Rot{R,T},
+  r::Rot{R,T};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (m, _) = size(a)
-  k1 = r.j1
-  k2 = r.j2
+  k1 = r.j1 + offset
+  k2 = r.j2 + offset
   @inbounds for j = 1:m
     tmp = a[j, k1]
     a[j, k1] = c * tmp + s * a[j, k2]
@@ -353,12 +359,13 @@ end
 
 @inline function InPlace.apply_left_inv!(
   r::AdjRot{R,T},
-  a::AbstractArray{T,2},
+  a::AbstractArray{T,2};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (_, n) = size(a)
-  j = r.j
+  j = r.j + offset
   @inbounds for k = 1:n
     tmp = a[j, k]
     a[j, k] = c * tmp - conj(s) * a[j + 1, k]
@@ -369,12 +376,13 @@ end
 
 @inline function InPlace.apply_right_inv!(
   a::AbstractArray{T,2},
-  r::AdjRot{R,T},
+  r::AdjRot{R,T};
+  offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
   s = r.s
   (m, _) = size(a)
-  k = r.j
+  k = r.j + offset
   @inbounds for j = 1:m
     tmp = a[j, k]
     a[j, k] = c * tmp + s * a[j, k + 1]
