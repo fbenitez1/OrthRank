@@ -77,13 +77,13 @@ for E ∈ [Float64, Complex{Float64}]
       local h = lhouseholder(A[j:m,j],1,j-1,work)
       h ⊘ A
       Q ⊛ h
-      SelectWY(wy1,1) ⊛ h
-      h ⊘ SelectWY(wy2, 1)
+      (wy1,1) ⊛ h
+      h ⊘ (wy2, 1)
     end
     Q1 = Matrix{E}(I,m,m)
-    Q1 ⊛ SelectWY(wy1,1)
+    Q1 ⊛ (wy1,1)
     Q2 = Matrix{E}(I,m,m)
-    Q2 ⊘ SelectWY(wy2,1)
+    Q2 ⊘ (wy2,1)
     show_error_result(
       "WY factorization error using ⊛",
       norm(Q1*A-A0),

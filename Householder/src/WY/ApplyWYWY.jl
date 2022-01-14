@@ -2,25 +2,23 @@
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
 function InPlace.apply_right!(
+  ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
   InPlace.apply_right!(
-    wy1,
-    wy1.active_WY[],
-    wy2,
-    wy2.active_WY[],
+    (wy1, wy1.active_WY[]),
+    (wy2, wy2.active_WY[]),
     offset = offset,
   )
 end
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
 function InPlace.apply_right!(
-  wy1::WYTrans{E},
-  l1,
-  wy2::WYTrans{E},
-  l2;
+  ::Type{WYTrans{E}},
+  (wy1, l1)::Tuple{WYTrans{E}, Int},
+  (wy2, l2)::Tuple{WYTrans{E}, Int};
   offset = 0
 ) where {E<:Number}
 
@@ -55,8 +53,7 @@ function InPlace.apply_right!(
   @inbounds @views begin
     # Do a shift and unshift of wy2's offset to apply to wy1.
     InPlace.apply_left_inv!(
-      wy2,
-      l2,
+      (wy2, l2),
       wy1.Y[1:wy1_size, 1:wy1_num_hs, l1],
       offset = offset - wy1_offset,
     )
@@ -75,25 +72,23 @@ end
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
 function InPlace.apply_right_inv!(
+  ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
   InPlace.apply_right_inv!(
-    wy1,
-    wy1.active_WY[],
-    wy2,
-    wy2.active_WY[],
+    (wy1, wy1.active_WY[]),
+    (wy2, wy2.active_WY[]),
     offset = offset,
   )
 end
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
 function InPlace.apply_right_inv!(
-  wy1::WYTrans{E},
-  l1,
-  wy2::WYTrans{E},
-  l2;
+  ::Type{WYTrans{E}},
+  (wy1, l1)::Tuple{WYTrans{E}, Int},
+  (wy2, l2)::Tuple{WYTrans{E}, Int};
   offset = 0
 ) where {E<:Number}
 
@@ -128,8 +123,7 @@ function InPlace.apply_right_inv!(
   @inbounds @views begin
     # Do a shift and unshift of wy2's offset to apply to wy1.
     InPlace.apply_left!(
-      wy2,
-      l2,
+      (wy2, l2),
       wy1.Y[1:wy1_size, 1:wy1_num_hs, l1],
       offset = offset - wy1_offset,
     )
@@ -148,24 +142,22 @@ end
 
 # Apply transform l1 of wy1 to transform l2 of wy2.
 function InPlace.apply_left!(
+  ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
   InPlace.apply_left!(
-    wy1,
-    wy1.active_WY[],
-    wy2,
-    wy2.active_WY[],
+    (wy1, wy1.active_WY[]),
+    (wy2, wy2.active_WY[]),
     offset = offset,
   )
 end
 
 function InPlace.apply_left!(
-  wy1::WYTrans{E},
-  l1,
-  wy2::WYTrans{E},
-  l2;
+  ::Type{WYTrans{E}},
+  (wy1, l1)::Tuple{WYTrans{E}, Int},
+  (wy2, l2)::Tuple{WYTrans{E}, Int};
   offset = 0
 ) where {E<:Number}
 
@@ -199,8 +191,7 @@ function InPlace.apply_left!(
   @inbounds @views begin
     # Do a shift and unshift of wy1's offset to apply to wy2.
     InPlace.apply_left!(
-      wy1,
-      l1,
+      (wy1, l1),
       wy2.W[1:wy2_size, 1:wy2_num_hs, l2],
       offset = offset - wy2_offset,
     )
@@ -219,24 +210,22 @@ end
 
 # Apply transform l1 of wy1 to transform l2 of wy2.
 function InPlace.apply_left_inv!(
+  ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
   InPlace.apply_left_inv!(
-    wy1,
-    wy1.active_WY[],
-    wy2,
-    wy2.active_WY[],
+    (wy1, wy1.active_WY[]),
+    (wy2, wy2.active_WY[]),
     offset = offset,
   )
 end
 
 function InPlace.apply_left_inv!(
-  wy1::WYTrans{E},
-  l1,
-  wy2::WYTrans{E},
-  l2;
+  ::Type{WYTrans{E}},
+  (wy1, l1)::Tuple{WYTrans{E}, Int},
+  (wy2, l2)::Tuple{WYTrans{E}, Int};
   offset = 0
 ) where {E<:Number}
 
@@ -271,8 +260,7 @@ function InPlace.apply_left_inv!(
   @inbounds @views begin
     # Do a shift and unshift of wy1's offset to apply to wy2.
     InPlace.apply_left_inv!(
-      wy1,
-      l1,
+      (wy1, l1),
       wy2.W[1:wy2_size, 1:wy2_num_hs, l2],
       offset = offset - wy2_offset,
     )

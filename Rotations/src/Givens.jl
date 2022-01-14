@@ -4,6 +4,7 @@ export Rot, AdjRot, lgivens, lgivens1, rgivens, rgivens1
 
 using LinearAlgebra
 import InPlace
+using InPlace
 
 """
 
@@ -247,6 +248,7 @@ Apply a rotation, acting in-place to modify a.
 
 """
 @inline function InPlace.apply_left!(
+  ::Type{GeneralMatrix{T}},
   r::Rot{R,T},
   a::AbstractArray{T,2};
   offset = 0
@@ -265,6 +267,7 @@ Apply a rotation, acting in-place to modify a.
 end
 
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
   r::Rot{R,T};
   offset = 0
@@ -283,6 +286,7 @@ end
 end
 
 @inline function InPlace.apply_left!(
+  ::Type{GeneralMatrix{T}},
   r::AdjRot{R,T},
   a::AbstractArray{T,2};
   offset = 0
@@ -300,6 +304,7 @@ end
 end
 
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
   r::AdjRot{R,T};
   offset = 0
@@ -322,6 +327,7 @@ Apply an inverse rotation, acting in-place to modify a.
 
 """
 @inline function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{T}},
   r::Rot{R,T},
   a::AbstractArray{T,2};
   offset = 0
@@ -340,6 +346,7 @@ Apply an inverse rotation, acting in-place to modify a.
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
   r::Rot{R,T};
   offset = 0
@@ -358,6 +365,7 @@ end
 end
 
 @inline function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{T}},
   r::AdjRot{R,T},
   a::AbstractArray{T,2};
   offset = 0
@@ -375,6 +383,7 @@ end
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
   r::AdjRot{R,T};
   offset = 0

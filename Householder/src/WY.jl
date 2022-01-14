@@ -8,6 +8,7 @@ using LoopVectorization
 using Octavian
 
 import InPlace
+using InPlace
 using ..Compute
 
 export WYTrans,
@@ -15,7 +16,6 @@ export WYTrans,
   resetWYBlocks!,
   reworkWY!,
   WYIndexSubsetError,
-  SelectWY,
   selectWY!,
   throw_WYBlockNotAvailable,
   WYBlockNotAvailable,
@@ -140,26 +140,30 @@ struct WYTrans{
 end
 
 InPlace.product_side(::Type{<:WYTrans}, _) = InPlace.LeftProduct()
-InPlace.product_side(::Type{<:WYTrans}, ::Type{<:Integer}, _) =
+InPlace.product_side(::Type{Tuple{W,Int}}, _) where {W <: WYTrans} =
   InPlace.LeftProduct()
+
 InPlace.product_side(_, ::Type{<:WYTrans}) = InPlace.RightProduct()
-InPlace.product_side(_, ::Type{<:WYTrans}, ::Type{<:Integer}) =
+InPlace.product_side(_, ::Type{Tuple{W,Int}}) where {W <: WYTrans} =
   InPlace.RightProduct()
 
 InPlace.product_side(::Type{<:WYTrans}, ::Type{<:HouseholderTrans}) =
   InPlace.RightProduct()
 InPlace.product_side(
-  ::Type{<:WYTrans},
-  ::Type{<:Integer},
+  ::Type{Tuple{W,Int64}},
   ::Type{<:HouseholderTrans},
-) = InPlace.RightProduct()
+) where {W<:WYTrans} = InPlace.RightProduct()
+
 InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{<:WYTrans}) =
   InPlace.LeftProduct()
 InPlace.product_side(
   ::Type{<:HouseholderTrans},
-  ::Type{<:WYTrans},
-  ::Type{<:Integer},
-) = InPlace.LeftProduct()
+  ::Type{Tuple{W,Int64}},
+) where {W<:WYTrans} = InPlace.LeftProduct()
+
+InPlace.structure_type(::Type{W}) where {E,W<:WYTrans{E}} = WYTrans{E}
+InPlace.structure_type(::Type{Tuple{W,Int}}) where {E,W<:WYTrans{E}} =
+  WYTrans{E}
 
 function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
   v = zeros(E,wy.max_WY_size)
@@ -170,9 +174,10 @@ function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
     h = HouseholderTrans(one(E), v[1:n], 1, n, offs, work)
     num_hs = wy.num_hs[k]
     wy.num_hs[k] = 0
+    wyk = (wy, k)
     for j ∈ 1:num_hs
       rand!(rng, h)
-      InPlace.apply!(h, wy, k)
+      InPlace.apply!(h, wyk)
     end
   end
   nothing
@@ -182,24 +187,18 @@ function Random.rand!(wy::WYTrans{E}) where {E <: Number}
   rand!(Random.default_rng(), wy)
 end
 
-struct SelectWY{T}
-  wy::T
-  block::Int
-end
-
 @inline function selectWY!(wy,k)
   @boundscheck k ∈ 1:wy.num_WY[] || throw_WYBlockNotAvailable(k, wy.num_WY[])
   wy.active_WY[]=k
 end
 
-InPlace.product_side(::Type{<:SelectWY}, _) = InPlace.LeftProduct()
-InPlace.product_side(_, ::Type{<:SelectWY}) = InPlace.RightProduct()
+InPlace.product_side(::Type{Tuple{<:WYTrans, Int}}, _) = InPlace.LeftProduct()
+InPlace.product_side(_, ::Type{Tuple{<:WYTrans, Int}}) = InPlace.RightProduct()
 
-InPlace.product_side(::Type{<:SelectWY}, ::Type{<:HouseholderTrans}) =
+InPlace.product_side(::Type{Tuple{<:WYTrans, Int}}, ::Type{<:HouseholderTrans}) =
   InPlace.RightProduct()
-InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{<:SelectWY}) =
+InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{Tuple{<:WYTrans, Int}}) =
   InPlace.LeftProduct()
-
 
 """
     WYTrans(

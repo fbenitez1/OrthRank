@@ -5,6 +5,7 @@ using Random
 
 using LinearAlgebra
 import InPlace
+using InPlace
 using LoopVectorization
 
 export HouseholderTrans,

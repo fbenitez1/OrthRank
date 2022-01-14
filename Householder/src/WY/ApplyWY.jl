@@ -1,7 +1,7 @@
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
-  wy::WYTrans{E},
-  k::Int;
+  (wy, k)::Tuple{WYTrans{E}, Int};
   offset = 0,
 ) where {E<:Number}
 
@@ -41,27 +41,18 @@
 end
 
 Base.@propagate_inbounds function InPlace.apply_right!(
-  A::AbstractArray{E,2},
-  wyk::SelectWY{<:WYTrans{E}};
-  offset = 0,
-) where {E<:Number}
-  k = wyk.block
-  wy = wyk.wy
-  InPlace.apply_right!(A, wy, k, offset = offset)
-end
-
-Base.@propagate_inbounds function InPlace.apply_right!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   wy::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_right!(A, wy, wy.active_WY[], offset = offset)
+  InPlace.apply_right!(A, (wy, wy.active_WY[]), offset = offset)
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
-  wy::WYTrans{E},
-  k::Int;
+  (wy, k)::Tuple{WYTrans{E}, Int};
   offset = 0,
 ) where {E<:Number}
 
@@ -101,26 +92,17 @@ end
 end
 
 Base.@propagate_inbounds function InPlace.apply_right_inv!(
-  A::AbstractArray{E,2},
-  wyk::SelectWY{<:WYTrans{E}};
-  offset = 0,
-) where {E<:Number}
-  k = wyk.block
-  wy = wyk.wy
-  InPlace.apply_right_inv!(A, wy, k, offset = offset)
-end
-
-Base.@propagate_inbounds function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   wy::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
-  apply_right_inv!(A, wy, wy.active_WY[], offset = offset)
+  apply_right_inv!(A, (wy, wy.active_WY[]), offset = offset)
 end
 
 @inline function InPlace.apply_left!(
-  wy::WYTrans{E},
-  k::Int,
+  ::Type{GeneralMatrix{E}},
+  (wy, k)::Tuple{WYTrans{E}, Int},
   A::AbstractArray{E,2};
   offset = 0,
 ) where {E<:Number}
@@ -161,26 +143,17 @@ end
 end
 
 Base.@propagate_inbounds function InPlace.apply_left!(
-  wyk::SelectWY{<:WYTrans{E}},
-  A::AbstractArray{E,2};
-  offset = 0,
-) where {E<:Number}
-  k = wyk.block
-  wy = wyk.wy
-  InPlace.apply_left!(wy, k, A, offset = offset)
-end
-
-Base.@propagate_inbounds function InPlace.apply_left!(
+  ::Type{GeneralMatrix{E}},
   wy::WYTrans{E},
   A::AbstractArray{E,2};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_left!(wy, wy.active_WY[], A, offset = offset)
+  InPlace.apply_left!((wy, wy.active_WY[]), A, offset = offset)
 end
 
 @inline function InPlace.apply_left_inv!(
-  wy::WYTrans{E},
-  k::Int,
+  ::Type{GeneralMatrix{E}},
+  (wy, k)::Tuple{WYTrans{E}, Int},
   A::AbstractArray{E,2};
   offset = 0,
 ) where {E<:Number}
@@ -220,19 +193,10 @@ end
 end
 
 Base.@propagate_inbounds function InPlace.apply_left_inv!(
-  wyk::SelectWY{<:WYTrans{E}},
-  A::AbstractArray{E,2};
-  offset = 0,
-) where {E<:Number}
-  k = wyk.block
-  wy = wyk.wy
-  InPlace.apply_left_inv!(wy, k, A, offset = offset)
-end
-
-Base.@propagate_inbounds function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{E}},
   wy::WYTrans{E},
   A::AbstractArray{E,2};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_left_inv!(wy, wy.active_WY[], A, offset = offset)
+  InPlace.apply_left_inv!((wy, wy.active_WY[]), A, offset = offset)
 end

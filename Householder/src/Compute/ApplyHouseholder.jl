@@ -1,4 +1,5 @@
 @inline function InPlace.apply_left!(
+  ::Type{GeneralMatrix{E}},
   h::HouseholderTrans{E},
   A::AbstractArray{E,2};
   offset = 0
@@ -50,6 +51,7 @@
 end
 
 @inline function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{E}},
   h :: HouseholderTrans{E},
   A::AbstractArray{E,2};
   offset = 0
@@ -102,6 +104,7 @@ end
 
 
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   h::HouseholderTrans{E};
   offset = 0
@@ -154,6 +157,7 @@ end
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   h::HouseholderTrans{E};
   offset = 0
@@ -207,6 +211,7 @@ end
 # Adjoint operations.
 
 @inline function InPlace.apply_left!(
+  ::Type{GeneralMatrix{E}},
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}};
   offset = 0
@@ -259,6 +264,7 @@ end
 end
 
 @inline function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{E}},
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}};
   offset = 0
@@ -311,6 +317,7 @@ end
 end
 
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{E}},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E};
   offset = 0
@@ -361,6 +368,7 @@ end
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{E}},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E};
   offset = 0

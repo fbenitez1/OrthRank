@@ -155,6 +155,7 @@ end
 end
 
 @inline function InPlace.apply_left!(
+  ::Type{Band{E}},
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E};
   offset = 0
@@ -210,6 +211,7 @@ end
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E};
   offset = 0
@@ -283,6 +285,7 @@ end
 end
 
 @inline function InPlace.apply_left_inv!(
+  ::Type{Band{E}},
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E};
   offset = 0
@@ -338,9 +341,18 @@ end
 end
 
 @inline function InPlace.apply_right!(
+  t::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
-  wy::WYTrans{E},
-  k::Int;
+  wy::WYTrans{E};
+  offset = 0
+) where {E<:Number,S}
+  InPlace.apply_right!(t, bc, (wy, wy.active_WY[]), offset = offset)
+end
+
+@inline function InPlace.apply_right!(
+  ::Type{Band{E}},
+  bc::AbstractBandColumn{S,E},
+  (wy, k)::Tuple{WYTrans{E},Int};
   offset = 0
 ) where {E<:Number,S}
 
@@ -408,11 +420,19 @@ end
   nothing
 end
 
+@inline function InPlace.apply_right_inv!(
+  t::Type{Band{E}},
+  bc::AbstractBandColumn{S,E},
+  wy::WYTrans{E};
+  offset = 0
+) where {E<:Number,S}
+  InPlace.apply_right_inv!(t, bc, (wy, wy.active_WY[]), offset = offset)
+end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
-  wy::WYTrans{E},
-  k::Int;
+  (wy, k)::Tuple{WYTrans{E},Int};
   offset = 0
 ) where {E<:Number,S}
 
@@ -480,8 +500,17 @@ end
 end
 
 @inline function InPlace.apply_left!(
+  t::Type{Band{E}},
   wy::WYTrans{E},
-  k::Int,
+  bc::AbstractBandColumn{S,E};
+  offset = 0
+) where {E<:Number,S}
+  InPlace.apply_left!(t, (wy, wy.active_WY[]), bc, offset = offset)
+end
+
+@inline function InPlace.apply_left!(
+  ::Type{Band{E}},
+  (wy, k)::Tuple{WYTrans{E},Int},
   bc::AbstractBandColumn{S,E};
   offset = 0
 ) where {E<:Number,S}
@@ -550,8 +579,17 @@ end
 end
 
 @inline function InPlace.apply_left_inv!(
+  t::Type{Band{E}},
   wy::WYTrans{E},
-  k::Int,
+  bc::AbstractBandColumn{S,E};
+  offset = 0
+) where {E<:Number,S}
+  InPlace.apply_left_inv!(t, (wy, wy.active_WY[]), bc, offset = offset)
+end
+
+@inline function InPlace.apply_left_inv!(
+  ::Type{Band{E}},
+  (wy, k)::Tuple{WYTrans{E},Int},
   bc::AbstractBandColumn{S,E};
   offset = 0
 ) where {E<:Number,S}

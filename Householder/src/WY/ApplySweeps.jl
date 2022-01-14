@@ -29,7 +29,12 @@ InPlace.product_side(::Type{<:SweepBackward}, _) = InPlace.LeftProduct()
 InPlace.product_side(_, ::Type{<:SweepForward}) = InPlace.RightProduct()
 InPlace.product_side(_, ::Type{<:SweepBackward}) = InPlace.RightProduct()
 
+# InPlace.structure_type(::Type{S}) where E = WYTrans{E}
+# InPlace.structure_type(::Type{Tuple{W, Int}}) where {E, W <: WYTrans{E}} = WYTrans{E}
+
+
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   sfwy::SweepForward{<:WYTrans{E}};
   offset = 0
@@ -38,24 +43,25 @@ InPlace.product_side(_, ::Type{<:SweepBackward}) = InPlace.RightProduct()
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    InPlace.apply_right!(A, wy, k, offset = offset)
+    InPlace.apply_right!(A, (wy, k), offset = offset)
   end
 end
 
 @inline function InPlace.apply_left!(
+  ::Type{GeneralMatrix{E}},
   sfwy::SweepForward{<:WYTrans{E}},
   A::AbstractArray{E,2};
   offset = 0
 ) where {E<:Number}
-
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    InPlace.apply_left!(wy, k, A, offset = offset)
+    InPlace.apply_left!((wy, k), A, offset = offset)
   end
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   sfwy::SweepForward{<:WYTrans{E}};
   offset = 0
@@ -64,11 +70,12 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    InPlace.apply_right_inv!(A, wy, k, offset = offset)
+    InPlace.apply_right_inv!(A, (wy, k), offset = offset)
   end
 end
 
 @inline function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{E}},
   sfwy::SweepForward{<:WYTrans{E}},
   A::AbstractArray{E,2};
   offset = 0
@@ -77,11 +84,12 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    InPlace.apply_left_inv!(wy, k, A, offset = offset)
+    InPlace.apply_left_inv!((wy, k), A, offset = offset)
   end
 end
 
 @inline function InPlace.apply_right!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   sfwy::SweepBackward{<:WYTrans{E}};
   offset = 0
@@ -90,11 +98,12 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    InPlace.apply_right!(A, wy, k, offset = offset)
+    InPlace.apply_right!(A, (wy, k), offset = offset)
   end
 end
 
 @inline function InPlace.apply_left!(
+  ::Type{GeneralMatrix{E}},
   sfwy::SweepBackward{<:WYTrans{E}},
   A::AbstractArray{E,2};
   offset = 0
@@ -103,11 +112,12 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    InPlace.apply_left!(wy, k, A, offset = offset)
+    InPlace.apply_left!((wy, k), A, offset = offset)
   end
 end
 
 @inline function InPlace.apply_right_inv!(
+  ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   sfwy::SweepBackward{<:WYTrans{E}};
   offset = 0
@@ -116,11 +126,12 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ 1:n
-    InPlace.apply_right_inv!(A, wy, k, offset = offset)
+    InPlace.apply_right_inv!(A, (wy, k), offset = offset)
   end
 end
 
 @inline function InPlace.apply_left_inv!(
+  ::Type{GeneralMatrix{E}},
   sfwy::SweepBackward{<:WYTrans{E}},
   A::AbstractArray{E,2};
   offset = 0
@@ -129,6 +140,6 @@ end
   wy = sfwy.wy
   n = wy.num_WY[]
   for k ∈ n:-1:1
-    InPlace.apply_left_inv!(wy, k, A, offset = offset)
+    InPlace.apply_left_inv!((wy, k), A, offset = offset)
   end
 end

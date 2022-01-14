@@ -10,6 +10,7 @@ using ..BlockedBandColumnMatrices
 using InPlace
 
 @propagate_inbounds function InPlace.apply_right!(
+  ::Type{Band{E}},
   bc::AbstractBandColumn{S, E},
   r::AdjRot{R,E};
   offset = 0
@@ -28,6 +29,7 @@ using InPlace
 end
 
 @propagate_inbounds function InPlace.apply_right_inv!(
+  ::Type{Band{E}},
   bc::AbstractBandColumn{S, E},
   r::AdjRot{R,E};
   offset = 0
@@ -46,6 +48,7 @@ end
 end
 
 @propagate_inbounds function InPlace.apply_left!(
+  ::Type{Band{E}},
   r::AdjRot{R,E},
   bc::AbstractBandColumn{S, E};
   offset = 0
@@ -64,6 +67,7 @@ end
 end
 
 @propagate_inbounds function InPlace.apply_left_inv!(
+  ::Type{Band{E}},
   r::AdjRot{R,E},
   bc::AbstractBandColumn{S, E};
   offset = 0

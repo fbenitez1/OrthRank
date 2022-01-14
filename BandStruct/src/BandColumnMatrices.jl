@@ -2,9 +2,12 @@ module BandColumnMatrices
 
 using Printf
 using LinearAlgebra
+import InPlace
+using InPlace
 
 export BandColumn,
   AbstractBandColumn,
+  Band,
   # AbstractBandColumn methods requiring implementation.
   viewbc,
   toBandColumn,
@@ -528,6 +531,10 @@ struct BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <
   cols_first_last :: AI
   band_elements::AE
 end
+
+struct Band{E} end
+
+InPlace.structure_type(::Type{B}) where {E, S, B<:BandColumn{S, E}} = Band{E}
 
 @inline toBandColumn(bc::BandColumn) = bc
 
