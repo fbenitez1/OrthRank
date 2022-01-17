@@ -1,41 +1,44 @@
-using InPlace
-using Random
-using ShowTests
-using LinearAlgebra
+using SafeTestsets
 
-a = randn(Float64, 3, 3)
-b = randn(Float64, 3, 3)
-a0 = copy(a)
-b0 = copy(b)
+@safetestset "General-to-General transformation tests" begin
 
-Linear(a) ⊛ b
-show_equality_result("InPlace General Left Product", a0*b0, b)
+  using InPlace
+  using Random
+  using LinearAlgebra
+  using Test
 
-b=copy(b0)
-b ⊛ Linear(a)
-show_equality_result("InPlace General Right Product", b0*a0, b)
+  @testset "$E" for
+    E ∈ [ Float64,
+          Complex{Float64},
+          ]
 
-b=copy(b0)
-Linear(a) ⊘ b
-show_equality_result("InPlace General Left Inverse", a0\b0, b)
+    a = randn(E, 3, 3)
+    b = randn(E, 3, 3)
 
-b=copy(b0)
-b ⊘ Linear(a)
-show_equality_result("InPlace General Right Inverse", b0/a0, b)
+    @testset "Left apply!" begin
+      b0 = copy(b)
+      Linear(a) ⊛ b0
+      @test norm(b0-a*b) == 0.0
+    end
 
-b=copy(b0)
-apply!(Linear(a), b)
-show_equality_result("InPlace General Left apply!", a0*b0, b)
+    @testset "Right apply!" begin
+      a0 = copy(a)
+      a0 ⊛ Linear(b)
+      @test norm(a0-a*b) == 0.0
+    end
 
-b=copy(b0)
-apply!(b, Linear(a))
-show_equality_result("InPlace General Right apply!", b0*a0, b)
+    @testset "Left apply_inv!" begin
+      b0 = copy(b)
+      Linear(a) ⊘ b0
+      @test norm(b0-a\b) == 0.0
+    end
 
-b=copy(b0)
-apply_inv!(Linear(a), b)
-show_equality_result("InPlace General Left apply_inv!", a0\b0, b)
+    @testset "Right apply_inv!" begin
+      a0 = copy(a)
+      a0 ⊘ Linear(b)
+      @test norm(a0-a/b) == 0.0
+    end
 
-b=copy(b0)
-apply_inv!(b, Linear(a))
-show_equality_result("InPlace General Right apply_inv!", b0/a0, b)
-
+  end
+end
+nothing

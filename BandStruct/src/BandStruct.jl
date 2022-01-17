@@ -17,6 +17,9 @@ include("BandRotations.jl")
 include("BandHouseholder.jl")
 @reexport using .BandHouseholder
 
+include("Factor.jl")
+@reexport using .Factor
+
 # include("HouseholderWeight.jl")
 # @reexport using .HouseholderWeight
 

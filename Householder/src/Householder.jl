@@ -8,4 +8,7 @@ include("Compute.jl")
 include("WY.jl")
 @reexport using .WY
 
+include("Factor.jl")
+@reexport using .Factor
+
 end # module

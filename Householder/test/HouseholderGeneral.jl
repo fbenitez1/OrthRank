@@ -1,280 +1,73 @@
-tol = 1e-14
-l=2
-m=3
-
-print("""
-
-Testing Householder Transformations
-
-Real Left Multiplication Tests
-
-""")
-
-# Real Left Multiplication
-
-a=randn(Float64,m,m)
-a0 = copy(a)
-h = lhouseholder(copy(a[:,1]),l,0,m)
-
-h ⊘ a
-column_nonzero!(a,l,1)
-
-show_error_result(
-  "Singular value errors for left multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for column_nonzero!, Real",
-  0.0,
-  norm(a[1:(l - 1), 1]) + norm(a[(l + 1):m, 1]),
-)
-
-h ⊛ a
-show_error_result(
-  "Left inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-# Real Right Multiplication
-print("""
-
-Real Right Multiplication Tests
-
-""")
-
-a=rand(Float64,m,m) .- 0.5
-a0 = copy(a)
-h = rhouseholder(copy(a[1,:]),l,0,m)
-
-a ⊛ h
-row_nonzero!(a,1,l)
-
-show_error_result(
-  "Singular value errors for right multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for row_nonzero!, Real",
-  0.0,
-  norm(a[1,1:(l - 1)]) + norm(a[1, (l + 1):m]),
-)
-
-a ⊘ h
-show_error_result(
-  "Right inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-print("""
-
-Complex Left Multiplication Tests
-
-""")
-
-a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-a0 = copy(a)
-
-h = lhouseholder(copy(a[:,1]),l,0,m)
-h ⊘ a
-column_nonzero!(a,l,1)
-
-show_error_result(
-  "Singular value errors for left multiplication, Complex",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for column_nonzero!, Complex",
-  0.0,
-  norm(a[1:(l - 1), 1]) + norm(a[(l + 1):m, 1]),
-)
-
-h ⊛ a
-show_error_result(
-  "Left inverse error test, Complex",
-  norm(a-a0),
-  tol,
-)
-
-print("""
-
-Complex Right Multiplication Tests
-
-""")
-
-a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-a0 = copy(a)
-
-h = rhouseholder(copy(a[1,:]),l,0,m)
-
-a ⊛ h
-row_nonzero!(a,1,l)
-show_error_result(
-  "Singular value errors for right multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for row_nonzero!, Real",
-  0.0,
-  norm(a[1,1:(l - 1)]) + norm(a[1, (l + 1):m]),
-)
-
-a ⊘ h
-show_error_result(
-  "Right inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-
-print("""
-
-Testing Householder Transformations for Adjoint Matrices
-
-Real Left Multiplication Adjoint Tests
-
-""")
-
-# Real Left Multiplication
-
-a=rand(Complex{Float64},m,m) .- 0.5'
-a0 = copy(a)
-a=a'
-a0=a0'
-
-h = lhouseholder(copy(a[:,1]),l,0,m)
-
-h ⊘ a
-column_nonzero!(a,l,1)
-
-show_error_result(
-  "Singular value errors for left multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for column_nonzero!, Real",
-  0.0,
-  norm(a[1:(l - 1), 1]) + norm(a[(l + 1):m, 1]),
-)
-
-h ⊛ a
-show_error_result(
-  "Left inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-# Real Right Multiplication
-print("""
-
-Real Right Multiplication Adjoint Tests
-
-""")
-
-a=rand(Float64,m,m) .- 0.5
-a0 = copy(a)
-a=a'
-a0=a0'
-
-h = rhouseholder(copy(a[1,:]),l,0,m)
-
-a ⊛ h
-row_nonzero!(a,1,l)
-
-show_error_result(
-  "Singular value errors for right multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for row_nonzero!, Real",
-  0.0,
-  norm(a[1,1:(l - 1)]) + norm(a[1, (l + 1):m]),
-)
-
-a ⊘ h
-show_error_result(
-  "Right inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
-
-print("""
-
-Complex Left Multiplication Adjoint Tests
-
-""")
-
-a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-a0 = copy(a)
-a=a'
-a0=a0'
-
-h = lhouseholder(copy(a[:,1]),l,0,m)
-h ⊘ a
-column_nonzero!(a,l,1)
-
-show_error_result(
-  "Singular value errors for left multiplication, Complex",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for column_nonzero!, Complex",
-  0.0,
-  norm(a[1:(l - 1), 1]) + norm(a[(l + 1):m, 1]),
-)
-
-h ⊛ a
-show_error_result(
-  "Left inverse error test, Complex",
-  norm(a-a0),
-  tol,
-)
-
-print("""
-
-Complex Right Multiplication Adjoint Tests
-
-""")
-
-a=rand(Complex{Float64},m,m) .- (0.5+0.5im)
-a0 = copy(a)
-a=a'
-a0=a0'
-
-h = rhouseholder(copy(a[1,:]),l,0,m)
-
-a ⊛ h
-row_nonzero!(a,1,l)
-show_error_result(
-  "Singular value errors for right multiplication, Real",
-  norm(svdvals(a) - svdvals(a0)),
-  tol,
-)
-
-show_equality_result(
-  "Exact zero test for row_nonzero!, Real",
-  0.0,
-  norm(a[1,1:(l - 1)]) + norm(a[1, (l + 1):m]),
-)
-
-a ⊘ h
-show_error_result(
-  "Right inverse error test, Real",
-  norm(a-a0),
-  tol,
-)
+@safetestset "Householder Times General" begin
+  using InPlace
+  using Householder
+  using Random
+  using LinearAlgebra
+  @testset "Householder Times General Tests, $E, zero=$l, col/row=$k" for
+    E ∈ [ Float64,
+          Complex{Float64},
+          ],
+
+    l ∈ [1,2,3],
+    k ∈ [1,2,3]
+
+    tol = 1e-14
+    m=3
+
+    @testset "Left Multiplication Zero and Inverse" begin
+      a=randn(E,m,m)
+      a0 = copy(a)
+      h = lhouseholder(copy(a[:,k]),l,0,m)
+
+      h ⊘ a
+      column_nonzero!(a,l,k)
+      @test norm(svdvals(a) - svdvals(a0)) <= tol
+      @test norm(a[1:(l - 1), k]) + norm(a[(l + 1):m, k]) == 0.0
+      h ⊛ a
+      @test norm(a-a0) <= tol
+    end
+
+    @testset "Right Multiplication Zero and Inverse" begin
+      a=randn(E,m,m)
+      a0 = copy(a)
+      h = rhouseholder(copy(a[k,:]),l,0,m)
+
+      a ⊛ h
+      row_nonzero!(a,k,l)
+      @test norm(svdvals(a) - svdvals(a0)) <= tol
+      @test norm(a[k,1:(l - 1)]) + norm(a[k, (l + 1):m]) == 0.0
+      a ⊘ h
+      @test norm(a-a0) <= tol
+    end
+
+    @testset "Left Multiplication Adjoint Zero and Inverse" begin
+      a=rand(E,m,m)
+      a0 = copy(a)
+      a=a'
+      a0=a0'
+      h = lhouseholder(copy(a[:,k]),l,0,m)
+      h ⊘ a
+      column_nonzero!(a,l,k)
+      @test norm(svdvals(a) - svdvals(a0)) <= tol
+      @test norm(a[1:(l - 1), k]) + norm(a[(l + 1):m, k]) == 0.0
+
+      h ⊛ a
+      @test norm(a-a0) <= tol
+    end
+
+    @testset "Right Multiplication Adjoint Zero and Inverse" begin
+      a=rand(Float64,m,m) .- 0.5
+      a0 = copy(a)
+      a=a'
+      a0=a0'
+      h = rhouseholder(copy(a[k,:]),l,0,m)
+      a ⊛ h
+      row_nonzero!(a,k,l)
+      @test norm(svdvals(a) - svdvals(a0)) <= tol
+      @test norm(a[k,1:(l - 1)]) + norm(a[k, (l + 1):m]) == 0.0
+      a ⊘ h
+      @test norm(a-a0) <= tol
+    end
+  end
+end
+nothing

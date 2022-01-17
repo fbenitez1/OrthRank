@@ -1,103 +1,118 @@
-#                 1   2       3   4
-# A =   X   X   X | U | O   O | N |
-#                 +---+-----------+
-#       X   X   X   X | U   U | O |
-#     1 ------+       |       |   |
-#       O   L | X   X | U   U | O |
-#             |       +-------+---+
-#       O   L | X   X   X   X | U |
-#     2 ------+---+           +---+
-#       O   O | L | X   X   X   X |
-#     3 ------+---+---+           |
-#       O   O | O | L | X   X   X |
-#             |   |   |           +
-#       N   N | N | L | X   X   X 
-#     4 ------+---+---+-------+   
-#       N   N | N | N | O   L | X 
+@safetestset "Band Householder" begin
+  using BandStruct.BandColumnMatrices
+  using BandStruct.BlockedBandColumnMatrices
+  using InPlace
+  using Householder
+  using Random
+  using LinearAlgebra
 
-tol = 2e-15
+  include("standard_test_case.jl")
 
-println("""
+  @testset "$E" for
+    E ∈ [ Float64,
+          Complex{Float64} ]
 
-*******************************
-** Testing BandStruct Householders
-*******************************
+    # X   X   X | U | O   O | N | 
+    #           + - + - - - + - + 
+    # X   X   X   X | U   U | O | 
+    # - - - +       |       |   | 
+    # O   L | X   X | U   U | O | 
+    #       |       + - - - + - + 
+    # O   L | X   X   X   X | U | 
+    # - - - + - +           + - + 
+    # O   O | L | X   X   X   X | 
+    # - - - + - + - +           | 
+    # O   O | O | L | X   X   X | 
+    #       |   |   |           + 
+    # N   O | O | L | X   X   X   
+    # - - - + - + - + - - - +     
+    # N   N | O | O | O   L | X   
 
-Matrix structure:
-""")
+    tol = 2e-15
+    (bc, bbc) = standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
 
-show(wilk(bbc0))
-println()
+    @testset "$B Zero Elements" for
+      (bc0, B) ∈ [ (bc, "BandColumn")
+                   (bbc, "BlockedBandColumn") ]
 
-bc0 = bbc0[:,:]
-mx_bc0 = Matrix(bc0)
+      mx_bc0 = Matrix(bc0)
 
-work = zeros(Float64, maximum(size(bc)))
+      work = zeros(E, maximum(size(bc0)))
 
-# Zero elements 3 to 4 in column 2 with a left Householder.
-bch_34_2 = copy(bc0)
-mx_bch_34_2 = Matrix(bch_34_2)
-v_34_2 = zeros(Float64, 3)
+      # Zero elements 3 to 4 in column 2 with a left Householder.
+      bch_34_2 = copy(bc0)
+      mx_bch_34_2 = Matrix(bch_34_2)
+      v_34_2 = zeros(E, 3)
 
-h_34_2 = householder(bch_34_2, 2:4, 2, 1, 1, v_34_2, work)
-h_34_2 ⊘ bch_34_2
+      h_34_2 = householder(bch_34_2, 2:4, 2, 1, 1, v_34_2, work)
+      h_34_2 ⊘ bch_34_2
 
-mx_bch_34_2_a = copy(mx_bch_34_2)
-h_34_2 ⊘ mx_bch_34_2_a
+      mx_bch_34_2_a = copy(mx_bch_34_2)
+      h_34_2 ⊘ mx_bch_34_2_a
 
-show_error_result(
-  "Real left Householder singular value test",
-  norm(svdvals(Matrix(bch_34_2)) - svdvals(mx_bch_34_2)),
-  tol)
+      @test norm(svdvals(Matrix(bch_34_2)) - svdvals(mx_bch_34_2)) <= tol
+      @test norm(Matrix(bch_34_2) - mx_bch_34_2_a) <= tol
+      @test norm(Matrix(bch_34_2)[3:4,2]) <= tol
 
-show_error_result(
-  "Real left Householder unstructured transformation test",
-  norm(Matrix(bch_34_2) - mx_bch_34_2_a),
-  tol
-)
+      h_34_2 ⊛ bch_34_2
+      @test norm(Matrix(bch_34_2) - mx_bch_34_2) <= tol
 
-show_error_result(
-  "Real left Householder zero elements test",
-  norm(Matrix(bch_34_2)[3:4,2]),
-  tol
-)
+      # Zero elements 5 to 6 in row 4 with a right Householder.
+      bch_4_56 = copy(bc0)
+      mx_bch_4_56 = Matrix(bch_4_56)
+      v_4_56 = zeros(E, 3)
 
-h_34_2 ⊛ bch_34_2
-show_error_result(
-  "Real left Householder inverse test",
-  norm(Matrix(bch_34_2) - mx_bch_34_2),
-  tol)
+      h_4_56 = householder(bch_4_56, 4, 5:7, 3, 4, v_4_56, work)
+      bch_4_56 ⊛ h_4_56
 
-# Zero elements 5 to 6 in row 4 with a right Householder.
-bch_4_56 = copy(bc0)
-mx_bch_4_56 = Matrix(bch_4_56)
-v_4_56 = zeros(Float64, 3)
+      mx_bch_4_56_a = copy(mx_bch_4_56)
+      mx_bch_4_56_a ⊛ h_4_56
 
-h_4_56 = householder(bch_4_56, 4, 5:7, 3, 4, v_4_56, work)
-bch_4_56 ⊛ h_4_56
+      @test norm(svdvals(Matrix(bch_4_56)) - svdvals(mx_bch_4_56)) <= tol
+      @test norm(Matrix(bch_4_56) - mx_bch_4_56_a) <= tol
+      @test norm(Matrix(bch_4_56)[4,5:6]) <= tol
 
-mx_bch_4_56_a = copy(mx_bch_4_56)
-mx_bch_4_56_a ⊛ h_4_56
+      bch_4_56 ⊘ h_4_56
+      @test norm(Matrix(bch_4_56) - mx_bch_4_56) <= tol
+    end
 
-show_error_result(
-  "Real right Householder singular value test",
-  norm(svdvals(Matrix(bch_4_56)) - svdvals(mx_bch_4_56)),
-  tol)
+    (bc, bbc) = standard_test_case(E, upper_rank_max = 2, lower_rank_max = 1)
+    @testset "$B NoStorage Check" for
+      (bc0, B) ∈ [ (bc, "BandColumn")
+                   (bbc, "BlockedBandColumn") ]
 
-show_error_result(
-  "Real right Householder unstructured transformation test",
-  norm(Matrix(bch_4_56) - mx_bch_4_56_a),
-  tol
-)
+      # X   X   X | U | O   O | N | 
+      #           + - + - - - + - + 
+      # X   X   X   X | U   U | O | 
+      # - - - +       |       |   | 
+      # O   L | X   X | U   U | O | 
+      #       |       + - - - + - + 
+      # N   L | X   X   X   X | U | 
+      # - - - + - +           + - + 
+      # N   O | L | X   X   X   X | 
+      # - - - + - + - +           | 
+      # N   N | O | L | X   X   X | 
+      #       |   |   |           + 
+      # N   N | N | L | X   X   X   
+      # - - - + - + - + - - - +     
+      # N   N | N | O | O   L | X   
 
-show_error_result(
-  "Real right Householder zero elements test",
-  norm(Matrix(bch_4_56)[4,5:6]),
-  tol
-)
+      work = zeros(E, maximum(size(bc0)))
 
-bch_4_56 ⊘ h_4_56
-show_error_result(
-  "Real right Householder inverse test",
-  norm(Matrix(bch_4_56) - mx_bch_4_56),
-  tol)
+      bch_57_4 = copy(bc0)
+      v_57_4 = zeros(E, 3)
+      h_57_4 = householder(bch_57_4, 5:7, 4, 1, 4, v_57_4, work)
+      @test_throws NoStorageForIndex h_57_4 ⊘ bch_57_4
+
+      bch_14_4 = copy(bc0)
+      v_14_4 = zeros(E, 4)
+      h_14_4 = householder(bch_14_4, 1:4, 4, 4, 0, v_14_4, work)
+      @test_throws NoStorageForIndex h_14_4 ⊘ bch_14_4
+
+      bch_4_47 = copy(bc0)
+      v_4_47 = zeros(E, 4)
+      h_4_47 = householder(bch_4_47, 4, 4:7, 1, 3, v_4_47, work)
+      @test_throws NoStorageForIndex bch_4_47 ⊛ h_4_47
+    end
+  end
+end

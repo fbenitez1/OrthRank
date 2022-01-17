@@ -534,7 +534,8 @@ end
 
 struct Band{E} end
 
-InPlace.structure_type(::Type{B}) where {E, S, B<:BandColumn{S, E}} = Band{E}
+InPlace.structure_type(::Type{B}) where {E,S,B<:AbstractBandColumn{S,E}} =
+  Band{E}
 
 @inline toBandColumn(bc::BandColumn) = bc
 
