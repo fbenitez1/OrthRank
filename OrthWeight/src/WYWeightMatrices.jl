@@ -959,11 +959,11 @@ function LinearAlgebra.Matrix(::Type{LeadingDecomp}, wyw::WYWeight)
   rwy = wyw.rightWY
   @views for l ∈ Iterators.reverse(LowerCompressed(wyw))
     rows, _ = lower_block_ranges(bbc, l)
-    apply_inv!(a[rows, :], rwy, l)
+    apply_inv!(a[rows, :], (rwy, l))
   end
   @views for l ∈ Iterators.reverse(UpperCompressed(wyw))
     _, cols = upper_block_ranges(bbc, l)
-    apply!(lwy, l, a[:, cols])
+    apply!((lwy, l), a[:, cols])
   end
   a
 end
@@ -975,11 +975,11 @@ function LinearAlgebra.Matrix(::Type{TrailingDecomp}, wyw::WYWeight)
   rwy = wyw.rightWY
   @views for l ∈ LowerCompressed(wyw)
     _, cols = lower_block_ranges(bbc, l)
-    apply!(lwy, l, a[:, cols])
+    apply!((lwy, l), a[:, cols])
   end
   @views for l ∈ UpperCompressed(wyw)
     rows, _ = upper_block_ranges(bbc, l)
-    apply_inv!(a[rows, :], rwy, l)
+    apply_inv!(a[rows, :], (rwy, l))
   end
   a
 end
