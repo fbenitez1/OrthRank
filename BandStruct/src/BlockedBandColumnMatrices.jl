@@ -1447,137 +1447,6 @@ in a matrix of size ``m×n``.
  end
 
 """
-    leading_constrain_lower_ranks(
-      blocks::AbstractArray{Int,2},
-      lower_ranks::AbstractArray{Int,1},
-    )
-
-Take a nominal lower rank sequence and constrain it to be
-consistent with the preceding ranks in a leading decomposition.
-"""
-function leading_constrain_lower_ranks(
-  blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  lower_ranks::AbstractArray{Int,1},
-)
-
-  lr = similar(lower_ranks)
-  lr .= 0
-  num_blocks = size(blocks, 2)
-  
-  sz_first = size_lower_block(blocks,m,n,1)
-  lr[1] = min(minimum(sz_first), lower_ranks[1])
-  old_cols_lb = 1:0
-  for lb = 2:num_blocks
-    rows_lb, cols_lb = lower_block_ranges(blocks, m, n, lb)
-    cols_ext = setdiffᵣ(cols_lb, old_cols_lb) ∪ᵣ last(old_cols_lb, lr[lb-1])
-    lr[lb] = min(length(rows_lb), length(cols_ext), lower_ranks[lb])
-  end
-  lr
-end
-
-"""
-    trailing_constrain_lower_ranks(
-      blocks::AbstractArray{Int,2},
-      lower_ranks::AbstractArray{Int,1},
-    )
-
-Take a nominal lower rank sequence and constrain it to be consistent
-with the size of the blocks and preceding ranks in a trailing
-decomposition.
-"""
-function trailing_constrain_lower_ranks(
-  blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  lower_ranks::AbstractArray{Int,1},
-)
-
-  lr = similar(lower_ranks)
-  lr .= 0
-  num_blocks = size(blocks, 2)
-
-  sz_last = size_lower_block(blocks, m, n, num_blocks)
-  lr[num_blocks] = min(minimum(sz_last), lower_ranks[num_blocks])
-
-  old_rows_lb, _ = lower_block_ranges(blocks, m, n, num_blocks)
-
-  for lb = (num_blocks - 1):-1:1
-    rows_lb, cols_lb = lower_block_ranges(blocks, m, n, lb)
-    rows_ext = setdiffᵣ(rows_lb, old_rows_lb) ∪ᵣ first(old_rows_lb, lr[lb + 1])
-    lr[lb] = min(length(cols_lb), length(rows_ext), lower_ranks[lb])
-  end
-  lr
-end
-
-"""
-    leading_constrain_upper_ranks(
-      blocks::AbstractArray{Int,2},
-      upper_ranks::AbstractArray{Int,1},
-    )
-
-Take a nominal upper rank sequence and constrain it to be
-consistent with the size of block and preceding ranks in
-a leading decomposition.
-"""
-function leading_constrain_upper_ranks(
-  blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  upper_ranks::AbstractArray{Int,1},
-)
-
-  ur = similar(upper_ranks)
-  ur .= 0
-  num_blocks = size(blocks, 2)
-
-  sz_first = size_upper_block(blocks,m,n,1)
-  ur[1] = min(minimum(sz_first), upper_ranks[1])
-  old_rows_ub = 1:0
-  for ub = 2:num_blocks
-    rows_ub, cols_ub = upper_block_ranges(blocks, m, n, ub)
-    rows_ext = setdiffᵣ(rows_ub, old_rows_ub) ∪ᵣ last(old_rows_ub, ur[ub - 1])
-    ur[ub] = min(length(cols_ub), length(rows_ext), upper_ranks[ub])
-  end
-  ur
-end
-
-"""
-    trailing_constrain_upper_ranks(
-      blocks::AbstractArray{Int,2},
-      upper_ranks::AbstractArray{Int,1},
-    )
-
-Take a nominal upper rank sequence and constrain it to be
-consistent with the size of block and preceding ranks in
-a trailing decomposition.
-"""
-function trailing_constrain_upper_ranks(
-  blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  upper_ranks::AbstractArray{Int,1},
-)
-
-  ur = similar(upper_ranks)
-  ur .= 0
-  num_blocks = size(blocks, 2)
-  sz_last = size_upper_block(blocks,m,n,num_blocks)
-
-  ur[num_blocks] =
-    min(minimum(sz_last), upper_ranks[num_blocks])
-
-  old_cols_ub = 1:0
-  for ub = num_blocks-1:-1:1
-    rows_ub, cols_ub = upper_block_ranges(blocks, m, n, ub)
-    cols_ext = setdiffᵣ(cols_ub, old_cols_ub) ∪ᵣ first(old_cols_ub, ur[ub+1])
-    ur[ub] = min(length(rows_ub), length(cols_ext), upper_ranks[ub])
-  end
-  ur
-end
-
-"""
     leading_lower_ranks_to_cols_first_last!(
       bbc::BlockedBandColumn,
       rs::AbstractArray{Int,1},
@@ -1592,7 +1461,7 @@ function leading_lower_ranks_to_cols_first_last!(
 )
 
   m, n = size(bbc)
-  rs1 = leading_constrain_lower_ranks(bbc.lower_blocks, m, n, rs)
+  rs1 = constrain_lower_ranks(m, n, blocks = bbc.lower_blocks, ranks = rs)
   for lb = 1:bbc.num_blocks
     rows_lb, cols_lb = lower_block_ranges(bbc, lb)
     rows_lb1, _ = lower_block_ranges(bbc, lb+1) # empty if lb+1 > num_blocks
@@ -1618,7 +1487,7 @@ function trailing_lower_ranks_to_cols_first_last!(
 )
 
   m, n = size(bbc)
-  rs1 = trailing_constrain_lower_ranks(bbc.lower_blocks, m, n, rs)
+  rs1 = constrain_lower_ranks(m, n, blocks = bbc.lower_blocks, ranks = rs)
   for lb = bbc.num_blocks:-1:1
     rows_lb, cols_lb = lower_block_ranges(bbc, lb)
     _, cols_lb1 = lower_block_ranges(bbc, lb-1) # empty if lb-1 < 1
@@ -1645,7 +1514,7 @@ function leading_upper_ranks_to_cols_first_last!(
 )
 
   m, n = size(bbc)
-  rs1 = leading_constrain_upper_ranks(bbc.upper_blocks, m, n, rs)
+  rs1 = constrain_upper_ranks(m, n, blocks = bbc.upper_blocks, ranks = rs)
 
   for ub = 1:bbc.num_blocks
     rows_ub, cols_ub = upper_block_ranges(bbc, ub)
@@ -1674,7 +1543,7 @@ function trailing_upper_ranks_to_cols_first_last!(
 )
 
   m, n = size(bbc)
-  rs1 = trailing_constrain_upper_ranks(bbc.upper_blocks, m, n, rs)
+  rs1 = constrain_upper_ranks(m, n, blocks = bbc.upper_blocks, ranks = rs)
   for ub = bbc.num_blocks:-1:1
     rows_ub, cols_ub = upper_block_ranges(bbc, ub)
     rows_ub1, _ = upper_block_ranges(bbc, ub - 1) # empty if ub-1 < 1
