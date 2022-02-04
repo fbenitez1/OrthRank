@@ -12,6 +12,7 @@ using ..BandColumnMatrices
 using ..BlockedBandColumnMatrices
 using InPlace
 
+
 # vector and work.
 Base.@propagate_inbounds function Compute.householder(
   bc::AbstractBandColumn{S,E},
@@ -187,7 +188,8 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      @tturbo for k ∈ k_first:k_last
+      # @tturbo for k ∈ k_first:k_last
+      for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
@@ -197,7 +199,8 @@ end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      @tturbo for k ∈ k_first:k_last
+      # @tturbo for k ∈ k_first:k_last
+      for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β * work[k-k_first+1] 
         for j ∈ 1:m
@@ -317,7 +320,8 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      @tturbo for k ∈ k_first:k_last
+      # @tturbo for k ∈ k_first:k_last
+      for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
@@ -327,7 +331,8 @@ end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      @tturbo for k ∈ k_first:k_last
+      # @tturbo for k ∈ k_first:k_last
+      for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β̄ * work[k-k_first+1] 
         for j ∈ 1:m
