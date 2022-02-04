@@ -13,8 +13,8 @@ not be complex.  The rotation acts in rows (or columns) j1 and j2.
  
 This should be interpreted as a matrix
 
-[  c conj(s) ;
-  -s c       ]
+[  c       s ;
+  -conj(s) c ]
 
 """
 struct Rot{R,T}
@@ -37,8 +37,8 @@ acts in rows (or columns) j and j+1..
  
 This should be interpreted as a matrix
 
-[  c conj(s) ;
-  -s c       ]
+[  c       s ;
+  -conj(s) c ]
 
 """
 struct AdjRot{R,T}
@@ -69,7 +69,7 @@ InPlace.product_side(_, _, ::Type{<:AdjRot}) = InPlace.RightProduct()
     normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
     signx = x / xmag
     c = xmag / normxy
-    s = -conj(signx)*y / normxy
+    s = -signx * conj(y) / normxy
     (c,s)
   end
 end
@@ -97,7 +97,7 @@ element of r ⊘ [x;y].
     normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
     signy = y / ymag
     c = ymag / normxy
-    s = signy * conj(x) / normxy
+    s = conj(signy) * x / normxy
     (c,s)
   end
 end
@@ -125,7 +125,7 @@ second component of  [x,y] ⊛ r.
     normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
     signx = x / xmag
     c = xmag / normxy
-    s = -signx * conj(y) / normxy
+    s = -conj(signx) * y / normxy
     (c,s)
   end
 end
@@ -153,7 +153,7 @@ first component of  [x,y] ⊛ r.
     normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
     signy = y / ymag
     c = ymag / normxy
-    s = conj(signy) * x / normxy
+    s = signy * conj(x) / normxy
     (c,s)
   end
 end
@@ -260,8 +260,8 @@ Apply a rotation, acting in-place to modify a.
   j2 = r.j2 + offset
   @inbounds for k = 1:n
     tmp = a[j1, k]
-    a[j1, k] = c * tmp + conj(s) * a[j2, k]
-    a[j2, k] = -s * tmp + c * a[j2, k]
+    a[j1, k] = c * tmp + s * a[j2, k]
+    a[j2, k] = -conj(s) * tmp + c * a[j2, k]
   end
   nothing
 end
@@ -279,8 +279,8 @@ end
   k2 = r.j2 + offset
   @inbounds for j = 1:m
     tmp = a[j, k1]
-    a[j, k1] = c * tmp - s * a[j, k2]
-    a[j, k2] = conj(s) * tmp + c * a[j, k2]
+    a[j, k1] = c * tmp - conj(s) * a[j, k2]
+    a[j, k2] = s * tmp + c * a[j, k2]
   end
   nothing
 end
@@ -297,8 +297,8 @@ end
   j = r.j + offset
   @inbounds for k = 1:n
     tmp = a[j, k]
-    a[j, k] = c * tmp + conj(s) * a[j + 1, k]
-    a[j + 1, k] = -s * tmp + c * a[j + 1, k]
+    a[j, k] = c * tmp + s * a[j + 1, k]
+    a[j + 1, k] = -conj(s) * tmp + c * a[j + 1, k]
   end
   nothing
 end
@@ -315,8 +315,8 @@ end
   k = r.j + offset
   for j = 1:m
     tmp = a[j, k]
-    a[j, k] = c * tmp - s * a[j, k + 1]
-    a[j, k + 1] = conj(s) * tmp + c * a[j, k + 1]
+    a[j, k] = c * tmp - conj(s) * a[j, k + 1]
+    a[j, k + 1] = s * tmp + c * a[j, k + 1]
   end
   nothing
 end
@@ -339,8 +339,8 @@ Apply an inverse rotation, acting in-place to modify a.
   j2 = r.j2 + offset
   @inbounds for k = 1:n
     tmp = a[j1, k]
-    a[j1, k] = c * tmp - conj(s) * a[j2, k]
-    a[j2, k] = s * tmp + c * a[j2, k]
+    a[j1, k] = c * tmp - s * a[j2, k]
+    a[j2, k] = conj(s) * tmp + c * a[j2, k]
   end
   nothing
 end
@@ -358,8 +358,8 @@ end
   k2 = r.j2 + offset
   @inbounds for j = 1:m
     tmp = a[j, k1]
-    a[j, k1] = c * tmp + s * a[j, k2]
-    a[j, k2] = -conj(s) * tmp + c * a[j, k2]
+    a[j, k1] = c * tmp + conj(s) * a[j, k2]
+    a[j, k2] = -s * tmp + c * a[j, k2]
   end
   nothing
 end
@@ -376,8 +376,8 @@ end
   j = r.j + offset
   @inbounds for k = 1:n
     tmp = a[j, k]
-    a[j, k] = c * tmp - conj(s) * a[j + 1, k]
-    a[j + 1, k] = s * tmp + c * a[j + 1, k]
+    a[j, k] = c * tmp - s * a[j + 1, k]
+    a[j + 1, k] = conj(s) * tmp + c * a[j + 1, k]
   end
   nothing
 end
@@ -394,8 +394,8 @@ end
   k = r.j + offset
   @inbounds for j = 1:m
     tmp = a[j, k]
-    a[j, k] = c * tmp + s * a[j, k + 1]
-    a[j, k + 1] = -conj(s) * tmp + c * a[j, k + 1]
+    a[j, k] = c * tmp + conj(s) * a[j, k + 1]
+    a[j, k + 1] = -s * tmp + c * a[j, k + 1]
   end
   nothing
 end
