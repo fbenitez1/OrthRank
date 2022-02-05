@@ -28,7 +28,7 @@
     # - - - + - + - + - - - +     
     # N   N | O | O | O   L | X   
 
-    tol = 2e-15
+    tol = 5e-15
     (bc, bbc) = standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
 
     @testset "$B Zero Elements" for
