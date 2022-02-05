@@ -17,7 +17,7 @@ This should be interpreted as a matrix
   -conj(s) c ]
 
 """
-struct Rot{R,T}
+struct Rot{T,R}
   c::R
   s::T
   j1::Int64
@@ -41,7 +41,7 @@ This should be interpreted as a matrix
   -conj(s) c ]
 
 """
-struct AdjRot{R,T}
+struct AdjRot{T,R}
   c::R
   s::T
   j::Int64
@@ -249,7 +249,7 @@ Apply a rotation, acting in-place to modify a.
 """
 @inline function InPlace.apply_left!(
   ::Type{GeneralMatrix{T}},
-  r::Rot{R,T},
+  r::Rot{T,R},
   a::AbstractArray{T,2};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -269,7 +269,7 @@ end
 @inline function InPlace.apply_right!(
   ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
-  r::Rot{R,T};
+  r::Rot{T,R};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
@@ -287,7 +287,7 @@ end
 
 @inline function InPlace.apply_left!(
   ::Type{GeneralMatrix{T}},
-  r::AdjRot{R,T},
+  r::AdjRot{T,R},
   a::AbstractArray{T,2};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -306,7 +306,7 @@ end
 @inline function InPlace.apply_right!(
   ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
-  r::AdjRot{R,T};
+  r::AdjRot{T,R};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
@@ -328,7 +328,7 @@ Apply an inverse rotation, acting in-place to modify a.
 """
 @inline function InPlace.apply_left_inv!(
   ::Type{GeneralMatrix{T}},
-  r::Rot{R,T},
+  r::Rot{T,R},
   a::AbstractArray{T,2};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -348,7 +348,7 @@ end
 @inline function InPlace.apply_right_inv!(
   ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
-  r::Rot{R,T};
+  r::Rot{T,R};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c
@@ -366,7 +366,7 @@ end
 
 @inline function InPlace.apply_left_inv!(
   ::Type{GeneralMatrix{T}},
-  r::AdjRot{R,T},
+  r::AdjRot{T,R},
   a::AbstractArray{T,2};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -385,7 +385,7 @@ end
 @inline function InPlace.apply_right_inv!(
   ::Type{GeneralMatrix{T}},
   a::AbstractArray{T,2},
-  r::AdjRot{R,T};
+  r::AdjRot{T,R};
   offset = 0
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
   c = r.c

@@ -12,7 +12,7 @@ using InPlace
 @propagate_inbounds function InPlace.apply_right!(
   ::Type{Band{E}},
   bc::AbstractBandColumn{S, E},
-  r::AdjRot{R,E};
+  r::AdjRot{E,R};
   offset = 0
 ) where {S,R<:AbstractFloat,E<:Union{R,Complex{R}}}
   c = r.c
@@ -31,7 +31,7 @@ end
 @propagate_inbounds function InPlace.apply_right_inv!(
   ::Type{Band{E}},
   bc::AbstractBandColumn{S, E},
-  r::AdjRot{R,E};
+  r::AdjRot{E,R};
   offset = 0
 ) where {S, R<:AbstractFloat,E<:Union{R,Complex{R}}}
   c = r.c
@@ -49,7 +49,7 @@ end
 
 @propagate_inbounds function InPlace.apply_left!(
   ::Type{Band{E}},
-  r::AdjRot{R,E},
+  r::AdjRot{E,R},
   bc::AbstractBandColumn{S, E};
   offset = 0
 ) where {S, R<:AbstractFloat,E<:Union{R,Complex{R}}}
@@ -68,7 +68,7 @@ end
 
 @propagate_inbounds function InPlace.apply_left_inv!(
   ::Type{Band{E}},
-  r::AdjRot{R,E},
+  r::AdjRot{E,R},
   bc::AbstractBandColumn{S, E};
   offset = 0
 ) where {S, R<:AbstractFloat,E<:Union{R,Complex{R}}}
