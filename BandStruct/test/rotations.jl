@@ -40,6 +40,8 @@
       bcr26 = copy(bc0)
       mx_bcr26 = Matrix(bcr26)
       rr26 = rgivens(bcr26[2,5], bcr26[2,6],5)
+      println(typeof(bcr26))
+      println(typeof(rr26))
       bcr26 ⊛ rr26
       mx_bcr26 ⊛ rr26
       @test abs(bcr26[2, 6]) <= tol

@@ -1,6 +1,13 @@
 module Rotations
 
-export Rot, AdjRot, lgivens, lgivens1, rgivens, rgivens1
+export Rot,
+  AdjRot,
+  get_inds,
+  lgivens,
+  lgivens1,
+  rgivens,
+  rgivens1,
+  check_inplace_rotation_types
 
 include("Givens.jl")
 using .Givens

@@ -14,7 +14,7 @@ using SafeTestsets
 
     @testset "Nonadjacent Left Zero and Inverse, $E" begin
       A = randn(E, 3, 3)
-      r = lgivens(A[1, 1], A[3, 1], 1, 3)
+      r = lgivens(A[1, 1], A[3, 1], (1, 3))
       A1 = copy(A)
       r ⊘ A1
       @test abs(A1[3, 1]) <= tol
@@ -25,7 +25,7 @@ using SafeTestsets
 
     @testset "Nonadjacent Right Zero and Inverse, $E" begin
       A = randn(E, 3, 3)
-      r = rgivens(A[1, 1], A[1, 3], 1, 3)
+      r = rgivens(A[1, 1], A[1, 3], (1, 3))
       A1 = copy(A)
       A1 ⊛ r
       @test abs(A1[1,3]) <= tol
@@ -37,7 +37,7 @@ using SafeTestsets
 
     @testset "Nonadjacent Left Zero and Inverse, First Element, $E" begin
       A = randn(E, 3, 3)
-      r = lgivens1(A[1, 1], A[3, 1], 1, 3)
+      r = lgivens1(A[1, 1], A[3, 1], (1, 3))
       A1 = copy(A)
       r ⊘ A1
       @test abs(A1[1,1]) <= tol
@@ -49,7 +49,7 @@ using SafeTestsets
 
     @testset "Nonadjacent Right Zero and Inverse, First Element, $E" begin
       A_rrz1 = randn(E, 3, 3)
-      r_rrz1 = rgivens1(A_rrz1[1, 1], A_rrz1[1, 3], 1, 3)
+      r_rrz1 = rgivens1(A_rrz1[1, 1], A_rrz1[1, 3], (1, 3))
       A1_rrz1 = copy(A_rrz1)
       A1_rrz1 ⊛ r_rrz1
       @test abs(A1_rrz1[1,1]) <= tol
