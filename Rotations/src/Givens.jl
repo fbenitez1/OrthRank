@@ -7,6 +7,10 @@ export Rot,
   lgivens1,
   rgivens,
   rgivens1,
+  lgivensPR,
+  lgivensPR1,
+  rgivensPR,
+  rgivensPR1,
   check_inplace_rotation_types
 
 using LinearAlgebra
@@ -74,9 +78,9 @@ element of r ⊘ [x;y].
   xmag = abs(x)
   ymag = abs(y)
   if xmag == 0
-    zero(R), one(T)
+    ymag == 0 ? (one(R), zero(T)) : (zero(R), -conj(y)/abs(y))
   else
-    scale = 1 / (xmag + ymag) # scale to avoid possible overflow.
+    scale = 1 / (xmag + ymag)
     xr = real(x) * scale
     xi = imag(x) * scale
     yr = real(y) * scale
@@ -85,6 +89,27 @@ element of r ⊘ [x;y].
     signx = x / xmag
     c = xmag / normxy
     s = -signx * conj(y) / normxy
+    c, s
+  end
+end
+
+@inline function lgivensPR(
+  x::T,
+  y::T,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  xmag = abs(x)
+  ymag = abs(y)
+  if xmag == 0
+    ymag == 0 ? (one(T), zero(T)) : (zero(T), -conj(y)/abs(y))
+  else
+    scale = 1 / (xmag + ymag)
+    xr = real(x) * scale
+    xi = imag(x) * scale
+    yr = real(y) * scale
+    yi = imag(y) * scale
+    normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
+    c = x / normxy
+    s = -conj(y) / normxy
     c, s
   end
 end
@@ -100,9 +125,9 @@ element of r ⊘ [x;y].
   xmag = abs(x)
   ymag = abs(y)
   if ymag == 0
-    zero(R), one(T)
+    xmag == 0 ? (one(R), zero(T)) : (zero(R), x/abs(x))
   else
-    scale = 1 / (xmag + ymag) # scale to avoid possible overflow.
+    scale = 1 / (xmag + ymag)
     xr = real(x) * scale
     xi = imag(x) * scale
     yr = real(y) * scale
@@ -115,11 +140,30 @@ element of r ⊘ [x;y].
   end
 end
 
-"""
+@inline function lgivensPR1(
+  x::T,
+  y::T,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  xmag = abs(x)
+  ymag = abs(y)
+  if ymag == 0
+    xmag == 0 ? (one(T), zero(T)) : (zero(T), x/abs(x))
+  else
+    scale = 1 / (xmag + ymag)
+    xr = real(x) * scale
+    xi = imag(x) * scale
+    yr = real(y) * scale
+    yi = imag(y) * scale
+    normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
+    c = conj(y) / normxy
+    s = x / normxy
+    c, s
+  end
+end
 
+"""
 Compute a rotation r to introduce a zero from the right into the 
 second component of  [x,y] ⊛ r.
-
 """
 @inline function rgivens(
   x::T,
@@ -128,9 +172,9 @@ second component of  [x,y] ⊛ r.
   xmag = abs(x)
   ymag = abs(y)
   if xmag == 0
-    zero(R), one(T)
+    ymag == 0 ? (one(R), zero(T)) : (zero(R), -y/ymag)
   else
-    scale = 1 / (xmag + ymag) # scale to avoid possible overflow.
+    scale = 1 / (xmag + ymag)
     xr = real(x) * scale
     xi = imag(x) * scale
     yr = real(y) * scale
@@ -139,6 +183,27 @@ second component of  [x,y] ⊛ r.
     signx = x / xmag
     c = xmag / normxy
     s = -conj(signx) * y / normxy
+    c, s
+  end
+end
+
+@inline function rgivensPR(
+  x::T,
+  y::T,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  xmag = abs(x)
+  ymag = abs(y)
+  if xmag == 0
+    ymag == 0 ? (one(T), zero(T)) : (zero(T), -y/ymag)
+  else
+    scale = 1 / (xmag + ymag)
+    xr = real(x) * scale
+    xi = imag(x) * scale
+    yr = real(y) * scale
+    yi = imag(y) * scale
+    normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
+    c = conj(x) / normxy
+    s = -y / normxy
     c, s
   end
 end
@@ -154,9 +219,9 @@ first component of  [x,y] ⊛ r.
   xmag = abs(x)
   ymag = abs(y)
   if ymag == 0
-    zero(R), one(T)
+    xmag == 0 ? (one(R), zero(T)) : (zero(R), conj(x)/xmag)
   else
-    scale = 1 / (xmag + ymag) # scale to avoid possible overflow.
+    scale = 1 / (xmag + ymag)
     xr = real(x) * scale
     xi = imag(x) * scale
     yr = real(y) * scale
@@ -169,81 +234,99 @@ first component of  [x,y] ⊛ r.
   end
 end
 
+@inline function rgivensPR1(
+  x::T,
+  y::T,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  xmag = abs(x)
+  ymag = abs(y)
+  if ymag == 0
+    xmag == 0 ? (one(T), zero(T)) : (zero(T), conj(x)/xmag)
+  else
+    scale = 1 / (xmag + ymag)
+    xr = real(x) * scale
+    xi = imag(x) * scale
+    yr = real(y) * scale
+    yi = imag(y) * scale
+    normxy = sqrt(xr * xr + xi * xi + yr * yr + yi * yi) / scale
+    c = y / normxy
+    s = conj(x) / normxy
+    c, s
+  end
+end
+
 @inline function lgivens(
   x::T,
   y::T,
-  j1::Integer,
-  j2::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
-  c, s = lgivens(x,y)
-  Rot(c, s, j1, j2)
+  inds::J,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
+  c, s = lgivens(x, y)
+  Rot(c, s, inds)
+end
+
+@inline function lgivensPR(
+  x::T,
+  y::T,
+  inds::J,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
+  c, s = lgivensPR(x, y)
+  Rot(c, s, inds)
 end
 
 @inline function lgivens1(
   x::T,
   y::T,
-  j1::Integer,
-  j2::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  inds::J
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
   c, s = lgivens1(x, y)
-  Rot(c, s, j1, j2)
+  Rot(c, s, inds)
+end
+
+@inline function lgivensPR1(
+  x::T,
+  y::T,
+  inds::J
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
+  c, s = lgivensPR1(x, y)
+  Rot(c, s, inds)
 end
 
 @inline function rgivens(
   x::T,
   y::T,
-  j1::Integer,
-  j2::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  inds::J
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
   c, s=rgivens(x,y)
-  Rot(c, s, j1, j2)
+  Rot(c, s, inds)
+end
+
+@inline function rgivensPR(
+  x::T,
+  y::T,
+  inds::J,
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
+  c, s=rgivensPR(x,y)
+  Rot(c, s, inds)
 end
 
 @inline function rgivens1(
   x::T,
   y::T,
-  j1::Integer,
-  j2::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
+  inds::J
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
   c, s = rgivens1(x, y)
-  Rot(c, s, j1, j2)
+  Rot(c, s, inds)
 end
 
-@inline function lgivens(
+@inline function rgivensPR1(
   x::T,
   y::T,
-  j::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
-  c, s = lgivens(x,y)
-  Rot(c, s, j)
+  inds::J
+) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
+  c, s = rgivensPR1(x, y)
+  Rot(c, s, inds)
 end
 
-@inline function lgivens1(
-  x::T,
-  y::T,
-  j::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
-  c, s = lgivens1(x,y)
-  Rot(c, s, j)
-end
-
-@inline function rgivens(
-  x::T,
-  y::T,
-  j::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
-  c, s = rgivens(x,y)
-  Rot(c, s, j)
-end
-
-@inline function rgivens1(
-  x::T,
-  y::T,
-  j::Integer,
-) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
-  (c, s) = rgivens1(x, y)
-  Rot(c, s, j)
-end
 
 """
     check_inplace_rotation_types(TS,TC,E)
@@ -372,4 +455,4 @@ end
   nothing
 end
 
-end # module
+end
