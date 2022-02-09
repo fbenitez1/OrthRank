@@ -16,6 +16,17 @@ export Rot,
 using LinearAlgebra
 import InPlace
 using InPlace
+using LoopVectorization
+
+macro real_tturbo(t, ex)
+  return esc(quote
+               if $t <: Real
+                 @tturbo $ex
+               else
+                 @inbounds @fastmath $ex
+               end
+             end)
+end
 
 """
 A flexible rotation struct.  The sine and cosine might or might
@@ -375,10 +386,9 @@ Apply a rotation, acting in-place to modify a.
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
-  (_, n) = size(a)
   j1 = j1 + offset
   j2 = j2 + offset
-  @inbounds for k = 1:n
+  @real_tturbo E for k ∈ indices(a,2)
     tmp = a[j1, k]
     a[j1, k] = c * tmp + s * a[j2, k]
     a[j2, k] = -conj(s) * tmp + conj(c) * a[j2, k]
@@ -397,10 +407,9 @@ end
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
-  (m, _) = size(a)
   k1 = j1 + offset
   k2 = j2 + offset
-  @inbounds for j = 1:m
+  @real_tturbo E for j = indices(a,1)
     tmp = a[j, k1]
     a[j, k1] = c * tmp - conj(s) * a[j, k2]
     a[j, k2] = s * tmp + conj(c) * a[j, k2]
@@ -422,10 +431,9 @@ Apply an inverse rotation, acting in-place to modify a.
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
-  (_, n) = size(a)
   j1 = j1 + offset
   j2 = j2 + offset
-  @inbounds for k = 1:n
+  @real_tturbo E for k = indices(a,2)
     tmp = a[j1, k]
     a[j1, k] = conj(c) * tmp - s * a[j2, k]
     a[j2, k] = conj(s) * tmp + c * a[j2, k]
@@ -444,10 +452,9 @@ end
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
-  (m, _) = size(a)
   k1 = j1 + offset
   k2 = j2 + offset
-  @inbounds for j = 1:m
+  @real_tturbo E for j ∈ indices(a,1)
     tmp = a[j, k1]
     a[j, k1] = conj(c) * tmp + conj(s) * a[j, k2]
     a[j, k2] = -s * tmp + c * a[j, k2]
