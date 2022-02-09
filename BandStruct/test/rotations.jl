@@ -40,17 +40,15 @@
       bcr26 = copy(bc0)
       mx_bcr26 = Matrix(bcr26)
       rr26 = rgivens(bcr26[2,5], bcr26[2,6],5)
-      println(typeof(bcr26))
-      println(typeof(rr26))
       bcr26 ⊛ rr26
       mx_bcr26 ⊛ rr26
       @test abs(bcr26[2, 6]) <= tol
-      @test Matrix(bcr26) == mx_bcr26
+      @test norm(Matrix(bcr26) - mx_bcr26, Inf) <= tol
 
       mx_bcr26[2,6]=zero(E)
       bcr26[2,6]=zero(E)
       notch_upper!(bcr26,2,6)
-      @test Matrix(bcr26) == mx_bcr26
+      @test norm(Matrix(bcr26) - mx_bcr26, Inf) <= tol
       bcr26 ⊘ rr26
       @test norm(Matrix(bcr26) - mx_bc0, Inf) <= tol
 
@@ -67,11 +65,11 @@
       rl74 ⊘ bcl74
       rl74 ⊘ mx_bcl74
       @test abs(bcl74[7, 4]) <= tol
-      @test Matrix(bcl74) == mx_bcl74
+      @test norm(Matrix(bcl74) - mx_bcl74, Inf) <= tol
 
       mx_bcl74[7,4] = zero(E)
       notch_lower!(bcl74,7,4)
-      @test Matrix(bcl74) == mx_bcl74
+      @test norm(Matrix(bcl74) - mx_bcl74) <= tol
 
       rl74 ⊛ bcl74
       @test norm(Matrix(bcl74) - mx_bc0, Inf) <= tol

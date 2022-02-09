@@ -12,6 +12,15 @@ using ..BandColumnMatrices
 using ..BlockedBandColumnMatrices
 using InPlace
 
+macro real_tturbo(t, ex)
+  return esc(quote
+               if $t <: Real
+                 @tturbo $ex
+               else
+                 @inbounds @fastmath $ex
+               end
+             end)
+end
 
 # vector and work.
 Base.@propagate_inbounds function Compute.householder(
@@ -135,7 +144,7 @@ end
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      @tturbo for k ∈ 1:m
+      @real_tturbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
         for j ∈ j_first:j_last
@@ -143,7 +152,7 @@ end
         end
       end
       # Subtract β * w * vᴴ from bc.
-      @tturbo for k ∈ 1:m
+      @real_tturbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β * conj(v[k])
         for j ∈ j_first:j_last
@@ -188,22 +197,22 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      # @tturbo for k ∈ k_first:k_last
+      # @real_tturbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        for j ∈ 1:m
+        @real_tturbo E for j ∈ 1:m
           x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      # @tturbo for k ∈ k_first:k_last
+      # @real_tturbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β * work[k-k_first+1] 
-        for j ∈ 1:m
+        @real_tturbo E for j ∈ 1:m
           l = offs + j - storage_offs
           bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
@@ -266,7 +275,7 @@ end
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      @tturbo for k ∈ 1:m
+      @real_tturbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
         for j ∈ j_first:j_last
@@ -274,7 +283,7 @@ end
         end
       end
       # Subtract β̄ * w * vᴴ from bc.
-      @tturbo for k ∈ 1:m
+      @real_tturbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β̄ * conj(v[k])
         for j ∈ j_first:j_last
@@ -320,22 +329,22 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      # @tturbo for k ∈ k_first:k_last
+      # @real_tturbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        for j ∈ 1:m
+        @real_tturbo E for j ∈ 1:m
           x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      # @tturbo for k ∈ k_first:k_last
+      # @real_tturbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β̄ * work[k-k_first+1] 
-        for j ∈ 1:m
+        @real_tturbo E for j ∈ 1:m
           l = offs + j - storage_offs
           bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
