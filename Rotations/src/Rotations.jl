@@ -16,4 +16,6 @@ export Rot,
 include("Givens.jl")
 using .Givens
 
+include("precompile.jl")
+
 end # module

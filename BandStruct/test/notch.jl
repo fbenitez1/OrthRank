@@ -1,14 +1,13 @@
 @safetestset "Notch Tests with Row Validation" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
+  using BandStruct
   using Random
-  include("standard_test_case.jl")
 
   @testset "$E" for
     E ∈ [ Float64,
           Complex{Float64} ]
 
-    (bc, bbc) = standard_test_case(E, upper_rank_max = 3, lower_rank_max = 2)
+    (bc, bbc) =
+      BandStruct.standard_test_case(E, upper_rank_max = 3, lower_rank_max = 2)
 
     @testset "$B" for
       (bc0, B) ∈ [ (bc, "BandColumn"),

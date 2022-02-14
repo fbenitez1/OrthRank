@@ -1,4 +1,4 @@
-module Factor
+module BandFactor
 
 export bandQRB,
   bandQRA, get_WY, qrBWYSweep, lqBH, lqBWY, lqBWYSweep, makeBForQR, makeBForLQ, makeA

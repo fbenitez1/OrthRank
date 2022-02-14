@@ -53,7 +53,7 @@
 
     resetWYBlock!(wy2, block = l2, offset = offset2, sizeWY = size2)
     selectWY!(wy2, l2)
-    wy1.num_hs[l2] = num_hs2
+    wy2.num_hs[l2] = num_hs2
     rand!(wy2)
 
     @testset "Identity Right WYWY Test" begin

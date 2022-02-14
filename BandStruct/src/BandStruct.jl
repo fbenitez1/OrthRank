@@ -17,10 +17,10 @@ include("BandRotations.jl")
 include("BandHouseholder.jl")
 @reexport using .BandHouseholder
 
-include("Factor.jl")
-@reexport using .Factor
+include("BandFactor.jl")
+@reexport using .BandFactor
 
-# include("HouseholderWeight.jl")
-# @reexport using .HouseholderWeight
+include("../test/standard_test_case.jl")
+include("precompile.jl")
 
 end

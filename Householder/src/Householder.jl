@@ -11,4 +11,6 @@ include("WY.jl")
 include("Factor.jl")
 @reexport using .Factor
 
+include("precompile.jl")
+
 end # module

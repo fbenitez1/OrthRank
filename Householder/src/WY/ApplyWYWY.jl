@@ -30,8 +30,8 @@ function InPlace.apply_right!(
   wy1_num_hs = wy1.num_hs[l1]
   wy2_num_hs = wy2.num_hs[l2]
 
-  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvilable(l1, wy1_num_WY)
-  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvilable(l2, wy2_num_WY)
+  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvailable(l1, wy1_num_WY)
+  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvailable(l2, wy2_num_WY)
 
   wy1_offset = wy1.offsets[l1]
   wy2_offset = wy2.offsets[l2]
@@ -64,8 +64,15 @@ function InPlace.apply_right!(
     wy1.Y[1:wy1_size, col_inds2, l1] .= zero(E)
     # Row indices of wy2 within wy1, without the wy1_offset.
     inds_wy12 = wy2_inds .- wy1_offset
-    wy1.W[inds_wy12, col_inds2, l1] .= wy2.W[1:wy2_size, 1:wy2_num_hs, l2]
-    wy1.Y[inds_wy12, col_inds2, l1] .= wy2.Y[1:wy2_size, 1:wy2_num_hs, l2]
+    Δj = first(inds_wy12) - 1
+    Δk = first(col_inds2) - 1
+    for k∈1:wy2_num_hs, j∈1:wy2_size
+      wy1.W[j+Δj, k+Δk, l1] = wy2.W[j, k, l2]
+      wy1.Y[j+Δj, k+Δk, l1] = wy2.Y[j, k, l2]
+    end
+    # JET prefers the explicit loop.
+    # wy1.W[inds_wy12, col_inds2, l1] .= wy2.W[1:wy2_size, 1:wy2_num_hs, l2]
+    # wy1.Y[inds_wy12, col_inds2, l1] .= wy2.Y[1:wy2_size, 1:wy2_num_hs, l2]
   end
   nothing
 end
@@ -100,8 +107,8 @@ function InPlace.apply_right_inv!(
   wy1_num_hs = wy1.num_hs[l1]
   wy2_num_hs = wy2.num_hs[l2]
 
-  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvilable(l1, wy1_num_WY)
-  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvilable(l2, wy2_num_WY)
+  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvailable(l1, wy1_num_WY)
+  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvailable(l2, wy2_num_WY)
 
   wy1_offset = wy1.offsets[l1]
   wy2_offset = wy2.offsets[l2]
@@ -134,8 +141,15 @@ function InPlace.apply_right_inv!(
     wy1.Y[1:wy1_size, col_inds2, l1] .= zero(E)
     # Row indices of wy2 within wy1, without the wy1_offset.
     inds_wy12 = wy2_inds .- wy1_offset
-    wy1.W[inds_wy12, col_inds2, l1] .= wy2.Y[1:wy2_size, 1:wy2_num_hs, l2]
-    wy1.Y[inds_wy12, col_inds2, l1] .= wy2.W[1:wy2_size, 1:wy2_num_hs, l2]
+    Δj = first(inds_wy12) - 1
+    Δk = first(col_inds2) - 1
+    for k∈1:wy2_num_hs, j∈1:wy2_size
+      wy1.W[j+Δj, k+Δk, l1] = wy2.Y[j, k, l2]
+      wy1.Y[j+Δj, k+Δk, l1] = wy2.W[j, k, l2]
+    end
+    # JET prefers the explicit loop.
+    # wy1.W[inds_wy12, col_inds2, l1] .= wy2.Y[1:wy2_size, 1:wy2_num_hs, l2]
+    # wy1.Y[inds_wy12, col_inds2, l1] .= wy2.W[1:wy2_size, 1:wy2_num_hs, l2]
   end
   nothing
 end
@@ -169,8 +183,8 @@ function InPlace.apply_left!(
   wy1_num_hs = wy1.num_hs[l1]
   wy2_num_hs = wy2.num_hs[l2]
 
-  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvilable(l1, wy1_num_WY)
-  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvilable(l2, wy2_num_WY)
+  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvailable(l1, wy1_num_WY)
+  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvailable(l2, wy2_num_WY)
 
   wy1_offset = wy1.offsets[l1]
   wy2_offset = wy2.offsets[l2]
@@ -202,8 +216,14 @@ function InPlace.apply_left!(
     wy2.Y[1:wy2_size, col_inds1, l2] .= zero(E)
     # Row indices of wy1 within wy2, without the wy2_offset.
     inds_wy21 = wy1_inds .- wy2_offset
-    wy2.W[inds_wy21, col_inds1, l2] .= wy1.W[1:wy1_size, 1:wy1_num_hs, l1]
-    wy2.Y[inds_wy21, col_inds1, l2] .= wy1.Y[1:wy1_size, 1:wy1_num_hs, l1]
+    Δj = first(inds_wy21) - 1
+    Δk = first(col_inds1) - 1
+    for k∈1:wy1_num_hs, j∈1:wy1_size
+      wy2.W[j+Δj, k+Δk, l2] = wy1.W[j, k, l1]
+      wy2.Y[j+Δj, k+Δk, l2] = wy1.Y[j, k, l1]
+    end
+    # wy2.W[inds_wy21, col_inds1, l2] .= wy1.W[1:wy1_size, 1:wy1_num_hs, l1]
+    # wy2.Y[inds_wy21, col_inds1, l2] .= wy1.Y[1:wy1_size, 1:wy1_num_hs, l1]
   end
   nothing
 end
@@ -237,8 +257,8 @@ function InPlace.apply_left_inv!(
   wy1_num_hs = wy1.num_hs[l1]
   wy2_num_hs = wy2.num_hs[l2]
 
-  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvilable(l1, wy1_num_WY)
-  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvilable(l2, wy2_num_WY)
+  @boundscheck l1 ∈ 1:wy1_num_WY || throw_WYBlockNotAvailable(l1, wy1_num_WY)
+  @boundscheck l2 ∈ 1:wy2_num_WY || throw_WYBlockNotAvailable(l2, wy2_num_WY)
 
   wy1_offset = wy1.offsets[l1]
   wy2_offset = wy2.offsets[l2]
@@ -271,8 +291,16 @@ function InPlace.apply_left_inv!(
     wy2.Y[1:wy2_size, col_inds1, l2] .= zero(E)
     # Row indices of wy1 within wy2, without the wy2_offset.
     inds_wy21 = wy1_inds .- wy2_offset
-    wy2.W[inds_wy21, col_inds1, l2] .= wy1.Y[1:wy1_size, 1:wy1_num_hs, l1]
-    wy2.Y[inds_wy21, col_inds1, l2] .= wy1.W[1:wy1_size, 1:wy1_num_hs, l1]
+    Δj = first(inds_wy21) - 1
+    Δk = first(col_inds1) - 1
+    for k∈1:wy1_num_hs
+      @simd for j∈1:wy1_size
+        wy2.W[j+Δj, k+Δk, l2] = wy1.Y[j, k, l1]
+        wy2.Y[j+Δj, k+Δk, l2] = wy1.W[j, k, l1]
+      end
+    end
+    # wy2.W[inds_wy21, col_inds1, l2] .= wy1.Y[1:wy1_size, 1:wy1_num_hs, l1]
+    # wy2.Y[inds_wy21, col_inds1, l2] .= wy1.W[1:wy1_size, 1:wy1_num_hs, l1]
   end
   nothing
 end

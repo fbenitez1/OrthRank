@@ -189,4 +189,6 @@ end
   nothing
 end
 
+include("precompile.jl")
+
 end # module

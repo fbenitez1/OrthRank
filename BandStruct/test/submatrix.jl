@@ -1,14 +1,13 @@
 @safetestset "BandStruct Submatrix/View" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
+  using BandStruct
   using Random
-  include("standard_test_case.jl")
 
   @testset "$E" for
     E ∈ [ Float64,
           Complex{Float64} ]
 
-    (bc0, bbc0) = standard_test_case(E, upper_rank_max = 3, lower_rank_max = 2)
+    (bc0, bbc0) =
+      BandStruct.standard_test_case(E, upper_rank_max = 3, lower_rank_max = 2)
 
     mx_bc0 = Matrix(bc0)
     bc = copy(bc0)

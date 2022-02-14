@@ -1,15 +1,14 @@
 @safetestset "Zero Elements" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
+  using BandStruct
   using Random
   using LinearAlgebra
 
-  include("standard_test_case.jl")
   @testset "$E" for
     E ∈ [ Float64,
           Complex{Float64} ]
 
-    (bc, bbc) = standard_test_case(E, upper_rank_max = 2, lower_rank_max = 1)
+    (bc, bbc) =
+      BandStruct.standard_test_case(E, upper_rank_max = 2, lower_rank_max = 1)
 
     @testset "$B" for
       (bc0, B) ∈ [ (bc, "BandColumn")

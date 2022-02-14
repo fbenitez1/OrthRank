@@ -1,12 +1,9 @@
 @safetestset "Band WY" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
+  using BandStruct
   using InPlace
   using Householder
   using Random
   using LinearAlgebra
-
-  include("standard_test_case.jl")
 
   @testset "$E" for
     E ∈ [ Float64,
@@ -31,7 +28,8 @@
     # N   N | O | O | O   L | X   
 
     tol = 2e-15
-    (bc, bbc) = standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
+    (bc, bbc) =
+      BandStruct.standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
     @testset "$B" for
       (bc0, B) ∈ [ (bc, "BandColumn")
                    (bbc, "BlockedBandColumn") ]

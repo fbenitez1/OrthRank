@@ -1,9 +1,5 @@
 @safetestset "Band QR Factorization" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
-  using BandStruct.BandRotations
-  using BandStruct.BandHouseholder
-  using BandStruct.Factor
+  using BandStruct
   using Householder
 
   using Random

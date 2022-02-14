@@ -1,19 +1,16 @@
 @safetestset "Band Rotations" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
+  using BandStruct
   using InPlace
   using Rotations
   using Random
   using LinearAlgebra
-
-  include("standard_test_case.jl")
 
   @testset "$E" for
     E ∈ [ Float64,
           Complex{Float64} ]
 
     tol = 1e-15
-    (bc, bbc) = standard_test_case(E)
+    (bc, bbc) = BandStruct.standard_test_case(E)
 
     @testset "$B" for
       (bc0, B) ∈ [ (bc, "BandColumn")

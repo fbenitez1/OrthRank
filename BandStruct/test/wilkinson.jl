@@ -1,15 +1,13 @@
 @safetestset "Wilkinson Diagrams, Leading and Trailing Generation" begin
-  using BandStruct.BandColumnMatrices
-  using BandStruct.BlockedBandColumnMatrices
+  using BandStruct
   using Random
-  include("standard_test_case.jl")
 
   @testset "$E" for
     E ∈ [ Float64,
           Complex{Float64} ]
     
 
-    bc0, bbc0 = standard_test_case(E)
+    bc0, bbc0 = BandStruct.standard_test_case(E)
 
     wilk_bbc0 = [
       'X' 'X' 'X' 'U' 'O' 'O' 'N'
@@ -27,7 +25,7 @@
 
 
     bc0T, bbc0T =
-      standard_test_case(E, decomp_type = TrailingDecomp)
+      BandStruct.standard_test_case(E, decomp_type = TrailingDecomp)
 
     wilk_bbc0T = [
       'X' 'X' 'X' 'U' 'O' 'O' 'N'
