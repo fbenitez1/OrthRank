@@ -23,7 +23,13 @@ export ⊛,
   GeneralMatrix,
   GeneralVector,
   structure_type,
-  substructure_type
+  substructure_type,
+  similar_leftI,
+  similar_rightI,
+  similarI,
+  similar_left_zeros,
+  similar_right_zeros,
+  similar_zeros
 
 using LinearAlgebra
 
@@ -32,6 +38,24 @@ abstract type ProductSide end
 
 struct LeftProduct <: ProductSide end
 struct RightProduct <: ProductSide end
+
+similarI(A, x...) = copyto!(similar(A, x...), I)
+
+similar_leftI(A::AbstractArray{E,2}) where {E} =
+  similarI(A, size(A, 1), size(A, 1))
+
+similar_rightI(A::AbstractArray{E,2}) where {E} =
+  similarI(A, size(A, 2), size(A, 2))
+
+similar_fill(A, e, x...) = fill!(similar(A, x...), e)
+
+similar_zeros(A, x...) = similar_fill(A, zero(eltype(A)), x...)
+
+similar_left_zeros(A::AbstractArray{E,2}) where {E} =
+  fill!(similar(A, size(A, 1), size(A, 1)), zero(E))
+
+similar_right_zeros(A::AbstractArray{E,2}) where {E} =
+  fill!(similar(A, size(A, 2), size(A, 2)), zero(E))
 
 # A trait for classifying matrix structure, notably general matrices
 # with no particular constraints on stored elements.  This is
