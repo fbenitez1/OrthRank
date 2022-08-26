@@ -2,7 +2,7 @@ using BandStruct.BandColumnMatrices
 using BandStruct.BlockedBandColumnMatrices
 using BandStruct.BandRotations
 using BandStruct.BandHouseholder
-using BandStruct.Factor
+using BandStruct.BandFactor
 using BenchmarkTools
 
 m=5000
