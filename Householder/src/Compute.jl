@@ -117,6 +117,7 @@ function lhouseholder(
   work::AbstractArray{E,1}
 ) where {E<:Number}
 
+  Base.require_one_based_indexing(a, work)
   m = length(a)
   a1 = a[l]
   if m == 1
@@ -160,7 +161,9 @@ Base.@propagate_inbounds function lhouseholder(
   offs::Int64,
   work_size::Int64,
 ) where {E<:Number}
-  work = zeros(E, work_size)
+
+  Base.require_one_based_indexing(a)
+  work = similar_zeros(a, work_size)
   lhouseholder(a,l,offs,work)
 end
 
@@ -223,7 +226,7 @@ Base.@propagate_inbounds function rhouseholder(
   offs::Int64,
   work_size::Int64,
 ) where {E<:Number}
-  work = zeros(E, work_size)
+  work = similar_zeros(a, work_size)
   rhouseholder(a,l,offs,work)
 end
 
@@ -265,7 +268,7 @@ Base.@propagate_inbounds function householder(
   nonzero_index = 1,
   offset = first(js) - 1,
 ) where {E<:Number}
-  vector=zeros(E,length(js))
+  vector = similar_zeros(A, length(js))
   householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
@@ -278,7 +281,7 @@ Base.@propagate_inbounds function householder(
   nonzero_index::Int = 1,
   offset::Int = first(js)-1,
 ) where {E<:Number}
-  work=zeros(E,work_size)
+  work = similar_zeros(A, work_size)
   householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
@@ -290,8 +293,8 @@ Base.@propagate_inbounds function householder(
   nonzero_index::Int = 1,
   offset::Int = first(js)-1,
 ) where {E<:Number}
-  work=zeros(E,work_size)
-  vector=zeros(E,length(js))
+  work = similar_zeros(A, work_size)
+  vector = similar_zeros(A, length(js))
   householder(A, js, k, nonzero_index, offset, vector, work)
 end
 
@@ -332,7 +335,7 @@ Base.@propagate_inbounds function householder(
   nonzero_index = 1,
   offset = first(ks) - 1,
 ) where {E<:Number}
-  vector=zeros(E,length(ks))
+  vector = similar_zeros(A, length(ks))
   householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 
@@ -345,7 +348,7 @@ Base.@propagate_inbounds function householder(
   nonzero_index = 1,
   offset = first(ks) - 1,
 ) where {E<:Number}
-  work=zeros(E,work_size)
+  work = similar_zeros(A, work_size)
   householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 
@@ -357,8 +360,8 @@ Base.@propagate_inbounds function householder(
   nonzero_index = 1,
   offset = first(ks) - 1,
 ) where {E<:Number}
-  work=zeros(E,work_size)
-  vector=zeros(E,length(ks))
+  work = similar_zeros(A, work_size)
+  vector = similar_zeros(A, length(ks))
   householder(A, j, ks, nonzero_index, offset, vector, work)
 end
 

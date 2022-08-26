@@ -166,8 +166,8 @@ InPlace.structure_type(::Type{Tuple{W,Int}}) where {E,W<:WYTrans{E}} =
   WYTrans{E}
 
 function Random.rand!(rng::AbstractRNG, wy::WYTrans{E}) where {E <: Number}
-  v = zeros(E,wy.max_WY_size)
-  work = zeros(E,1)
+  v = similar_zeros(wy.W, wy.max_WY_size)
+  work = similar_zeros(wy.W, 1)
   @views for k ∈ 1:wy.num_WY[]
     offs = wy.offsets[k]
     n = wy.sizes[k]
@@ -423,7 +423,7 @@ matrix of a different (larger) opposite side size.
     wy.num_hs,
     wy.W,
     wy.Y,
-    zeros(E, work_size),
+    similar_zeros(wy.work, work_size),
   )
 end
 

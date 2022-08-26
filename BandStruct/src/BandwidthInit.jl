@@ -3,6 +3,7 @@ using Printf
 using Random
 
 using ..BandColumnMatrices
+using InPlace
 
 export leading_lower_ranks_to_cols_first_last!,
   leading_upper_ranks_to_cols_first_last!,
@@ -91,7 +92,7 @@ function get_cols_first_last(
   r_upper::Int,
   r_lower::Int
 )
-  cols_first_last = zeros(Int, 6, n)
+  cols_first_last = similar_zeros(upper_blocks, 6, n)
   get_cols_first_last!(
     m,
     n,
@@ -128,7 +129,7 @@ function get_rows_first_last(
   r_upper::Int,
   r_lower::Int
 )
-  rows_first_last = zeros(Int, m, 6)
+  rows_first_last = similar_zeros(upper_blocks, m, 6)
   get_rows_first_last!(
     m,
     n,
@@ -163,7 +164,7 @@ function get_cols_first_last_lower(
   lower_blocks::AbstractArray{Int,2},
   r::Int
 )
-  cols_first_last = zeros(Int, 6, n)
+  cols_first_last = similar_zeros(lower_blocks, 6, n)
   get_cols_first_last_lower!(m, n, lower_blocks, r, cols_first_last)
   cols_first_last[4:6, :]
 end
@@ -333,7 +334,7 @@ function get_cols_first_last_upper(
   upper_blocks::AbstractArray{Int,2},
   r::Int
 )
-  cols_first_last = zeros(Int, 6, n)
+  cols_first_last = similar_zeros(upper_blocks, 6, n)
   get_cols_first_last_upper!(m, n, upper_blocks, r, cols_first_last)
   cols_first_last[1:3, :]
 end
@@ -508,7 +509,7 @@ function get_rows_first_last_lower(
   lower_blocks::AbstractArray{Int,2},
   r::Int
 )
-  rows_first_last = zeros(Int, m, 6)
+  rows_first_last = similar_zeros(lower_blocks, m, 6)
   get_rows_first_last_lower!(m, n, lower_blocks, r, rows_first_last)
   rows_first_last[:, 1:3]
 end
@@ -591,7 +592,7 @@ function get_rows_first_last_upper(
   upper_blocks::AbstractArray{Int,2},
   r::Int
 )
-  rows_first_last = zeros(Int, m, 6)
+  rows_first_last = similar_zeros(upper_blocks, m, 6)
   get_rows_first_last_upper!(m, n, upper_blocks, r, rows_first_last)
   rows_first_last[:, 4:6]
 end

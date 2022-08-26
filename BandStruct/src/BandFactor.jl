@@ -87,8 +87,8 @@ function bandQRB(
   ubw::Int,
 ) where {S,E<:Number}
   (m, n) = size(B)
-  work = zeros(E, lbw + ubw + 1)
-  v = zeros(E, lbw + 1)
+  work = similar_zeros(band_elements(B), lbw + ubw + 1)
+  v = similar_zeros(band_elements(B), lbw + 1)
   @inbounds for k ∈ 1:(n - 1)
     h = householder(B, k:min(k + lbw, m), k, v, work)
     h ⊘ B
@@ -100,8 +100,8 @@ end
 # Unstructured band QR
 function bandQRA(A::AbstractArray{E,2}, lbw::Int, ubw::Int) where {E<:Number}
   (ma, _) = size(A)
-  work = zeros(E, lbw + ubw + 1)
-  v = zeros(E, lbw + 1)
+  work = similar_zeros(A, lbw + ubw + 1)
+  v = similar_zeros(A, lbw + 1)
   @inbounds for k = 1:(ma - 1)
     j1 = min(k + lbw, ma)
     h = householder(A, k:j1, k, v, work)
@@ -150,8 +150,8 @@ function qrBWYSweep(
   m, n = size(B)
   blocks, rem = divrem(n, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  v = zeros(E, lbw + 1)
-  workh = zeros(E, m)
+  v = similar_zeros(band_elements(B), lbw + 1)
+  workh = similar_zeros(band_elements(B), m)
   @views for b ∈ 1:blocks
     selectWY!(wy, b)
     offs = (b - 1) * block_size
@@ -180,8 +180,8 @@ function lqBH(
   ubw::Int
 ) where {S,E<:Number}
   (m, n) = size(B)
-  work = zeros(E, lbw + ubw + 1)
-  v = zeros(E,ubw + 1)
+  work = similar_zeros(band_elements(B), lbw + ubw + 1)
+  v = similar_zeros(band_elements(B),ubw + 1)
   @inbounds for j ∈ 1:(m - 1)
     k_end = min(j + ubw, n)
     bulge_upper!(B, j, k_end)
@@ -202,14 +202,14 @@ function lqBWY(
   m, n = size(B)
   blocks, rem = divrem(m, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  v = zeros(E, ubw + 1)
+  v = similar_zeros(band_elements(B), ubw + 1)
   wy = WYTrans(
     E,
     max_WY_size = n,
     work_size = n * (block_size + 2) + n * (block_size + ubw),
     max_num_hs = block_size + 2,
   )
-  workh = zeros(E, n)
+  workh = similar_zeros(band_elements(B), n)
   selectWY!(wy, 1)
   @views for b ∈ 1:blocks
     j_dense = last_inband_index(B, :, ((b - 1) * block_size + 1))
@@ -238,7 +238,7 @@ function lqBWYSweep(
   m, n = size(B)
   blocks, rem = divrem(m, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  v = zeros(E, ubw + 1)
+  v = similar_zeros(band_elements(B), ubw + 1)
   wy = WYTrans(
     E,
     max_num_WY = blocks,
@@ -246,7 +246,7 @@ function lqBWYSweep(
     work_size = n * (block_size + 2) + n * (block_size + ubw),
     max_num_hs = block_size + 2,
   )
-  workh = zeros(E, n)
+  workh = similar_zeros(band_elements(B), n)
   @views for b ∈ 1:blocks
     selectWY!(wy, b)
     offs = (b - 1) * block_size

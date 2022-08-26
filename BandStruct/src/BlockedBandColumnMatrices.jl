@@ -2,6 +2,8 @@ module BlockedBandColumnMatrices
 using Printf
 using Random
 
+using InPlace
+
 using ..BandColumnMatrices
 using ..BandwidthInit
 
@@ -243,8 +245,8 @@ function BlockedBandColumn(
 ) where {E<:Number}
 
   num_blocks = size(lower_blocks,2)
-  cols_first_last = zeros(Int, 6, n)
-  rows_first_last = zeros(Int, m, 6)
+  cols_first_last = similar_zeros(upper_blocks, 6, n)
+  rows_first_last = similar_zeros(upper_blocks, m, 6)
   # Upper and lower ranks
   if isa(upper_rank_max, Int) && isa(lower_rank_max, Int) &&
     isa(upper_bw_max, Nothing) && isa(lower_bw_max, Nothing)
@@ -309,7 +311,7 @@ function BlockedBandColumn(
   end
   
   middle_lower_bw_max = middle_bw_max + lbw_max
-  band_elements = zeros(E, bw_max, n)
+  band_elements = similar_zeros(upper_blocks, E, bw_max, n)
 
   # Set the ranges for storable elements.
 

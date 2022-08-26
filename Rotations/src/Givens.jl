@@ -388,7 +388,7 @@ Apply a rotation, acting in-place to modify a.
   s = r.s
   j1 = j1 + offset
   j2 = j2 + offset
-  @real_tturbo E for k ∈ indices(a,2)
+  @real_tturbo E for k ∈ axes(a,2)
     tmp = a[j1, k]
     a[j1, k] = c * tmp + s * a[j2, k]
     a[j2, k] = -conj(s) * tmp + conj(c) * a[j2, k]
@@ -409,7 +409,7 @@ end
   s = r.s
   k1 = j1 + offset
   k2 = j2 + offset
-  @real_tturbo E for j = indices(a,1)
+  @real_tturbo E for j = axes(a,1)
     tmp = a[j, k1]
     a[j, k1] = c * tmp - conj(s) * a[j, k2]
     a[j, k2] = s * tmp + conj(c) * a[j, k2]
@@ -433,7 +433,7 @@ Apply an inverse rotation, acting in-place to modify a.
   s = r.s
   j1 = j1 + offset
   j2 = j2 + offset
-  @real_tturbo E for k = indices(a,2)
+  @real_tturbo E for k = axes(a,2)
     tmp = a[j1, k]
     a[j1, k] = conj(c) * tmp - s * a[j2, k]
     a[j2, k] = conj(s) * tmp + c * a[j2, k]
@@ -454,7 +454,7 @@ end
   s = r.s
   k1 = j1 + offset
   k2 = j2 + offset
-  @real_tturbo E for j ∈ indices(a,1)
+  @real_tturbo E for j ∈ axes(a,1)
     tmp = a[j, k1]
     a[j, k1] = conj(c) * tmp + conj(s) * a[j, k2]
     a[j, k2] = -s * tmp + c * a[j, k2]

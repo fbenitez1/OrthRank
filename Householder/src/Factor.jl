@@ -9,11 +9,11 @@ export qrH, qrWY, qrWYSweep, qrLA
 
 
 function qrH(A::AbstractArray{E,2}) where {E<:Number}
-  (m, n) = size(A)
-  Q = Matrix{E}(I, m, m)
-  v = zeros(E, m)
-  work = zeros(E, m)
-  @inbounds @views for k ∈ 1:n
+  m, n = size(A)
+  Q = similar_leftI(A)
+  v = similar_zeros(A, m)
+  work = similar_zeros(A, m)
+  @inbounds @views for k ∈ axes(A,2)
     vk = v[1:(m - k + 1)]
     vk[:] = A[k:m, k]
     h = lhouseholder(vk, 1, k - 1, work)
@@ -25,18 +25,20 @@ function qrH(A::AbstractArray{E,2}) where {E<:Number}
 end
 
 function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
+
+  Base.require_one_based_indexing(A)
   m, n = size(A)
   blocks, rem = divrem(n, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  Q = Matrix{E}(I, m, m)
-  v = zeros(E, m)
+  Q = similar_leftI(A)
+  v = similar_zeros(A, m)
   wy = WYTrans(
     E,
     max_WY_size = m,
     work_size = m * (block_size + 2),
     max_num_hs = block_size + 2,
   )
-  workh = zeros(E, m)
+  workh = similar_zeros(A, m)
   selectWY!(wy, 1)
   @inbounds @views for b ∈ 1:blocks
     offs = (b - 1) * block_size
@@ -56,10 +58,12 @@ function qrWY(A::Array{E,2}; block_size::Int=32) where {E<:Number}
 end
 
 function qrWYSweep(A::Array{E,2}; block_size::Int=32) where {E<:Number}
+
+  Base.require_one_based_indexing(A)
   m, n = size(A)
   blocks, rem = divrem(n, block_size)
   blocks = rem > 0 ? blocks + 1 : blocks
-  v = zeros(E, m)
+  v = similar_zeros(A, m)
   wy = WYTrans(
     E,
     max_num_WY = blocks,
@@ -67,7 +71,7 @@ function qrWYSweep(A::Array{E,2}; block_size::Int=32) where {E<:Number}
     work_size = m * (block_size + 2),
     max_num_hs = block_size + 2,
   )
-  workh = zeros(E, m)
+  workh = similar_zeros(A, m)
   @inbounds @views for b ∈ 1:blocks
     offs = (b - 1) * block_size
     selectWY!(wy, b)
@@ -88,9 +92,9 @@ end
 function qrLA(A::AbstractArray{E,2}) where {E<:Number}
   m, n = size(A)
   qrA=qr(A)
-  Q = Matrix{E}(I, m, m)
+  Q = similar_leftI(A)
   Q = qrA.Q * Q
-  R=zeros(E,m,n)
+  R = similar_zeros(A, m, n)
   R[1:n,1:n] = qrA.R
   (Q,R)
 end

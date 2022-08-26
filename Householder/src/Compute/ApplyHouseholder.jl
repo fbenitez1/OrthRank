@@ -14,6 +14,8 @@ end
   A::AbstractArray{E,2};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(A, h.v, h.work)
   m = h.size
   (ma, na) = size(A)
   offs = h.offs + offset
@@ -66,6 +68,8 @@ end
   A::AbstractArray{E,2};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(A, h.v, h.work)
   m = h.size
   (ma,na) = size(A)
   offs = h.offs + offset
@@ -119,6 +123,7 @@ end
   h::HouseholderTrans{E};
   offset = 0
 ) where {E<:Number}
+  Base.require_one_based_indexing(A, h.v, h.work)
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs + offset
@@ -172,6 +177,8 @@ end
   h::HouseholderTrans{E};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(A, h.v, h.work)
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs + offset
@@ -226,6 +233,8 @@ end
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(Aᴴ, h.v, h.work)
   m = h.size
   na = size(Aᴴ,2)
   v = reshape(h.v, m, 1)
@@ -279,6 +288,8 @@ end
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(Aᴴ, h.v, h.work)
   m = h.size
   na = size(Aᴴ,2)
   v = reshape(h.v, m, 1)
@@ -332,6 +343,8 @@ end
   h::HouseholderTrans{E};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(Aᴴ, h.v, h.work)
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs + offset
@@ -383,6 +396,8 @@ end
   h::HouseholderTrans{E};
   offset = 0
 ) where {E<:Number}
+
+  Base.require_one_based_indexing(Aᴴ, h.v, h.work)
   m = h.size
   v = reshape(h.v, m, 1)
   offs = h.offs + offset

@@ -2514,8 +2514,7 @@ Compute row upper and lower bandwidths from column bandwidths, filling
 them into a newly allocated array.
 """
 function compute_rows_first_last(bc::AbstractBandColumn{NonSub})
-  m = size(bc,1)
-  first_last_arr = zeros(Int,m,6)
+  first_last_arr = similar_zeros(bc.rows_first_last)
   compute_rows_first_last!(bc, first_last_arr)
   first_last_arr
 end

@@ -983,5 +983,6 @@ function LinearAlgebra.Matrix(::Type{TrailingDecomp}, wyw::WYWeight)
   end
   a
 end
+  
 
 end
