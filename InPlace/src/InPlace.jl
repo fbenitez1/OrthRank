@@ -5,6 +5,7 @@
 # transformations in which the transform and what is transformed are
 # clearly distinguishable.
 module InPlace
+import SnoopPrecompile
 
 export ⊛,
   ⊘,
@@ -213,6 +214,8 @@ end
   nothing
 end
 
-include("precompile.jl")
+SnoopPrecompile.@precompile_all_calls begin
+  include("precompile.jl")
+end
 
 end # module

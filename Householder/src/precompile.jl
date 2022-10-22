@@ -6,7 +6,7 @@ function run_cases()
 
   function run_householder(a)
     n = size(a,2)
-    h = lhouseholder(a[:,1],1,0,n)
+    h =  lhouseholder(a[:,1],1,0,n)
     h⊘a
     column_nonzero!(a,1,1)
     h = rhouseholder(a[1,:],1,0,n)

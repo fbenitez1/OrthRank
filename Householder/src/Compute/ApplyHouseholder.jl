@@ -1,9 +1,11 @@
-macro real_tturbo(t, ex)
+# @tturbo does yield some speedup at runtime, but really seems
+# to cause more type inference that isn't getting cached for some reason.
+macro real_turbo(t, ex)
   return esc(quote
                if $t <: Real
-                 @tturbo $ex
+                 @turbo $ex
                else
-                 @inbounds @fastmath $ex
+                 @inbounds $ex
                end
              end)
 end
@@ -45,14 +47,14 @@ end
   β = h.β
   work = h.work
   if na > 0 && m > 0
-    @real_tturbo E for k ∈ 1:na
+    @real_turbo E for k ∈ 1:na
       x = zero(E)
       for j ∈ 1:m
         x += conj(v[j]) * A[offs+j,k]
       end
       work[k] = x
     end
-    @real_tturbo E for k ∈ 1:na
+    @real_turbo E for k ∈ 1:na
       x = work[k]
       for j ∈ 1:m
         A[offs + j, k] -= β * v[j] * x
@@ -99,14 +101,14 @@ end
   α = conj(h.β)
   work=h.work
   if na > 0 && m > 0
-    @real_tturbo E for k ∈ 1:na
+    @real_turbo E for k ∈ 1:na
       x = zero(E)
       for j ∈ 1:m
         x += conj(v[j]) * A[offs+j,k]
       end
       work[k] = x
     end
-    @real_tturbo E for k ∈ 1:na
+    @real_turbo E for k ∈ 1:na
       x = work[k]
       for j ∈ 1:m
         A[offs+j,k] -= α * v[j] * x
@@ -155,13 +157,13 @@ end
   work[1:ma] .= zero(E)
   β = h.β
   if ma > 0 && m > 0
-    @real_tturbo E for k ∈ 1:m
+    @real_turbo E for k ∈ 1:m
       x = v[k]
       for j ∈ 1:ma
         work[j] += A[j,k+offs] * x
       end
     end
-    @real_tturbo E for k ∈ 1:m
+    @real_turbo E for k ∈ 1:m
       x=conj(v[k])
       for j ∈ 1:ma
         A[j,k+offs] -= β * work[j] * x
@@ -209,13 +211,13 @@ end
   work[1:ma] .= zero(E)
   β̃ = conj(h.β)
   if ma > 0 && m > 0
-    @real_tturbo E for k ∈ 1:m
+    @real_turbo E for k ∈ 1:m
       x = v[k]
       for j ∈ 1:ma
         work[j] += A[j,k+offs] * x
       end
     end
-    @real_tturbo E for k ∈ 1:m
+    @real_turbo E for k ∈ 1:m
       x = conj(v[k])
       for j ∈ 1:ma
         A[j,k+offs] -= β̃ * work[j] * x
@@ -266,13 +268,13 @@ end
   work[1:na] .= zero(E)
   β = h.β
   if na > 0 && m > 0
-    @real_tturbo E for j ∈ 1:m
+    @real_turbo E for j ∈ 1:m
       x = conj(v[j])
       for k ∈ 1:na
         work[k] += Aᴴ[j + offs, k] * x
       end
     end
-    @real_tturbo E for j ∈ 1:m
+    @real_turbo E for j ∈ 1:m
       x = v[j]
       for k ∈ 1:na
         Aᴴ[j + offs, k] -= β * work[k] * x
@@ -321,13 +323,13 @@ end
   work[1:na] .= zero(E)
   β̃ = conj(h.β)
   if na > 0 && m > 0
-    @real_tturbo E for j ∈ 1:m
+    @real_turbo E for j ∈ 1:m
       x = conj(v[j])
       for k ∈ 1:na
         work[k] += Aᴴ[j + offs, k] * x
       end
     end
-    @real_tturbo E for j ∈ 1:m
+    @real_turbo E for j ∈ 1:m
       x = v[j]
       for k ∈ 1:na
         Aᴴ[j + offs, k] -= β̃ * work[k] * x
@@ -373,14 +375,14 @@ end
   β = h.β
   work=h.work
   if ma > 0 && m > 0
-    @real_tturbo E for j ∈ 1:ma
+    @real_turbo E for j ∈ 1:ma
       x = zero(E)
       for k ∈ 1:m
         x = x + Aᴴ[j,k+offs] * v[k]
       end
       work[j] = x
     end
-    @real_tturbo E for j ∈ 1:ma
+    @real_turbo E for j ∈ 1:ma
       x = work[j]
       for k ∈ 1:m
         Aᴴ[j, k + offs] -= β * conj(v[k]) * x
@@ -427,14 +429,14 @@ end
   end
   β̃ = conj(h.β)
   if ma > 0 && m > 0
-    @real_tturbo E for j ∈ 1:ma
+    @real_turbo E for j ∈ 1:ma
       x = zero(E)
       for k ∈ 1:m
         x = x + Aᴴ[j, k + offs] * v[k]
       end
       work[j] = x
     end
-    @real_tturbo E for j ∈ 1:ma
+    @real_turbo E for j ∈ 1:ma
       x = work[j]
       for k ∈ 1:m
         Aᴴ[j, k + offs] -= β̃ * conj(v[k]) * x
