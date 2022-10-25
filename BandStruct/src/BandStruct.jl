@@ -20,6 +20,9 @@ include("BandHouseholder.jl")
 include("BandFactor.jl")
 @reexport using .BandFactor
 
+using Random
+include("../test/standard_test_case.jl")
+
 import SnoopPrecompile
 SnoopPrecompile.@precompile_all_calls begin
   include("../test/standard_test_case.jl")

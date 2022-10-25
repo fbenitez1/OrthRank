@@ -18,7 +18,6 @@ export ⊛,
   apply_left_inv!,
   LeftProduct,
   RightProduct,
-  ProductSide,
   product_side,
   GeneralArray,
   GeneralMatrix,
@@ -34,11 +33,8 @@ export ⊛,
 
 using LinearAlgebra
 
-# A trait for deciding what is a transformation and what is transformed.
-abstract type ProductSide end
-
-struct LeftProduct <: ProductSide end
-struct RightProduct <: ProductSide end
+struct LeftProduct end
+struct RightProduct end
 
 similarI(A, x...) = copyto!(similar(A, x...), I)
 
@@ -83,7 +79,6 @@ structure_type(::Type{A}) where {E,N,P,A<:Base.ReshapedArray{E,N,P}} =
 structure_type(::Type{A}) where {E,P,A<:Adjoint{E,P}} =
   structure_type(P)
 
-
 substructure_type(::Type{E}, ::Val{N}, ::Type{A}) where {E,N,A<:DenseArray{E}} =
   GeneralArray{E,N}
 substructure_type(::Type{E}, ::Val{N}, ::Type{A}) where {E,N,P,A<:Adjoint{E,P}} =
@@ -109,68 +104,94 @@ struct Linear{A}
   trans :: A
 end
 
-product_side(::Type{Linear{A}}, _) where A = LeftProduct()
-product_side(_, ::Type{Linear{A}}) where A = RightProduct()
+product_side(::Type{Linear{A}}, _) where A = LeftProduct
+product_side(_, ::Type{Linear{A}}) where A = RightProduct
 
-apply!(a::A, b::B; offset = 0) where {A,B} =
+
+# The top level functions do not inline.
+
+# First find the product side for apply! and apply_inv!.
+# These calls will later find the structure_type of the
+# transformed matrix.
+@noinline apply!(a::A, b::B; offset = 0) where {A,B} =
   apply!(product_side(A, B), a, b, offset = offset)
 
-apply!(::LeftProduct, a, b; offset = 0) = apply_left!(a, b, offset = offset)
+@noinline ⊛(a::A, b::B) where {A,B} = apply!(product_side(A, B), a, b)
 
-apply!(::RightProduct, a, b; offset = 0) = apply_right!(a, b, offset = offset)
-
-apply_inv!(a::A, b::B; offset = 0) where {A,B} =
+@noinline apply_inv!(a::A, b::B; offset = 0) where {A,B} =
   apply_inv!(product_side(A, B), a, b, offset = offset)
 
-apply_inv!(::LeftProduct, a, b::B; offset = 0) where {B} =
-  apply_left_inv!(structure_type(B), a, b, offset = offset)
+@noinline ⊘(a::A, b::B) where {A,B} = apply_inv!(product_side(A, B), a, b)
 
-apply_inv!(::RightProduct, a::A, b::B; offset = 0) where {A, B} =
-  apply_right_inv!(structure_type(A), a, b, offset = offset)
+# For calls that specify the side, compute the structure type of the
+# transformed matrix.
 
-@inline function ⊛(a, b)
-  apply!(a, b)
-end
+@noinline apply_left!(a::A, b::B; offset = 0) where {A,B} =
+  apply!(LeftProduct, structure_type(B), a, b, offset = offset)
 
-@inline function ⊘(a, b)
-  apply_inv!(a,b)
-end
+@noinline apply_right!(a::A, b::B; offset = 0) where {A,B} =
+  apply!(RightProduct, structure_type(A), a, b, offset = offset)
 
-@inline function apply!(t::Linear{A}, b::B; offset = 0) where {A,B}
-  apply_left!(structure_type(B), t.trans, b, offset = offset)
-end
-
-@inline function apply!(b::B, t::Linear{A}; offset = 0) where {A,B}
-  apply_right!(structure_type(B), b, t.trans, offset = offset)
-end
-
-@inline function apply_inv!(t::Linear{A}, b::B; offset = 0) where {A,B}
-  apply_left_inv!(structure_type(B), t.trans, b, offset = offset)
-end
-
-@inline function apply_inv!(b::B, t::Linear{A}; offset = 0) where {A,B}
-  apply_right_inv!(structure_type(B), b, t.trans, offset = offset)
-end
+@noinline apply_left_inv!(a::A, b::B; offset = 0) where {A,B} =
+  apply_inv!(LeftProduct, structure_type(B), a, b, offset = offset)
 
 
-@inline function apply_left!(a::A, b::B; offset = 0) where {A,B}
-  apply_left!(structure_type(B), a, b, offset = offset)
-end
+@noinline apply_right_inv!(a::A, b::B; offset = 0) where {A,B} =
+  apply_inv!(RightProduct, structure_type(A), a, b, offset = offset)
 
-@inline function apply_right!(a::A, b::B; offset = 0) where {A,B}
-  apply_right!(structure_type(A), a, b, offset = offset)
-end
+# Side can also be identified by marking which parameter is the transformation.
 
-@inline function apply_left_inv!(a::A, b::B; offset = 0) where {A,B}
-  apply_left_inv!(structure_type(B), a, b, offset = offset)
-end
+@noinline apply!(t::Linear{A}, b::B; offset = 0) where {A,B} =
+  apply!(LeftProduct, structure_type(B), t.trans, b, offset = offset)
 
-@inline function apply_right_inv!(a::A, b::B; offset = 0) where {A,B}
-  apply_right_inv!(structure_type(A), a, b, offset = offset)
-end
+@noinline ⊛(t::Linear{A}, b::B) where {A,B} =
+  apply!(LeftProduct, structure_type(B), t.trans, b)
 
-# TODO: Make these minimally allocating.
-@inline function apply_left!(
+@noinline apply!(b::B, t::Linear{A}; offset = 0) where {A,B} =
+  apply!(RightProduct, structure_type(B), b, t.trans, offset = offset)
+
+@noinline ⊛(b::B, t::Linear{A}) where {A,B} =
+  apply!(RightProduct, structure_type(B), b, t.trans)
+
+@noinline apply_inv!(t::Linear{A}, b::B; offset = 0) where {A,B} =
+  apply_inv!(LeftProduct, structure_type(B), t.trans, b, offset = offset)
+
+@noinline ⊘(t::Linear{A}, b::B) where {A,B} =
+  apply_inv!(LeftProduct, structure_type(B), t.trans, b)
+
+@noinline apply_inv!(b::B, t::Linear{A}; offset = 0) where {A,B} =
+  apply_inv!(RightProduct, structure_type(B), b, t.trans, offset = offset)
+
+@noinline ⊘(b::B, t::Linear{A}) where {A,B} =
+  apply_inv!(RightProduct, structure_type(B), b, t.trans)
+
+# Product side is computed.  Make an appropriate call to apply_left!,
+# etc. with a call to structure_type.
+
+Base.@propagate_inbounds apply!(::Type{LeftProduct}, a, b::B; offset = 0) where {B} =
+  apply!(LeftProduct, structure_type(B), a, b, offset = offset)
+
+Base.@propagate_inbounds apply!(::Type{RightProduct}, a::A, b; offset = 0) where {A} =
+  apply!(RightProduct, structure_type(A), a, b, offset = offset)
+
+Base.@propagate_inbounds apply_inv!(
+  ::Type{LeftProduct},
+  a,
+  b::B;
+  offset = 0,
+) where {B} = apply_inv!(LeftProduct, structure_type(B), a, b, offset = offset)
+
+Base.@propagate_inbounds apply_inv!(
+  ::Type{RightProduct},
+  a::A,
+  b::B;
+  offset = 0,
+) where {A,B} =
+  apply_inv!(RightProduct, structure_type(A), a, b, offset = offset)
+
+# Calls for general matrices acting on general matrices.
+function apply!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   t::AbstractArray{E,2},
   b::AbstractArray{E,2};
@@ -181,7 +202,8 @@ end
   nothing
 end
 
-@inline function apply_right!(
+function apply!(
+  ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   b::AbstractArray{E,2},
   t::AbstractArray{E,2};
@@ -192,7 +214,8 @@ end
   nothing
 end
 
-@inline function apply_left_inv!(
+function apply_inv!(
+  ::Type{LeftProduct},
   ::Type{GeneralArray{E,2}},
   t::AbstractArray{E,2},
   b::AbstractArray{E,2};
@@ -203,7 +226,8 @@ end
   nothing
 end
 
-@inline function apply_right_inv!(
+function apply_inv!(
+  ::Type{RightProduct},
   ::Type{GeneralArray{E,2}},
   b::AbstractArray{E,2},
   t::AbstractArray{E,2};

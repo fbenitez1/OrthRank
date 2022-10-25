@@ -12,12 +12,12 @@ using ..BandColumnMatrices
 using ..BlockedBandColumnMatrices
 using InPlace
 
-macro real_tturbo(t, ex)
+macro real_turbo(t, ex)
   return esc(quote
                if $t <: Real
-                 @tturbo $ex
+                 @turbo $ex
                else
-                 @inbounds @fastmath $ex
+                 @inbounds $ex
                end
              end)
 end
@@ -93,7 +93,9 @@ Base.@propagate_inbounds function Compute.householder(
 end
 
 
-@inline function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
+  ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E};
   offset = 0
@@ -144,7 +146,7 @@ end
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      @real_tturbo E for k ∈ 1:m
+      @real_turbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
         for j ∈ j_first:j_last
@@ -152,7 +154,7 @@ end
         end
       end
       # Subtract β * w * vᴴ from bc.
-      @real_tturbo E for k ∈ 1:m
+      @real_turbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β * conj(v[k])
         for j ∈ j_first:j_last
@@ -164,7 +166,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{Band{E}},
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E};
@@ -197,23 +200,22 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      # @real_tturbo E for k ∈ k_first:k_last
+      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        @real_tturbo E for j ∈ 1:m
+        @real_turbo E for j ∈ 1:m
           x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      # @real_tturbo E for k ∈ k_first:k_last
+      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β * work[k-k_first+1] 
-        @real_tturbo E for j ∈ 1:m
-          l = offs + j - storage_offs
+        @real_turbo E for j ∈ 1:m
           bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
       end
@@ -222,7 +224,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   h::HouseholderTrans{E};
@@ -275,7 +278,7 @@ end
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      @real_tturbo E for k ∈ 1:m
+      @real_turbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
         for j ∈ j_first:j_last
@@ -283,7 +286,7 @@ end
         end
       end
       # Subtract β̄ * w * vᴴ from bc.
-      @real_tturbo E for k ∈ 1:m
+      @real_turbo E for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β̄ * conj(v[k])
         for j ∈ j_first:j_last
@@ -296,7 +299,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{Band{E}},
   h::HouseholderTrans{E},
   bc::AbstractBandColumn{S,E};
@@ -329,23 +333,22 @@ end
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      # @real_tturbo E for k ∈ k_first:k_last
+      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
         # Form x = vᴴ * bc[:,k].
-        @real_tturbo E for j ∈ 1:m
+        @real_turbo E for j ∈ 1:m
           x += conj(v[j]) * bc_els[j - storage_offs+offs, k + coffs]
         end
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      # @real_tturbo E for k ∈ k_first:k_last
+      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β̄ * work[k-k_first+1] 
-        @real_tturbo E for j ∈ 1:m
-          l = offs + j - storage_offs
+        @real_turbo E for j ∈ 1:m
           bc_els[offs + j - storage_offs, k + coffs] -= v[j] * x
         end
       end
@@ -354,16 +357,18 @@ end
   nothing
 end
 
-@inline function InPlace.apply_right!(
-  t::Type{Band{E}},
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
+  T::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E};
   offset = 0
 ) where {E<:Number,S}
-  InPlace.apply_right!(t, bc, (wy, wy.active_WY[]), offset = offset)
+  InPlace.apply!(RightProduct, T, bc, (wy, wy.active_WY[]), offset = offset)
 end
 
-@inline function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   (wy, k)::Tuple{WYTrans{E},Int};
@@ -423,10 +428,9 @@ end
         n_bc0,
       )
 
-      o = one(E)
       copyto!(tmp0, bc[js, k_first:k_last])
       matmul!(work, tmp0, W)
-      matmul!(tmp0, work, Y', -o, o)
+      matmul!(tmp0, work, Y', -one(E), one(E))
 
       copyto!(bc[js, k_first:k_last], tmp0)
     end
@@ -434,16 +438,24 @@ end
   nothing
 end
 
-@inline function InPlace.apply_right_inv!(
-  t::Type{Band{E}},
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
+  T::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   wy::WYTrans{E};
   offset = 0
 ) where {E<:Number,S}
-  InPlace.apply_right_inv!(t, bc, (wy, wy.active_WY[]), offset = offset)
+  InPlace.apply_inv!(
+    RightProduct,
+    T,
+    bc,
+    (wy, wy.active_WY[]),
+    offset = offset,
+  )
 end
 
-@inline function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   (wy, k)::Tuple{WYTrans{E},Int};
@@ -503,9 +515,9 @@ end
       )
 
       copyto!(tmp0, bc[js, k_first:k_last])
-      o = one(E)
+
       matmul!(work, tmp0, Y)
-      matmul!(tmp0, work, W', -o, o)
+      matmul!(tmp0, work, W', -one(E), one(E))
 
       copyto!(bc[js, k_first:k_last], tmp0)
     end
@@ -513,16 +525,18 @@ end
   nothing
 end
 
-@inline function InPlace.apply_left!(
-  t::Type{Band{E}},
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
+  T::Type{Band{E}},
   wy::WYTrans{E},
   bc::AbstractBandColumn{S,E};
   offset = 0
 ) where {E<:Number,S}
-  InPlace.apply_left!(t, (wy, wy.active_WY[]), bc, offset = offset)
+  InPlace.apply!(LeftProduct, T, (wy, wy.active_WY[]), bc, offset = offset)
 end
 
-@inline function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{Band{E}},
   (wy, k)::Tuple{WYTrans{E},Int},
   bc::AbstractBandColumn{S,E};
@@ -592,16 +606,18 @@ end
   nothing
 end
 
-@inline function InPlace.apply_left_inv!(
-  t::Type{Band{E}},
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
+  T::Type{Band{E}},
   wy::WYTrans{E},
   bc::AbstractBandColumn{S,E};
   offset = 0
 ) where {E<:Number,S}
-  InPlace.apply_left_inv!(t, (wy, wy.active_WY[]), bc, offset = offset)
+  InPlace.apply_inv!(LeftProduct, T, (wy, wy.active_WY[]), bc, offset = offset)
 end
 
-@inline function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{Band{E}},
   (wy, k)::Tuple{WYTrans{E},Int},
   bc::AbstractBandColumn{S,E};
@@ -654,17 +670,15 @@ end
       W = wy.W[inds, 1:num_hs, k]
       Y = wy.Y[inds, 1:num_hs, k]
 
-      # work .= zero(E)
-
       tmp0 = reshape(
         wy.work[(n_bc0 * num_hs + 1):(n_bc0 * num_hs + m_bc0 * n_bc0)],
         m_bc0,
         n_bc0,
       )
-      o = one(E)
+
       copyto!(tmp0, bc[j_first:j_last, ks])
       matmul!(work, W', tmp0)
-      matmul!(tmp0, Y, work, -o, o)
+      matmul!(tmp0, Y, work, -one(E), one(E))
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end

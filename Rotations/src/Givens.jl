@@ -14,16 +14,16 @@ export Rot,
   check_inplace_rotation_types
 
 using LinearAlgebra
-import InPlace
+import InPlace: product_side, apply!, apply_inv!
 using InPlace
 using LoopVectorization
 
-macro real_tturbo(t, ex)
+macro real_turbo(t, ex)
   return esc(quote
                if $t <: Real
-                 @tturbo $ex
+                 @turbo $ex
                else
-                 @inbounds @fastmath $ex
+                 @inbounds $ex
                end
              end)
 end
@@ -60,18 +60,19 @@ end
 
 const AdjRot{TS,TC} = Rot{TS,TC,Int}
 
-@inline function get_inds(r::Rot{TS,TC,Int}) where {TS,TC,Int}
+function get_inds(r::Rot{TS,TC,Int}) where {TS,TC,Int}
   r.inds, r.inds + 1
 end
 
-@inline function get_inds(r::Rot{TS,TC,Tuple{Int,Int}}) where {TS,TC,Int}
+function get_inds(r::Rot{TS,TC,Tuple{Int,Int}}) where {TS,TC,Int}
   r.inds[1], r.inds[2]
 end
 
-InPlace.product_side(::Type{<:Rot}, _) = InPlace.LeftProduct()
-InPlace.product_side(_, ::Type{<:Rot}) = InPlace.RightProduct()
-InPlace.product_side(::Type{<:Rot}, _, _) = InPlace.LeftProduct()
-InPlace.product_side(_, _, ::Type{<:Rot}) = InPlace.RightProduct()
+InPlace.product_side(::Type{<:Rot}, _) = InPlace.LeftProduct
+InPlace.product_side(_, ::Type{<:Rot}) = InPlace.RightProduct
+
+InPlace.product_side(::Type{<:Rot}, _, _) = InPlace.LeftProduct
+InPlace.product_side(_, _, ::Type{<:Rot}) = InPlace.RightProduct
 
 """
     function lgivens(
@@ -82,7 +83,7 @@ InPlace.product_side(_, _, ::Type{<:Rot}) = InPlace.RightProduct()
 Compute a rotation r to introduce a zero from the left into the second
 element of r ⊘ [x;y].
 """
-@inline function lgivens(
+function lgivens(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -104,7 +105,7 @@ element of r ⊘ [x;y].
   end
 end
 
-@inline function lgivensPR(
+function lgivensPR(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -129,7 +130,7 @@ end
 Compute a rotation r to introduce a zero from the left into the first
 element of r ⊘ [x;y].
 """
-@inline function lgivens1(
+function lgivens1(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -151,7 +152,7 @@ element of r ⊘ [x;y].
   end
 end
 
-@inline function lgivensPR1(
+function lgivensPR1(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -176,7 +177,7 @@ end
 Compute a rotation r to introduce a zero from the right into the 
 second component of  [x,y] ⊛ r.
 """
-@inline function rgivens(
+function rgivens(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -198,7 +199,7 @@ second component of  [x,y] ⊛ r.
   end
 end
 
-@inline function rgivensPR(
+function rgivensPR(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -223,7 +224,7 @@ end
 Compute a rotation r to introduce a zero from the right into the 
 first component of  [x,y] ⊛ r.
 """
-@inline function rgivens1(
+function rgivens1(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -245,7 +246,7 @@ first component of  [x,y] ⊛ r.
   end
 end
 
-@inline function rgivensPR1(
+function rgivensPR1(
   x::T,
   y::T,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}}}
@@ -266,75 +267,75 @@ end
   end
 end
 
-@inline function lgivens(
+function lgivens(
   x::T,
   y::T,
   inds::J,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s = lgivens(x, y)
+  @inline c, s = lgivens(x, y)
   Rot(c, s, inds)
 end
 
-@inline function lgivensPR(
+function lgivensPR(
   x::T,
   y::T,
   inds::J,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s = lgivensPR(x, y)
+  @inline c, s = lgivensPR(x, y)
   Rot(c, s, inds)
 end
 
-@inline function lgivens1(
+function lgivens1(
   x::T,
   y::T,
   inds::J
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s = lgivens1(x, y)
+  @inline c, s = lgivens1(x, y)
   Rot(c, s, inds)
 end
 
-@inline function lgivensPR1(
+function lgivensPR1(
   x::T,
   y::T,
   inds::J
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s = lgivensPR1(x, y)
+  @inline c, s = lgivensPR1(x, y)
   Rot(c, s, inds)
 end
 
-@inline function rgivens(
+function rgivens(
   x::T,
   y::T,
   inds::J
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s=rgivens(x,y)
+  @inline c, s = rgivens(x,y)
   Rot(c, s, inds)
 end
 
-@inline function rgivensPR(
+function rgivensPR(
   x::T,
   y::T,
   inds::J,
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s=rgivensPR(x,y)
+  @inline c, s = rgivensPR(x,y)
   Rot(c, s, inds)
 end
 
-@inline function rgivens1(
+function rgivens1(
   x::T,
   y::T,
   inds::J
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s = rgivens1(x, y)
+  @inline c, s = rgivens1(x, y)
   Rot(c, s, inds)
 end
 
-@inline function rgivensPR1(
+function rgivensPR1(
   x::T,
   y::T,
   inds::J
 ) where {R<:AbstractFloat,T<:Union{R,Complex{R}},J<:Union{Int,Tuple{Int,Int}}}
-  c, s = rgivensPR1(x, y)
+  @inline c, s = rgivensPR1(x, y)
   Rot(c, s, inds)
 end
 
@@ -375,7 +376,8 @@ check_inplace_rotation_types(::Type{R}, ::Type{R}, ::Type{R}) where {R<:Real} =
 """
 Apply a rotation, acting in-place to modify a.
 """
-@inline function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   r::Rot{TS,TC},
   a::AbstractArray{E,2};
@@ -388,7 +390,7 @@ Apply a rotation, acting in-place to modify a.
   s = r.s
   j1 = j1 + offset
   j2 = j2 + offset
-  @real_tturbo E for k ∈ axes(a,2)
+  @real_turbo E for k ∈ axes(a,2)
     tmp = a[j1, k]
     a[j1, k] = c * tmp + s * a[j2, k]
     a[j2, k] = -conj(s) * tmp + conj(c) * a[j2, k]
@@ -396,7 +398,8 @@ Apply a rotation, acting in-place to modify a.
   nothing
 end
 
-@inline function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   a::AbstractArray{E,2},
   r::Rot{TS,TC};
@@ -409,7 +412,7 @@ end
   s = r.s
   k1 = j1 + offset
   k2 = j2 + offset
-  @real_tturbo E for j = axes(a,1)
+  @real_turbo E for j = axes(a,1)
     tmp = a[j, k1]
     a[j, k1] = c * tmp - conj(s) * a[j, k2]
     a[j, k2] = s * tmp + conj(c) * a[j, k2]
@@ -420,7 +423,8 @@ end
 """
 Apply an inverse rotation, acting in-place to modify a.
 """
-@inline function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   r::Rot{TS,TC},
   a::AbstractArray{E,2};
@@ -433,7 +437,7 @@ Apply an inverse rotation, acting in-place to modify a.
   s = r.s
   j1 = j1 + offset
   j2 = j2 + offset
-  @real_tturbo E for k = axes(a,2)
+  @real_turbo E for k = axes(a,2)
     tmp = a[j1, k]
     a[j1, k] = conj(c) * tmp - s * a[j2, k]
     a[j2, k] = conj(s) * tmp + c * a[j2, k]
@@ -441,7 +445,8 @@ Apply an inverse rotation, acting in-place to modify a.
   nothing
 end
 
-@inline function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   a::AbstractArray{E,2},
   r::Rot{TS,TC};
@@ -454,7 +459,7 @@ end
   s = r.s
   k1 = j1 + offset
   k2 = j2 + offset
-  @real_tturbo E for j ∈ axes(a,1)
+  @real_turbo E for j ∈ axes(a,1)
     tmp = a[j, k1]
     a[j, k1] = conj(c) * tmp + conj(s) * a[j, k2]
     a[j, k2] = -s * tmp + c * a[j, k2]

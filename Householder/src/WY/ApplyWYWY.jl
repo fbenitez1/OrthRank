@@ -1,13 +1,16 @@
 # WY times WY
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
-function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_right!(
+  InPlace.apply!(
+    RightProduct,
+    WYTrans{E},
     (wy1, wy1.active_WY[]),
     (wy2, wy2.active_WY[]),
     offset = offset,
@@ -15,7 +18,8 @@ function InPlace.apply_right!(
 end
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
-function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   (wy1, l1)::Tuple{WYTrans{E}, Int},
   (wy2, l2)::Tuple{WYTrans{E}, Int};
@@ -52,7 +56,9 @@ function InPlace.apply_right!(
 
   @inbounds @views begin
     # Do a shift and unshift of wy2's offset to apply to wy1.
-    InPlace.apply_left_inv!(
+    InPlace.apply_inv!(
+      LeftProduct,
+      GeneralMatrix{E},
       (wy2, l2),
       wy1.Y[1:wy1_size, 1:wy1_num_hs, l1],
       offset = offset - wy1_offset,
@@ -78,13 +84,16 @@ function InPlace.apply_right!(
 end
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
-function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_right_inv!(
+  InPlace.apply_inv!(
+    RightProduct,
+    WYTrans{E},
     (wy1, wy1.active_WY[]),
     (wy2, wy2.active_WY[]),
     offset = offset,
@@ -92,7 +101,8 @@ function InPlace.apply_right_inv!(
 end
 
 # Apply transform l2 of wy2 to transform l1 of wy1.
-function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   (wy1, l1)::Tuple{WYTrans{E}, Int},
   (wy2, l2)::Tuple{WYTrans{E}, Int};
@@ -129,7 +139,9 @@ function InPlace.apply_right_inv!(
 
   @inbounds @views begin
     # Do a shift and unshift of wy2's offset to apply to wy1.
-    InPlace.apply_left!(
+    InPlace.apply!(
+      LeftProduct,
+      GeneralMatrix{E},
       (wy2, l2),
       wy1.Y[1:wy1_size, 1:wy1_num_hs, l1],
       offset = offset - wy1_offset,
@@ -155,20 +167,24 @@ function InPlace.apply_right_inv!(
 end
 
 # Apply transform l1 of wy1 to transform l2 of wy2.
-function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_left!(
+  InPlace.apply!(
+    LeftProduct,
+    WYTrans{E},
     (wy1, wy1.active_WY[]),
     (wy2, wy2.active_WY[]),
     offset = offset,
   )
 end
 
-function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   (wy1, l1)::Tuple{WYTrans{E}, Int},
   (wy2, l2)::Tuple{WYTrans{E}, Int};
@@ -204,7 +220,9 @@ function InPlace.apply_left!(
 
   @inbounds @views begin
     # Do a shift and unshift of wy1's offset to apply to wy2.
-    InPlace.apply_left!(
+    InPlace.apply!(
+      LeftProduct,
+      GeneralMatrix{E},
       (wy1, l1),
       wy2.W[1:wy2_size, 1:wy2_num_hs, l2],
       offset = offset - wy2_offset,
@@ -229,20 +247,24 @@ function InPlace.apply_left!(
 end
 
 # Apply transform l1 of wy1 to transform l2 of wy2.
-function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   wy1::WYTrans{E},
   wy2::WYTrans{E};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_left_inv!(
+  InPlace.apply_inv!(
+    LeftProduct,
+    WYTrans{E},
     (wy1, wy1.active_WY[]),
     (wy2, wy2.active_WY[]),
     offset = offset,
   )
 end
 
-function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   (wy1, l1)::Tuple{WYTrans{E}, Int},
   (wy2, l2)::Tuple{WYTrans{E}, Int};
@@ -279,7 +301,9 @@ function InPlace.apply_left_inv!(
 
   @inbounds @views begin
     # Do a shift and unshift of wy1's offset to apply to wy2.
-    InPlace.apply_left_inv!(
+    InPlace.apply_inv!(
+      LeftProduct,
+      GeneralMatrix{E},
       (wy1, l1),
       wy2.W[1:wy2_size, 1:wy2_num_hs, l2],
       offset = offset - wy2_offset,

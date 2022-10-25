@@ -10,7 +10,8 @@ throw_WYMaxHouseholderError(block) =
     block
   )))
 
-@inline function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   (wy, k)::Tuple{WYTrans{E}, Int},
   h::HouseholderTrans{E};
@@ -58,17 +59,25 @@ throw_WYMaxHouseholderError(block) =
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   wy::WYTrans{E},
   h::HouseholderTrans{E};
   offset = 0
 ) where {E<:Number}
 
-  InPlace.apply_right!((wy, wy.active_WY[]), h, offset = offset)
+  InPlace.apply!(
+    RightProduct,
+    WYTrans{E},
+    (wy, wy.active_WY[]),
+    h,
+    offset = offset,
+  )
 end
 
-@inline function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   (wy, k)::Tuple{WYTrans{E}, Int},
   h::HouseholderTrans{E};
@@ -117,16 +126,24 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{WYTrans{E}},
   wy::WYTrans{E},
   h::HouseholderTrans{E};
   offset = 0,
 ) where {E<:Number}
-  InPlace.apply_right_inv!((wy, wy.active_WY[]), h, offset = offset)
+  InPlace.apply_inv!(
+    RightProduct,
+    WYTrans{E},
+    (wy, wy.active_WY[]),
+    h,
+    offset = offset,
+  )
 end
 
-@inline function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   h::HouseholderTrans{E},
   (wy, k)::Tuple{WYTrans{E}, Int};
@@ -177,16 +194,24 @@ end
   nothing
 end
 
-Base.@propagate_inbounds function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   h::HouseholderTrans{E},
   wy::WYTrans{E};
   offset = 0
 ) where {E<:Number}
-  InPlace.apply_left!(h, (wy, wy.active_WY[]), offset = offset)
+  InPlace.apply!(
+    LeftProduct,
+    WYTrans{E},
+    h,
+    (wy, wy.active_WY[]),
+    offset = offset,
+  )
 end
 
-@inline function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   h::HouseholderTrans{E},
   (wy, k)::Tuple{WYTrans{E}, Int};
@@ -237,11 +262,18 @@ end
 
 end
 
-Base.@propagate_inbounds function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{WYTrans{E}},
   h::HouseholderTrans{E},
   wy::WYTrans{E};
   offset = 0
 ) where {E<:Number}
-  InPlace.apply_left_inv!(h, (wy, wy.active_WY[]), offset = offset)
+  InPlace.apply_inv!(
+    LeftProduct,
+    WYTrans{E},
+    h,
+    (wy, wy.active_WY[]),
+    offset = offset,
+  )
 end

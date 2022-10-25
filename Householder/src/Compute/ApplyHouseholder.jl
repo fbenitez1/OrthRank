@@ -10,7 +10,8 @@ macro real_turbo(t, ex)
              end)
 end
 
-@inline function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   h::HouseholderTrans{E},
   A::AbstractArray{E,2};
@@ -64,7 +65,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   h :: HouseholderTrans{E},
   A::AbstractArray{E,2};
@@ -119,7 +121,8 @@ end
 end
 
 
-@inline function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   h::HouseholderTrans{E};
@@ -173,7 +176,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   A::AbstractArray{E,2},
   h::HouseholderTrans{E};
@@ -229,7 +233,8 @@ end
 
 # Adjoint operations.
 
-@inline function InPlace.apply_left!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}};
@@ -284,7 +289,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_left_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   h::HouseholderTrans{E},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}};
@@ -339,7 +345,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_right!(
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E};
@@ -392,7 +399,8 @@ end
   nothing
 end
 
-@inline function InPlace.apply_right_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   Aᴴ::Adjoint{E,<:AbstractArray{E,2}},
   h::HouseholderTrans{E};

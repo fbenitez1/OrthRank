@@ -20,7 +20,8 @@ macro real_tturbo(t, ex)
              end)
 end
 
-@propagate_inbounds function InPlace.apply_right!(
+@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   r::AdjRot{TS,TC};
@@ -47,7 +48,8 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply_right_inv!(
+@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
   r::AdjRot{TS,TC};
@@ -74,7 +76,8 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply_left!(
+@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
   ::Type{Band{E}},
   r::AdjRot{TS,TC},
   bc::AbstractBandColumn{S,E};
@@ -105,7 +108,8 @@ end
   nothing
 end
 
-@propagate_inbounds function InPlace.apply_left_inv!(
+@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
   ::Type{Band{E}},
   r::AdjRot{TS,TC},
   bc::AbstractBandColumn{S, E};

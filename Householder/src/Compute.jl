@@ -4,7 +4,7 @@ using Printf
 using Random
 
 using LinearAlgebra
-import InPlace
+import InPlace: product_side, apply!, apply_inv!
 using InPlace
 using LoopVectorization
 
@@ -65,10 +65,10 @@ struct HouseholderTrans{E,AEV<:AbstractArray{E,1},AEW<:AbstractArray{E,1}}
   work::AEW
 end
 
-InPlace.product_side(::Type{<:HouseholderTrans}, _) = InPlace.LeftProduct()
-InPlace.product_side(::Type{<:HouseholderTrans}, _, _) = InPlace.LeftProduct()
-InPlace.product_side(_, ::Type{<:HouseholderTrans}) = InPlace.RightProduct()
-InPlace.product_side(_, _, ::Type{<:HouseholderTrans}) = InPlace.RightProduct()
+InPlace.product_side(::Type{<:HouseholderTrans}, _) = InPlace.LeftProduct
+InPlace.product_side(::Type{<:HouseholderTrans}, _, _) = InPlace.LeftProduct
+InPlace.product_side(_, ::Type{<:HouseholderTrans}) = InPlace.RightProduct
+InPlace.product_side(_, _, ::Type{<:HouseholderTrans}) = InPlace.RightProduct
 
 function Random.rand!(rng::AbstractRNG, h::HouseholderTrans)
   @views begin

@@ -7,7 +7,7 @@ using LinearAlgebra
 using LoopVectorization
 using Octavian
 
-import InPlace
+import InPlace: product_side, apply!, apply_inv!
 using InPlace
 using ..Compute
 
@@ -139,27 +139,27 @@ struct WYTrans{
   work::AEWork
 end
 
-InPlace.product_side(::Type{<:WYTrans}, _) = InPlace.LeftProduct()
+InPlace.product_side(::Type{<:WYTrans}, _) = InPlace.LeftProduct
 InPlace.product_side(::Type{Tuple{W,Int}}, _) where {W <: WYTrans} =
-  InPlace.LeftProduct()
+  InPlace.LeftProduct
 
-InPlace.product_side(_, ::Type{<:WYTrans}) = InPlace.RightProduct()
+InPlace.product_side(_, ::Type{<:WYTrans}) = InPlace.RightProduct
 InPlace.product_side(_, ::Type{Tuple{W,Int}}) where {W <: WYTrans} =
-  InPlace.RightProduct()
+  InPlace.RightProduct
 
 InPlace.product_side(::Type{<:WYTrans}, ::Type{<:HouseholderTrans}) =
-  InPlace.RightProduct()
+  InPlace.RightProduct
 InPlace.product_side(
   ::Type{Tuple{W,Int64}},
   ::Type{<:HouseholderTrans},
-) where {W<:WYTrans} = InPlace.RightProduct()
+) where {W<:WYTrans} = InPlace.RightProduct
 
 InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{<:WYTrans}) =
-  InPlace.LeftProduct()
+  InPlace.LeftProduct
 InPlace.product_side(
   ::Type{<:HouseholderTrans},
   ::Type{Tuple{W,Int64}},
-) where {W<:WYTrans} = InPlace.LeftProduct()
+) where {W<:WYTrans} = InPlace.LeftProduct
 
 InPlace.structure_type(::Type{W}) where {E,W<:WYTrans{E}} = WYTrans{E}
 InPlace.structure_type(::Type{Tuple{W,Int}}) where {E,W<:WYTrans{E}} =
@@ -192,13 +192,13 @@ end
   wy.active_WY[]=k
 end
 
-InPlace.product_side(::Type{Tuple{<:WYTrans, Int}}, _) = InPlace.LeftProduct()
-InPlace.product_side(_, ::Type{Tuple{<:WYTrans, Int}}) = InPlace.RightProduct()
+InPlace.product_side(::Type{Tuple{<:WYTrans, Int}}, _) = InPlace.LeftProduct
+InPlace.product_side(_, ::Type{Tuple{<:WYTrans, Int}}) = InPlace.RightProduct
 
 InPlace.product_side(::Type{Tuple{<:WYTrans, Int}}, ::Type{<:HouseholderTrans}) =
-  InPlace.RightProduct()
+  InPlace.RightProduct
 InPlace.product_side(::Type{<:HouseholderTrans}, ::Type{Tuple{<:WYTrans, Int}}) =
-  InPlace.LeftProduct()
+  InPlace.LeftProduct
 
 """
     WYTrans(

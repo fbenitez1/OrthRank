@@ -7,7 +7,6 @@ using ..WY
 
 export qrH, qrWY, qrWYSweep, qrLA
 
-
 function qrH(A::AbstractArray{E,2}) where {E<:Number}
   m, n = size(A)
   Q = similar_leftI(A)
