@@ -1,13 +1,13 @@
 # @tturbo does yield some speedup at runtime, but really seems
 # to cause more type inference that isn't getting cached for some reason.
 macro real_turbo(t, ex)
-  return esc(quote
-               if $t <: Real
-                 @turbo $ex
-               else
-                 @inbounds $ex
-               end
-             end)
+  quote
+    if $(esc(t)) <: Real
+      $(esc(:(@turbo $(ex))))
+    else
+      @inbounds $(esc(ex))
+    end
+  end
 end
 
 Base.@propagate_inbounds function InPlace.apply!(
