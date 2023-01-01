@@ -51,8 +51,8 @@ Base.@propagate_inbounds function InPlace.apply!(
     W1[indshwy,:] .= h.β .* h.v
     Y1[indshwy,:] .= h.v
     num_hs > 0 && length(indswy) > 0 && begin
-      matmul!(work, Y0', W1)
-      matmul!(W1, W0, work, -one(E), one(E))
+      mul!(work, Y0', W1)
+      mul!(W1, W0, work, -one(E), one(E))
     end
     wy.num_hs[k] += 1
   end
@@ -117,8 +117,8 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     W1[indshwy,:] .= conj(h.β) .* h.v
     Y1[indshwy,:] = h.v
     num_hs > 0 && length(indswy) > 0 && begin
-      matmul!(work, Y0', W1)
-      matmul!(W1, W0, work, -one(E), one(E))
+      mul!(work, Y0', W1)
+      mul!(W1, W0, work, -one(E), one(E))
     end
 
     wy.num_hs[k] += 1
@@ -185,8 +185,8 @@ Base.@propagate_inbounds function InPlace.apply!(
     Y1[indshwy,:] .= conj(h.β) .* v
     
     num_hs > 0 && length(indswy) > 0 && begin
-      matmul!(work, W0', Y1)
-      matmul!(Y1, Y0, work, -one(E), one(E))
+      mul!(work, W0', Y1)
+      mul!(Y1, Y0, work, -one(E), one(E))
     end
 
     wy.num_hs[k] += 1
@@ -252,8 +252,8 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     Y1[indshwy,:] .= h.β .* v
 
     num_hs > 0 && length(indswy) > 0 && begin
-      matmul!(work, W0', Y1)
-      matmul!(Y1, Y0, work, -one(E), one(E))
+      mul!(work, W0', Y1)
+      mul!(Y1, Y0, work, -one(E), one(E))
     end
 
     wy.num_hs[k] += 1

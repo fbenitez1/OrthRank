@@ -111,8 +111,71 @@ function run_cases()
     Linear(wy2) ⊘ wy1
   end
 
+  function run_small_QR(E)
+    max_num_hs = 3
+    m = 10
+    n = 10
+    A = randn(E, m, n)
+    A0 = copy(A)
+    wy1 = WYTrans(
+      E,
+      max_WY_size = m,
+      work_size = n * max_num_hs,
+      max_num_hs = max_num_hs,
+    )
+    resetWYBlock!(wy1, offset = 0, sizeWY = m)
+    wy2 = WYTrans(
+      E,
+      max_WY_size = m,
+      work_size = n * max_num_hs,
+      max_num_hs = max_num_hs,
+    )
+    resetWYBlock!(wy2, offset = 0, sizeWY = m)
+    Iₘ = Matrix{E}(I, m, m)
+    work = zeros(E, m)
+
+    for j = 1:3
+      h = lhouseholder(A[j:m, j], 1, j - 1, work)
+      h ⊘ A
+      (wy1, 1) ⊛ h
+      h ⊘ (wy2, 1)
+    end
+
+    Q1 = copy(Iₘ)
+    Q1 ⊛ (wy1, 1)
+    Q2 = copy(Iₘ)
+    Q2 ⊘ (wy2, 1)
+  end
+
+  function run_qrWY(E)
+    m = 100
+    n = 90
+    A = randn(E, m, n)
+    A0 = copy(A)
+    A[:, :] = A0
+    (Q, R) = qrWY(A)
+  end
+
+  function run_qrWYSweep(E)
+    m = 100
+    n = 90
+    A = randn(E, m, n)
+    A0 = copy(A)
+    A[:, :] = A0
+    (Q, R) = qrWYSweep(A)
+    Q ⊛ R
+  end
+
   run_WYWY(Float64)
   run_WYWY(Complex{Float64})
+
+  run_small_QR(Float64)
+  run_qrWY(Float64)
+  run_qrWYSweep(Float64)
+
+  run_small_QR(Complex{Float64})
+  run_qrWY(Complex{Float64})
+  run_qrWYSweep(Complex{Float64})
 
 end
 

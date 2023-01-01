@@ -3,7 +3,6 @@ module BandHouseholder
 using LinearAlgebra
 using Printf
 using LoopVectorization
-using Octavian
 
 using Householder.Compute
 using Householder.WY
@@ -146,18 +145,18 @@ Base.@propagate_inbounds function InPlace.apply!(
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      @real_turbo E for k ∈ 1:m
+      for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
-        for j ∈ j_first:j_last
+        @real_turbo E for j ∈ j_first:j_last
           work[j - j_first + 1] += bc_els[j - storage_offs, k + offs + coffs] * x
         end
       end
       # Subtract β * w * vᴴ from bc.
-      @real_turbo E for k ∈ 1:m
+      for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β * conj(v[k])
-        for j ∈ j_first:j_last
+        @real_turbo E for j ∈ j_first:j_last
           bc_els[j - storage_offs, k + offs + coffs] -= work[j - j_first + 1] * x
         end
       end
@@ -200,7 +199,6 @@ Base.@propagate_inbounds function InPlace.apply!(
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
@@ -211,7 +209,6 @@ Base.@propagate_inbounds function InPlace.apply!(
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β * work[k-k_first+1] 
@@ -278,18 +275,18 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
 
       # Accumulate w = bc * v in work array by a linear combination of
       # columns of bc.
-      @real_turbo E for k ∈ 1:m
+      for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x=v[k]
-        for j ∈ j_first:j_last
+        @real_turbo E for j ∈ j_first:j_last
           work[j - j_first + 1] += bc_els[j - storage_offs, k + offs + coffs] * x
         end
       end
       # Subtract β̄ * w * vᴴ from bc.
-      @real_turbo E for k ∈ 1:m
+      for k ∈ 1:m
         storage_offs = storage_offset(bc, k + offs)
         x = β̄ * conj(v[k])
-        for j ∈ j_first:j_last
+        @real_turbo E for j ∈ j_first:j_last
           bc_els[j - storage_offs, k + offs + coffs] -=
             work[j - j_first + 1] * x
         end
@@ -333,7 +330,6 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     @inbounds begin
       bulge_maybe_upper!(bc, j_first, k_last)
       bulge_maybe_lower!(bc, j_last, k_first)
-      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         x=zero(E)
         storage_offs = storage_offset(bc, k)
@@ -344,7 +340,6 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
         work[k-k_first+1]=x
       end
       # Subtract v * x from bc[:,k].
-      # @real_turbo E for k ∈ k_first:k_last
       for k ∈ k_first:k_last
         storage_offs = storage_offset(bc, k)
         x = β̄ * work[k-k_first+1] 
@@ -429,8 +424,8 @@ Base.@propagate_inbounds function InPlace.apply!(
       )
 
       copyto!(tmp0, bc[js, k_first:k_last])
-      matmul!(work, tmp0, W)
-      matmul!(tmp0, work, Y', -one(E), one(E))
+      mul!(work, tmp0, W)
+      mul!(tmp0, work, Y', -one(E), one(E))
 
       copyto!(bc[js, k_first:k_last], tmp0)
     end
@@ -516,8 +511,8 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
 
       copyto!(tmp0, bc[js, k_first:k_last])
 
-      matmul!(work, tmp0, Y)
-      matmul!(tmp0, work, W', -one(E), one(E))
+      mul!(work, tmp0, Y)
+      mul!(tmp0, work, W', -one(E), one(E))
 
       copyto!(bc[js, k_first:k_last], tmp0)
     end
@@ -598,8 +593,8 @@ Base.@propagate_inbounds function InPlace.apply!(
       )
 
       copyto!(tmp0, bc[j_first:j_last, ks])
-      matmul!(work, Y', tmp0)
-      matmul!(tmp0, W, work, -one(E), one(E))
+      mul!(work, Y', tmp0)
+      mul!(tmp0, W, work, -one(E), one(E))
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end
@@ -677,8 +672,8 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
       )
 
       copyto!(tmp0, bc[j_first:j_last, ks])
-      matmul!(work, W', tmp0)
-      matmul!(tmp0, Y, work, -one(E), one(E))
+      mul!(work, W', tmp0)
+      mul!(tmp0, Y, work, -one(E), one(E))
       copyto!(bc[j_first:j_last, ks], tmp0)
     end
   end

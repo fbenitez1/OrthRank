@@ -25,7 +25,6 @@ include("../test/standard_test_case.jl")
 
 import SnoopPrecompile
 SnoopPrecompile.@precompile_all_calls begin
-  include("../test/standard_test_case.jl")
   include("precompile.jl")
 end
 

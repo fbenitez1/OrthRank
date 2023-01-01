@@ -34,8 +34,8 @@ Base.@propagate_inbounds function InPlace.apply!(
     end
     oneE = one(E)
     num_hs > 0 && length(inds) > 0 && begin
-      matmul!(work, A0, W)
-      matmul!(A0, work, Y', -oneE, oneE)
+      mul!(work, A0, W)
+      mul!(A0, work, Y', -oneE, oneE)
     end
   end
   nothing
@@ -93,8 +93,8 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     end
     oneE = one(E)
     num_hs > 0 && length(inds) > 0 && begin
-      matmul!(work, A0, Y)
-      matmul!(A0, work, W', -oneE, oneE)
+      mul!(work, A0, Y)
+      mul!(A0, work, W', -oneE, oneE)
     end
   end
   nothing
@@ -152,8 +152,8 @@ Base.@propagate_inbounds function InPlace.apply!(
     end
     oneE = one(E)
     num_hs > 0 && length(inds) > 0 && begin
-      matmul!(work, Y', A0)
-      matmul!(A0, W, work, -oneE, oneE)
+      mul!(work, Y', A0)
+      mul!(A0, W, work, -oneE, oneE)
     end
   end
   nothing
@@ -210,8 +210,8 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     end
     oneE = one(E)
     num_hs > 0 && length(inds) > 0 && begin
-      matmul!(work, W', A0)
-      matmul!(A0, Y, work, -oneE, oneE)
+      mul!(work, W', A0)
+      mul!(A0, Y, work, -oneE, oneE)
     end
   end
   nothing

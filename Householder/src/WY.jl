@@ -5,7 +5,6 @@ using Random
 
 using LinearAlgebra
 using LoopVectorization
-using Octavian
 
 import InPlace: product_side, apply!, apply_inv!
 using InPlace
