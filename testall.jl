@@ -1,20 +1,38 @@
 using Pkg
 
 packages = [
-  "InPlace",
-  "Rotations",
-  "Householder",
-  "BandStruct",
-  "OrthWeight",
+  ("InPlace", []),
+  ("Rotations", ["InPlace"]),
+  ("Householder", ["InPlace"]),
+  ("BandStruct", ["InPlace", "Rotations",  "Householder"]),
+  ("OrthWeight", ["InPlace", "Rotations",  "Householder", "BandStruct"])
 ]
+println("Update dependencies? [n]")
+response = replace(readline(stdin), r" " => "")
 
-for p in packages
+if match(r"^$", response) != nothing
+  up = false
+else
+  up = match(r"(y|Yes|yes|Y)", response) != nothing
+  noup = match(r"(n|No|no|N)", response) != nothing
+  xor(up, noup) || error("Answer y or n.")
+end
+
+for (p, devlist) in packages
   cd("$(p)")
   println("Testing in $(pwd())")
   Pkg.activate(".")
-  # Pkg.resolve()
-  # Pkg.instantiate()
-  # Pkg.update() 
+  if !isfile("Manifest.toml")
+    for d in devlist
+      Pkg.rm(d)
+    end
+    for d in devlist
+      Pkg.develop(path="../$d")
+    end
+  end
+  Pkg.resolve()
+  Pkg.instantiate()
+  up && Pkg.update()
   try
     Pkg.test()
   catch
