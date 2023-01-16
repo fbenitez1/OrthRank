@@ -2,7 +2,7 @@ function standard_test_case(
   ::Type{E};
   upper_rank_max = 2,
   lower_rank_max = 1,
-  decomp_type = LeadingDecomp,
+  decomp_type = LeadingDecomp(),
 ) where {E <: Number}
   # standard upper rank max for extended is 3.  For lower is 2.
   lower_blocks = [

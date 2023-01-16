@@ -49,7 +49,12 @@ An AbstractBlockedBandColumn should implement the following:
 abstract type AbstractBlockedBandColumn{E,AE,AI} <:
               AbstractBandColumn{NonSub,E,AE,AI} end
 
+"""
+    function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
 
+A set difference function that returns unit ranges or an error if the
+result cannot be represented as a unit range.
+"""
 function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
   x0 = first(xs)
   x1 = last(xs)
@@ -66,6 +71,12 @@ function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
   end
 end
 
+"""
+    function ∪ᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
+
+A union that returns unit ranges or an error if the result cannot be
+represented as a unit range.
+"""
 function ∪ᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
   x0 = first(xs)
   x1 = last(xs)

@@ -10,28 +10,27 @@ using ..BandwidthInit
 export BlockedBandColumn,
   UpperBlock,
   LowerBlock,
+  Decomp,
   LeadingDecomp,
   TrailingDecomp,
   get_middle_bw_max,
   get_upper_bw_max,
   get_lower_bw_max,
-  singleton,
   view_lower_block,
   view_upper_block
 
 struct UpperBlock end
 struct LowerBlock end
 
-struct LeadingDecomp end
-Base.iterate(t::Type{LeadingDecomp}) = (t, nothing)
-Base.iterate(::Type{LeadingDecomp}, ::Any) = nothing
-singleton(::Type{LeadingDecomp}) = LeadingDecomp()
+abstract type Decomp end
 
+struct LeadingDecomp <: Decomp end
+Base.iterate(t::LeadingDecomp) = (t, nothing)
+Base.iterate(::LeadingDecomp, ::Any) = nothing
 
-struct TrailingDecomp end
-Base.iterate(t::Type{TrailingDecomp}) = (t, nothing)
-Base.iterate(::Type{TrailingDecomp}, ::Any) = nothing
-singleton(::Type{TrailingDecomp}) = TrailingDecomp()
+struct TrailingDecomp <: Decomp end
+Base.iterate(t::TrailingDecomp) = (t, nothing)
+Base.iterate(::TrailingDecomp, ::Any) = nothing
 
 
 """
@@ -571,7 +570,7 @@ end
 
 # Random elements for a particular decomposition.
 function Random.rand!(
-  ::Type{LeadingDecomp},
+  ::LeadingDecomp,
   rng::AbstractRNG,
   bbc::BlockedBandColumn{E}
 ) where {E}
@@ -587,7 +586,7 @@ end
 """
     BlockedBandColumn(
       ::Type{E},
-      ::Type{LeadingDecomp},
+      ::LeadingDecomp,
       rng::AbstractRNG,
       m::Int,
       n::Int;
@@ -606,7 +605,7 @@ trailing decompositions.
 """
 function BlockedBandColumn(
   ::Type{E},
-  ::Type{LeadingDecomp},
+  ::LeadingDecomp,
   rng::AbstractRNG,
   m::Int,
   n::Int;
@@ -637,7 +636,7 @@ end
 
 function BlockedBandColumn(
   ::Type{E},
-  ::Type{LeadingDecomp},
+  ::LeadingDecomp,
   x::E,
   m::Int,
   n::Int;
@@ -669,7 +668,7 @@ end
 """
     BlockedBandColumn(
       ::Type{E},
-      ::Type{TrailingDecomp},
+      ::TrailingDecomp,
       rng::AbstractRNG,
       m::Int,
       n::Int;
@@ -688,7 +687,7 @@ and trailing decompositions.
 """
 function BlockedBandColumn(
   ::Type{E},
-  ::Type{TrailingDecomp},
+  ::TrailingDecomp,
   rng::AbstractRNG,
   m::Int,
   n::Int;
@@ -719,7 +718,7 @@ end
 
 function BlockedBandColumn(
   ::Type{E},
-  ::Type{TrailingDecomp},
+  ::TrailingDecomp,
   x::E,
   m::Int,
   n::Int;
@@ -751,7 +750,7 @@ end
 """
     BlockedBandColumn(
       ::Type{E},
-      D::Union{Type{LeadingDecomp},Type{TrailingDecomp}},
+      D::Decomp,
       m::Int,
       n::Int;
       upper_ranks::Array{Int,1},
@@ -770,7 +769,7 @@ random number generator.
 """
 function BlockedBandColumn(
   ::Type{E},
-  D::Union{Type{LeadingDecomp},Type{TrailingDecomp}},
+  D::Decomp,
   m::Int,
   n::Int;
   upper_ranks::Array{Int,1},

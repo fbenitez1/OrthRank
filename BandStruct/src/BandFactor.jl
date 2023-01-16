@@ -39,7 +39,7 @@ function makeBForQR(
   blocks = [k for _ ∈ 1:2, k ∈ 1:m]
   bbc = BlockedBandColumn(
     T,
-    LeadingDecomp,
+    LeadingDecomp(),
     MersenneTwister(0),
     m,
     m,
@@ -64,7 +64,7 @@ function makeBForLQ(
   blocks = [k for j ∈ 1:2, k ∈ 1:m]
   bbc = BlockedBandColumn(
     T,
-    LeadingDecomp,
+    LeadingDecomp(),
     MersenneTwister(0),
     m,
     m,

@@ -3,4 +3,4 @@ SI.so
 _SI.so
 .JuliaFormatter.toml
 Manifest.toml
-
+.vscode

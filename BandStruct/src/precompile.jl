@@ -18,7 +18,7 @@ function run_wilkinson(::Type{E}) where {E}
   wilk(toBandColumn(bbc0))
   wilk(toBandColumn(bc0))
   bc0T, bbc0T =
-    BandStruct.standard_test_case(E, decomp_type = TrailingDecomp)
+    BandStruct.standard_test_case(E, decomp_type = TrailingDecomp())
   wilk(toBandColumn(bbc0T))
   wilk(toBandColumn(bc0T))
 end
@@ -252,104 +252,100 @@ function run_householder(::Type{E}) where {E}
   bc ⊘ h
 end
 
-function run_WY(::Type{E}) where {E}
-  tol = 2e-15
-  (bc, bbc) =
-    BandStruct.standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
-  for bc0 ∈ [ bc, bbc ]
+# function run_WY(::Type{E}) where {E}
+function run_WY(bc0)
+  E = eltype(bc0)
+  (m, n) = size(bc0)
+  mx_bc0 = Matrix(bc0)
 
-    (m, n) = size(bc0)
-    mx_bc0 = Matrix(bc0)
+  max_num_hs=2
+  lw = maximum(size(bc0))
+  work = zeros(E, lw)
 
-    max_num_hs=2
-    lw = maximum(size(bc0))
-    work = zeros(E, lw)
+  wyl = WYTrans(
+    E,
+    max_num_WY = 3,
+    max_WY_size = m,
+    work_size = n * (max_num_hs + m),
+    max_num_hs = max_num_hs,
+  )
+  # set WY transformation 2 with offset 2 and size 3.
+  selectWY!(wyl, 2)
+  resetWYBlock!(wyl, block = 2, offset = 2, sizeWY = 3)
 
-    wyl = WYTrans(
-      E,
-      max_num_WY = 3,
-      max_WY_size = m,
-      work_size = n * (max_num_hs + m),
-      max_num_hs = max_num_hs,
-    )
-    # set WY transformation 2 with offset 2 and size 3.
-    selectWY!(wyl, 2)
-    resetWYBlock!(wyl, block = 2, offset = 2, sizeWY = 3)
+  # Do a QR factorization of bc[3:5,2:3]
 
-    # Do a QR factorization of bc[3:5,2:3]
+  bcwy_35_23 = copy(bc0)
+  bcwy_35_23h = copy(bc0)
+  mx_bcwy_35_23 = Matrix(bcwy_35_23)
 
-    bcwy_35_23 = copy(bc0)
-    bcwy_35_23h = copy(bc0)
-    mx_bcwy_35_23 = Matrix(bcwy_35_23)
+  bulge_lower!(bcwy_35_23, 5 , 2)
+  h_35_2 = householder(
+    bcwy_35_23,
+    3:5,
+    2,
+    lw,
+  )
+  h_35_2 ⊘ bcwy_35_23h
+  wyl ⊛ h_35_2
+  wyl ⊘ bcwy_35_23
 
-    bulge_lower!(bcwy_35_23, 5 , 2)
-    h_35_2 = householder(
-      bcwy_35_23,
-      3:5,
-      2,
-      lw,
-    )
-    h_35_2 ⊘ bcwy_35_23h
-    wyl ⊛ h_35_2
-    wyl ⊘ bcwy_35_23
+  h_45_3 = householder(
+    bcwy_35_23,
+    4:5,
+    3,
+    lw,
+  )
 
-    h_45_3 = householder(
-      bcwy_35_23,
-      4:5,
-      3,
-      lw,
-    )
+  h_45_3 ⊘ bcwy_35_23h
+  wyl ⊛ h_45_3
 
-    h_45_3 ⊘ bcwy_35_23h
-    wyl ⊛ h_45_3
+  bcwy_35_23w = copy(bc0)
+  wyl ⊘ bcwy_35_23w
 
-    bcwy_35_23w = copy(bc0)
-    wyl ⊘ bcwy_35_23w
+  # Right multiplication: Do an LQ factorization of bc[2:3,5:7]
 
-    # Right multiplication: Do an LQ factorization of bc[2:3,5:7]
+  bcwy_23_57 = copy(bc0)
+  bcwy_23_57[2,7]=one(E)
+  bcwy_23_57[3,7]=2*one(E)
 
-    bcwy_23_57 = copy(bc0)
-    bcwy_23_57[2,7]=one(E)
-    bcwy_23_57[3,7]=2*one(E)
+  bcwy_23_57h = copy(bcwy_23_57)
+  bcwy_23_57w = copy(bcwy_23_57)
+  mx_bcwy_23_57 = Matrix(bcwy_23_57)
 
-    bcwy_23_57h = copy(bcwy_23_57)
-    bcwy_23_57w = copy(bcwy_23_57)
-    mx_bcwy_23_57 = Matrix(bcwy_23_57)
+  wyr = WYTrans(
+    E,
+    max_num_WY = 3,
+    max_WY_size = m,
+    work_size = n * (max_num_hs + m),
+    max_num_hs = max_num_hs,
+  )
 
-    wyr = WYTrans(
-      E,
-      max_num_WY = 3,
-      max_WY_size = m,
-      work_size = n * (max_num_hs + m),
-      max_num_hs = max_num_hs,
-    )
+  # set WY transformation 2 with offset 2 and size 3.
+  selectWY!(wyr, 2)
+  resetWYBlock!(wyr, block = 2, offset = 4, sizeWY = 3)
 
-    # set WY transformation 2 with offset 2 and size 3.
-    selectWY!(wyr, 2)
-    resetWYBlock!(wyr, block = 2, offset = 4, sizeWY = 3)
+  h_2_57 = householder(
+    bcwy_23_57,
+    2,
+    5:7,
+    lw,
+  )
 
-    h_2_57 = householder(
-      bcwy_23_57,
-      2,
-      5:7,
-      lw,
-    )
+  bcwy_23_57h ⊛ h_2_57
+  wyr ⊛ h_2_57
+  bcwy_23_57 ⊛ wyr
+  
+  h_3_67 = householder(
+    bcwy_23_57,
+    3,
+    6:7,
+    lw,
+  )
 
-    bcwy_23_57h ⊛ h_2_57
-    wyr ⊛ h_2_57
-    bcwy_23_57 ⊛ wyr
-    
-    h_3_67 = householder(
-      bcwy_23_57,
-      3,
-      6:7,
-      lw,
-    )
-
-    bcwy_23_57h ⊛ h_3_67
-    wyr ⊛ h_3_67
-    bcwy_23_57w ⊛ wyr
-  end
+  bcwy_23_57h ⊛ h_3_67
+  wyr ⊛ h_3_67
+  bcwy_23_57w ⊛ wyr
 end
 
 function run_cases()
@@ -371,8 +367,15 @@ function run_cases()
   run_rotations(Complex{Float64})
   run_householder(Float64)
   run_householder(Complex{Float64})
-  run_WY(Float64)
-  run_WY(Complex{Float64})
+
+  (bc, bbc) =
+    BandStruct.standard_test_case(Float64, upper_rank_max = 2, lower_rank_max = 2)
+  run_WY(bc)
+  run_WY(bbc)
+  (bc, bbc) =
+    BandStruct.standard_test_case(Complex{Float64}, upper_rank_max = 2, lower_rank_max = 2)
+  run_WY(bc)
+  run_WY(bbc)
   nothing
 end
 

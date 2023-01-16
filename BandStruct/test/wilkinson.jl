@@ -25,7 +25,7 @@
 
 
     bc0T, bbc0T =
-      BandStruct.standard_test_case(E, decomp_type = TrailingDecomp)
+      BandStruct.standard_test_case(E, decomp_type = TrailingDecomp())
 
     wilk_bbc0T = [
       'X' 'X' 'X' 'U' 'O' 'O' 'N'

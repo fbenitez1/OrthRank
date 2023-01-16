@@ -1,81 +1,19 @@
 module WYWeightMatrices
 
 export WYWeight,
-  SpanStep,
-  NullStep,
-  LowerCompressed,
-  UpperCompressed,
-  Left,
-  Right,
   set_WYWeight_transform_params!,
   get_WYWeight_transform_params,
   get_WYWeight_max_transform_params
 
 using BandStruct
+using BandStruct.BlockedBandColumnMatrices
+using BandStruct.BandwidthInit
+using OrthWeight.BasicTypes
 using Householder: WYTrans
 using InPlace: apply!, apply_inv!
 using LinearAlgebra
 
 using Random
-
-"""
-      struct SpanStep end
-
-  A type marking a WYWeight with steps that are large relative to
-  the off-diagonal ranks so that transformations are computed to introduce
-  zeros directly into a basis for the span of block columns or rows.
-"""
-struct SpanStep end
-Base.iterate(t::Type{SpanStep}) = (t, nothing)
-Base.iterate(::Type{SpanStep}, ::Any) = nothing
-BandStruct.singleton(::Type{SpanStep}) = SpanStep()
-
-"""
-        struct NullStep end
-
-  A type marking a WYWeight with steps that are small relative to
-  the off-diagonal ranks so that transformations are computed to
-  introduce zeros directly into a basis for the null space of a block.
-"""
-struct NullStep end
-Base.iterate(t::Type{NullStep}) = (t, nothing)
-Base.iterate(::Type{NullStep}, ::Any) = nothing
-BandStruct.singleton(::Type{NullStep}) = NullStep()
-
-
-struct Left end
-Base.iterate(t::Type{Left}) = (t, nothing)
-Base.iterate(::Type{Left}, ::Any) = nothing
-BandStruct.singleton(::Type{Left}) = Left()
-
-
-struct Right end
-Base.iterate(t::Type{Right}) = (t, nothing)
-Base.iterate(::Type{Right}, ::Any) = nothing
-BandStruct.singleton(::Type{Right}) = Right()
-
-
-struct Sizes end
-Base.iterate(t::Type{Sizes}) = (t, nothing)
-Base.iterate(::Type{Sizes}, ::Any) = nothing
-BandStruct.singleton(::Type{Sizes}) = Sizes()
-
-struct Num_hs end
-Base.iterate(t::Type{Num_hs}) = (t, nothing)
-Base.iterate(::Type{Num_hs}, ::Any) = nothing
-BandStruct.singleton(::Type{Num_hs}) = Num_hs()
-
-
-struct Offsets end
-Base.iterate(t::Type{Offsets}) = (t, nothing)
-Base.iterate(::Type{Offsets}, ::Any) = nothing
-BandStruct.singleton(::Type{Offsets}) = Offsets()
-
-
-"""
-    UnionOrTuple{A,B} = Union{A, B, Tuple{DataType,DataType}}
-"""
-UnionOrTuple{A,B} = Union{A, B, Tuple{DataType,DataType}}
 
 """
     WYWeight{LWY,B,RWY}
@@ -85,7 +23,7 @@ WY transformations of type `LWY` and `RWY` respectively.
 
 # Fields
 
-  - `decomp::Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}`:
+  - `decomp::Base.RefValue{Union{Nothing,Decomp}}`:
     Type of decomposition.
 
   - `step::::Base.RefValue{Union{Nothing,NullStep,SpanStep}}`: Flag
@@ -102,8 +40,8 @@ WY transformations of type `LWY` and `RWY` respectively.
 
   - `lower_ranks::Vector{Int}`: Lower ranks
 """
-struct WYWeight{LWY,B,RWY}
-  decomp::Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}
+struct WYWeight{LWY,B,RWY} <: OrthWeightDecomp
+  decomp::Base.RefValue{Union{Nothing,Decomp}}
   step::Base.RefValue{Union{Nothing,NullStep,SpanStep}}
   leftWY::LWY
   b::B
@@ -118,7 +56,7 @@ end
 
     WYWeight(
       ::Type{E},
-      step::Union{Type{SpanStep}, Type{NullStep}},
+      step::Union{SpanStep, NullStep},
       m::Int,
       n::Int;
       upper_rank_max::Int,
@@ -134,7 +72,7 @@ trailing decomposition with ranks up to `upper_rank_max` and
 """
 function WYWeight(
   ::Type{E},
-  step::Union{Type{SpanStep}, Type{NullStep}},
+  step::Union{SpanStep, NullStep},
   m::Int,
   n::Int;
   upper_rank_max::Int,
@@ -161,13 +99,13 @@ function WYWeight(
   rank_max = max(upper_rank_max, lower_rank_max)
 
   left_max_sizes, left_max_num_hs = get_WYWeight_max_transform_params(
-    Left,
-    (LeadingDecomp, TrailingDecomp),
+    Left(),
+    (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes,
-    Num_hs,
+    Sizes(),
+    Num_hs(),
     upper_blocks = upper_blocks,
     upper_ranks = upper_rank_max,
     lower_blocks = lower_blocks,
@@ -187,13 +125,13 @@ function WYWeight(
   )
 
   right_max_sizes, right_max_num_hs = get_WYWeight_max_transform_params(
-    Right,
-    (LeadingDecomp, TrailingDecomp),
+    Right(),
+    (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes,
-    Num_hs,
+    Sizes(),
+    Num_hs(),
     upper_blocks=upper_blocks,
     upper_ranks=upper_rank_max,
     lower_blocks=lower_blocks,
@@ -212,8 +150,8 @@ function WYWeight(
 
   upper_ranks = zeros(Int, num_blocks)
   lower_ranks = zeros(Int, num_blocks)
-  decomp_ref = Base.RefValue{Union{Nothing, LeadingDecomp, TrailingDecomp}}(nothing)
-  step_ref = Base.RefValue{Union{Nothing, NullStep, SpanStep}}(singleton(step))
+  decomp_ref = Base.RefValue{Union{Nothing, Decomp}}(nothing)
+  step_ref = Base.RefValue{Union{Nothing, NullStep, SpanStep}}(step)
   upper_compressed = fill(true, num_blocks)
   lower_compressed = fill(true, num_blocks)
   WYWeight(
@@ -232,8 +170,8 @@ end
 """
     WYWeight(
       ::Type{E},
-      step::Union{Type{SpanStep}, Type{NullStep}},
-      decomp::Union{Type{Nothing}, Type{LeadingDecomp}, Type{TrailingDecomp}},
+      step::Union{SpanStep, NullStep},
+      decomp::Union{Nothing, Decomp},
       rng::AbstractRNG,
       m::Int,
       n::Int;
@@ -251,8 +189,8 @@ and `lower_rank_max`.
 """
 function WYWeight(
   ::Type{E},
-  step::Union{Type{SpanStep}, Type{NullStep}},
-  decomp::Union{Type{Nothing}, Type{LeadingDecomp}, Type{TrailingDecomp}},
+  step::Union{SpanStep, NullStep},
+  decomp::Union{Nothing, Decomp},
   rng::AbstractRNG,
   m::Int,
   n::Int;
@@ -291,13 +229,13 @@ function WYWeight(
              of lower blocks""")
 
   left_max_sizes, left_max_num_hs = get_WYWeight_max_transform_params(
-    Left,
-    (LeadingDecomp, TrailingDecomp),
+    Left(),
+    (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes,
-    Num_hs,
+    Sizes(),
+    Num_hs(),
     upper_blocks = upper_blocks,
     upper_ranks = upper_rank_max,
     lower_blocks = lower_blocks,
@@ -315,7 +253,7 @@ function WYWeight(
   )
 
   set_WYWeight_transform_params!(
-    Left,
+    Left(),
     decomp,
     step,
     m,
@@ -332,13 +270,13 @@ function WYWeight(
   rand!(rng, leftWY)
 
   right_max_sizes, right_max_num_hs = get_WYWeight_max_transform_params(
-    Right,
-    (LeadingDecomp, TrailingDecomp),
+    Right(),
+    (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes,
-    Num_hs,
+    Sizes(),
+    Num_hs(),
     upper_blocks=upper_blocks,
     upper_ranks=upper_rank_max,
     lower_blocks=lower_blocks,
@@ -356,7 +294,7 @@ function WYWeight(
   )
 
   set_WYWeight_transform_params!(
-    Right,
+    Right(),
     decomp,
     step,
     m,
@@ -373,8 +311,8 @@ function WYWeight(
   rand!(rng, rightWY)
 
   decomp_ref =
-    Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}(singleton(decomp))
-  step_ref = Base.RefValue{Union{Nothing,NullStep,SpanStep}}(singleton(step))
+    Base.RefValue{Union{Nothing,Decomp}}(decomp)
+  step_ref = Base.RefValue{Union{Nothing,NullStep,SpanStep}}(step)
   upper_compressed = fill(true, num_blocks)
   lower_compressed = fill(true, num_blocks)
 
@@ -391,118 +329,14 @@ function WYWeight(
   )
 end
 
-# Iterators over blocks.
-
-struct LowerCompressed{WY}
-  wy::WY
-end
-
-function Base.length(lc::LowerCompressed{<:WYWeight})
+function Base.length(lc::LowerCompressed{<:OrthWeightDecomp})
   l = 1
   len = 0
-  while l <= lc.wy.b.num_blocks
-    lc.wy.lower_compressed[l] && (len += 1)
+  while l <= lc.decomp.b.num_blocks
+    lc.decomp.lower_compressed[l] && (len += 1)
     l += 1
   end
   len
-end
-
-@inline function Base.length(
-  rlc::Iterators.Reverse{<:LowerCompressed{<:WYWeight}},
-)
-  length(rlc.itr)
-end
-
-@inline function Base.iterate(lc::LowerCompressed{<:WYWeight})
-  l = 1
-  while (l <= lc.wy.b.num_blocks) && (!lc.wy.lower_compressed[l])
-    l += 1
-  end
-  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
-end
-
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:LowerCompressed{<:WYWeight}},
-)
-  lc = rlc.itr
-  l = lc.wy.b.num_blocks
-  while (l >= 1) && (!lc.wy.lower_compressed[l])
-    l -= 1
-  end
-  l < 1 ? nothing : (l, l - 1)
-end
-
-@inline function Base.iterate(lc::LowerCompressed{<:WYWeight}, l::Int)
-  while (l <= lc.wy.b.num_blocks) && (!lc.wy.lower_compressed[l])
-    l += 1
-  end
-  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
-end
-
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:LowerCompressed{<:WYWeight}},
-  l::Int,
-)
-  while (l >= 1) && (!rlc.itr.wy.lower_compressed[l])
-    l -= 1
-  end
-  l < 1 ? nothing : (l, l - 1)
-end
-
-struct UpperCompressed{WY}
-  wy::WY
-end
-
-@inline function Base.length(lc::UpperCompressed{<:WYWeight})
-  l = 1
-  len = 0
-  while l <= lc.wy.b.num_blocks
-    lc.wy.upper_compressed[l] && (len += 1)
-    l += 1
-  end
-  len
-end
-
-@inline function Base.length(
-  rlc::Iterators.Reverse{<:UpperCompressed{<:WYWeight}},
-)
-  length(rlc.itr)
-end
-
-@inline function Base.iterate(lc::UpperCompressed{<:WYWeight})
-  l = 1
-  while (l <= lc.wy.b.num_blocks) && (!lc.wy.upper_compressed[l])
-    l += 1
-  end
-  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
-end
-
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:UpperCompressed{<:WYWeight}},
-)
-  lc = rlc.itr
-  l = lc.wy.b.num_blocks
-  while (l >= 1) && (!lc.wy.upper_compressed[l])
-    l -= 1
-  end
-  l < 1 ? nothing : (l, l - 1)
-end
-
-@inline function Base.iterate(lc::UpperCompressed{<:WYWeight}, l::Int)
-  while (l <= lc.wy.b.num_blocks) && (!lc.wy.upper_compressed[l])
-    l += 1
-  end
-  l > lc.wy.b.num_blocks ? nothing : (l, l + 1)
-end
-
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:UpperCompressed{<:WYWeight}},
-  l::Int,
-)
-  while (l >= 1) && (!rlc.itr.wy.upper_compressed[l])
-    l -= 1
-  end
-  l < 1 ? nothing : (l, l - 1)
 end
 
 # Set or increase xref[k] to y.
@@ -524,9 +358,9 @@ getindex_or_scalar(a::AbstractArray, k) = a[k]
 
 """
     set_WYWeight_transform_params!(
-      side::Union{Type{Left}, Type{Right}},
-      decomp::UnionOrTuple{Type{LeadingDecomp},Type{TrailingDecomp}},
-      step::UnionOrTuple{Type{SpanStep},Type{NullStep}},
+      side::Union{Left, Right},
+      decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
+      step::Union{Step, Tuple{Vararg{Step}}},
       m::Int,
       n::Int;
       lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
@@ -550,9 +384,9 @@ dimension) or for a NullStep (from null spaces).  If `find_maximum` is
 that the structure can hold multiple types of decompositions.
 """
 function set_WYWeight_transform_params!(
-  side::Union{Type{Left}, Type{Right}},
-  decomp::UnionOrTuple{Type{LeadingDecomp},Type{TrailingDecomp}},
-  step::UnionOrTuple{Type{SpanStep},Type{NullStep}},
+  side::Union{Left, Right},
+  decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
+  step::Union{Step, Tuple{Vararg{Step}}},
   m::Int,
   n::Int;
   lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
@@ -594,9 +428,9 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Type{Right},
-  ::Type{LeadingDecomp},
-  step::Union{Type{SpanStep},Type{NullStep}},
+  ::Right,
+  ::LeadingDecomp,
+  step::Union{SpanStep,NullStep},
   m::Int,
   n::Int;
   lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
@@ -648,9 +482,9 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Type{Left},
-  ::Type{LeadingDecomp},
-  step::Union{Type{SpanStep},Type{NullStep}},
+  ::Left,
+  ::LeadingDecomp,
+  step::Union{SpanStep,NullStep},
   m::Int,
   n::Int;
   lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
@@ -704,9 +538,9 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Type{Right},
-  ::Type{TrailingDecomp},
-  step::Union{Type{SpanStep},Type{NullStep}},
+  ::Right,
+  ::TrailingDecomp,
+  step::Union{SpanStep,NullStep},
   m::Int,
   n::Int;
   lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
@@ -759,9 +593,9 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Type{Left},
-  ::Type{TrailingDecomp},
-  step::Union{Type{SpanStep},Type{NullStep}},
+  ::Left,
+  ::TrailingDecomp,
+  step::Union{SpanStep,NullStep},
   m::Int,
   n::Int;
   lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
@@ -814,12 +648,12 @@ end
 
 """
     get_WYWeight_transform_params(
-      side::Union{Type{Left},Type{Right}},
-      decomp::UnionOrTuple{<:Type{TrailingDecomp},<:Type{TrailingDecomp}},
-      step::UnionOrTuple{<:Type{SpanStep},<:Type{NullStep}},
+      side::Union{Left,Right},
+      decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
+      step::Union{Step, Tuple{Vararg{Step}}},
       m::Int,
       n::Int,
-      params::Vararg{Union{Type{Sizes},Type{Num_hs},Type{Offsets}}};
+      params::Vararg{Union{Sizes,Num_hs,Offsets}};
       lower_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
       lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
       upper_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
@@ -830,12 +664,12 @@ Compute `sizes`, `num_hs`, `offsets` values, depending on which
 selectors are provided as `Vararg` parameters.
 """
 function get_WYWeight_transform_params(
-  side::Union{Type{Left},Type{Right}},
-  decomp::UnionOrTuple{<:Type{TrailingDecomp},<:Type{TrailingDecomp}},
-  step::UnionOrTuple{<:Type{SpanStep},<:Type{NullStep}},
+  side::Union{Left,Right},
+  decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
+  step::Union{Step, Tuple{Vararg{Step}}},
   m::Int,
   n::Int,
-  params::Vararg{Union{Type{Sizes},Type{Num_hs},Type{Offsets}}};
+  params::Vararg{Union{Sizes,Num_hs,Offsets}};
   lower_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
@@ -849,9 +683,9 @@ function get_WYWeight_transform_params(
   num_hs = nothing
 
   for p ∈ params
-    p == Sizes && (sizes = zeros(Int, num_blocks))
-    p == Num_hs && (num_hs = zeros(Int, num_blocks))
-    p == Offsets && (offsets = zeros(Int, num_blocks))
+    p == Sizes() && (sizes = zeros(Int, num_blocks))
+    p == Num_hs() && (num_hs = zeros(Int, num_blocks))
+    p == Offsets() && (offsets = zeros(Int, num_blocks))
   end
 
   set_WYWeight_transform_params!(
@@ -873,21 +707,21 @@ function get_WYWeight_transform_params(
   result::Vector{Vector{Int}} = []
 
   for p ∈ params
-    p == Sizes && push!(result, sizes)
-    p == Num_hs && push!(result, num_hs)
-    p == Offsets && push!(result, offsets)
+    p == Sizes() && push!(result, sizes)
+    p == Num_hs() && push!(result, num_hs)
+    p == Offsets() && push!(result, offsets)
   end
   length(result) == 1 ? result[1] : tuple(result...)
 
 end
 """
     get_WYWeight_max_transform_params(
-      side::Union{Type{Left},Type{Right}},
-      decomp::UnionOrTuple{<:Type{TrailingDecomp},<:Type{TrailingDecomp}},
-      step::UnionOrTuple{<:Type{SpanStep},<:Type{NullStep}},
+      side::Union{Left,Right},
+      decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
+      step::Union{Step, Tuple{Vararg{Step}}},
       m::Int,
       n::Int,
-      params::Vararg{Union{Type{Sizes},Type{Num_hs}}};
+      params::Vararg{Union{Sizes,Num_hs}};
       lower_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
       lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
       upper_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
@@ -898,12 +732,12 @@ Compute requested maxima for `sizes` and `num_hs` for the type(s) of
 decompositions/transforms specified.
 """
 function get_WYWeight_max_transform_params(
-  side::Union{Type{Left},Type{Right}},
-  decomp::UnionOrTuple{<:Type{TrailingDecomp},<:Type{TrailingDecomp}},
-  step::UnionOrTuple{<:Type{SpanStep},<:Type{NullStep}},
+  side::Union{Left,Right},
+  decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
+  step::Union{Step, Tuple{Vararg{Step}}},
   m::Int,
   n::Int,
-  params::Vararg{Union{Type{Sizes},Type{Num_hs}}};
+  params::Vararg{Union{Sizes,Num_hs}};
   lower_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
@@ -914,8 +748,8 @@ function get_WYWeight_max_transform_params(
   num_hs = nothing
 
   for p ∈ params
-    p == Sizes && (sizes = Ref(0))
-    p == Num_hs && (num_hs = Ref(0))
+    p == Sizes() && (sizes = Ref(0))
+    p == Num_hs() && (num_hs = Ref(0))
   end
 
   set_WYWeight_transform_params!(
@@ -936,8 +770,8 @@ function get_WYWeight_max_transform_params(
   result::Vector{Int} = []
 
   for p ∈ params
-    p == Sizes && push!(result, sizes[])
-    p == Num_hs && push!(result, num_hs[])
+    p == Sizes() && push!(result, sizes[])
+    p == Num_hs() && push!(result, num_hs[])
   end
   length(result) == 1 ? result[1] : tuple(result...)
 
