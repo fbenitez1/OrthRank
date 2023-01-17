@@ -12,7 +12,10 @@ export OrthWeightDecomp,
   Num_hs,
   Offsets,
   LowerCompressed,
-  UpperCompressed
+  UpperCompressed,
+  getindex_or_scalar,
+  maybe_zero,
+  expand_or_set!  
 
 abstract type OrthWeightDecomp end
 
@@ -167,5 +170,23 @@ end
   end
   l < 1 ? nothing : (l, l - 1)
 end
+
+# Set or increase xref[k] to y.
+expand_or_set!(b, xref, k, y) = xref[k] = b ? max(xref[k], y) : y
+
+# Increase xref[] to y as needed, to get a running maximum.
+expand_or_set!(_, xref::Ref{Int}, _, y) = xref[] = max(xref[], y)
+
+# Initialize with zero if not expanding.
+maybe_zero(expand::Bool, r::Ref{Int}) = expand || (r[] = 0)
+maybe_zero(expand::Bool, r::Vector{Int}) = expand || (r .= 0)
+maybe_zero(::Bool, ::Nothing) = nothing
+maybe_zero(exp::Bool, args...) = (x -> maybe_zero(exp, x)).(args)
+
+# Pretend to index into a scalar, which is treated as a constant that
+# doesn't depend on the index.
+getindex_or_scalar(a, _) = a
+getindex_or_scalar(a::AbstractArray, k) = a[k]
+
 
 end
