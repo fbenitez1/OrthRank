@@ -30,22 +30,22 @@ WY transformations of type `LWY` and `RWY` respectively.
     whether zeros are introduced from a span of columns/rows or from a
     null space.
 
-  - `leftWY::LWY`: Left WY for a banded WY weight decomposition.
+  - `lowerWY::LWY`: Lower WY for a banded WY weight decomposition.
 
   - `b::B`: Weight matrix.
 
-  - `rightWY::RWY`: Right WY for a banded WY weight decomposition.
+  - `upperWY::UWY`: Upper WY for a banded WY weight decomposition.
 
   - `upper_ranks::Vector{Int}`: Upper ranks
 
   - `lower_ranks::Vector{Int}`: Lower ranks
 """
-struct WYWeight{LWY,B,RWY} <: OrthWeightDecomp
+struct WYWeight{LWY,B,UWY} <: OrthWeightDecomp
   decomp::Base.RefValue{Union{Nothing,Decomp}}
   step::Base.RefValue{Union{Nothing,NullStep,SpanStep}}
-  leftWY::LWY
+  lowerWY::LWY
   b::B
-  rightWY::RWY
+  upperWY::UWY
   upper_ranks::Vector{Int}
   upper_compressed::Vector{Bool}
   lower_ranks::Vector{Int}
@@ -98,8 +98,8 @@ function WYWeight(
 
   rank_max = max(upper_rank_max, lower_rank_max)
 
-  left_max_sizes, left_max_num_hs = get_WYWeight_max_transform_params(
-    Left(),
+  lower_max_sizes, lower_max_num_hs = get_WYWeight_max_transform_params(
+    Lower(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
@@ -114,18 +114,18 @@ function WYWeight(
 
   # n * (max_WY_size + max_num_hs) where max_num_hs is potentially as
   # large as max_WY_size.
-  left_work_size = n * (2 * left_max_sizes)
+  lower_work_size = n * (2 * lower_max_sizes)
 
-  leftWY = WYTrans(
+  lowerWY = WYTrans(
     E,
     max_num_WY = num_blocks,
-    max_WY_size = left_max_sizes,
-    max_num_hs = left_max_num_hs,
-    work_size = left_work_size,
+    max_WY_size = lower_max_sizes,
+    max_num_hs = lower_max_num_hs,
+    work_size = lower_work_size,
   )
 
-  right_max_sizes, right_max_num_hs = get_WYWeight_max_transform_params(
-    Right(),
+  upper_max_sizes, upper_max_num_hs = get_WYWeight_max_transform_params(
+    Upper(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
@@ -138,14 +138,14 @@ function WYWeight(
     lower_ranks = lower_rank_max,
   )
 
-  right_work_size = m * (2 * right_max_sizes)
+  upper_work_size = m * (2 * upper_max_sizes)
 
-  rightWY = WYTrans(
+  upperWY = WYTrans(
     E,
     max_num_WY = num_blocks,
-    max_WY_size = right_max_sizes,
-    max_num_hs = right_max_num_hs,
-    work_size = right_work_size,
+    max_WY_size = upper_max_sizes,
+    max_num_hs = upper_max_num_hs,
+    work_size = upper_work_size,
   )
 
   upper_ranks = zeros(Int, num_blocks)
@@ -157,9 +157,9 @@ function WYWeight(
   WYWeight(
     decomp_ref,
     step_ref,
-    leftWY,
+    lowerWY,
     bbc,
-    rightWY,
+    upperWY,
     upper_ranks,
     upper_compressed,
     lower_ranks,
@@ -228,8 +228,8 @@ function WYWeight(
     error("""In a WYWeight, the number of upper blocks should equal the number
              of lower blocks""")
 
-  left_max_sizes, left_max_num_hs = get_WYWeight_max_transform_params(
-    Left(),
+  lower_max_sizes, lower_max_num_hs = get_WYWeight_max_transform_params(
+    Lower(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
@@ -242,18 +242,18 @@ function WYWeight(
     lower_ranks = lower_rank_max,
   )
 
-  left_work_size = n * (2 * left_max_sizes)
+  lower_work_size = n * (2 * lower_max_sizes)
 
-  leftWY = WYTrans(
+  lowerWY = WYTrans(
     E,
     max_num_WY = num_blocks,
-    max_WY_size = left_max_sizes,
-    max_num_hs = left_max_num_hs,
-    work_size = left_work_size,
+    max_WY_size = lower_max_sizes,
+    max_num_hs = lower_max_num_hs,
+    work_size = lower_work_size,
   )
 
   set_WYWeight_transform_params!(
-    Left(),
+    Lower(),
     decomp,
     step,
     m,
@@ -262,15 +262,15 @@ function WYWeight(
     lower_ranks = lower_rank_max,
     upper_blocks = upper_blocks,
     upper_ranks = upper_rank_max,
-    num_hs = leftWY.num_hs,
-    offsets = leftWY.offsets,
-    sizes = leftWY.sizes,
+    num_hs = lowerWY.num_hs,
+    offsets = lowerWY.offsets,
+    sizes = lowerWY.sizes,
   )
 
-  rand!(rng, leftWY)
+  rand!(rng, lowerWY)
 
-  right_max_sizes, right_max_num_hs = get_WYWeight_max_transform_params(
-    Right(),
+  upper_max_sizes, upper_max_num_hs = get_WYWeight_max_transform_params(
+    Upper(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
@@ -283,18 +283,18 @@ function WYWeight(
     lower_ranks = lower_rank_max,
   )
 
-  right_work_size = m * (2 * right_max_sizes)
+  upper_work_size = m * (2 * upper_max_sizes)
 
-  rightWY = WYTrans(
+  upperWY = WYTrans(
     E,
     max_num_WY = num_blocks,
-    max_WY_size = right_max_sizes,
-    max_num_hs = right_max_num_hs,
-    work_size = right_work_size,
+    max_WY_size = upper_max_sizes,
+    max_num_hs = upper_max_num_hs,
+    work_size = upper_work_size,
   )
 
   set_WYWeight_transform_params!(
-    Right(),
+    Upper(),
     decomp,
     step,
     m,
@@ -303,12 +303,12 @@ function WYWeight(
     lower_ranks = lower_ranks,
     upper_blocks = upper_blocks,
     upper_ranks = upper_rank_max,
-    num_hs = rightWY.num_hs,
-    offsets = rightWY.offsets,
-    sizes = rightWY.sizes,
+    num_hs = upperWY.num_hs,
+    offsets = upperWY.offsets,
+    sizes = upperWY.sizes,
   )
 
-  rand!(rng, rightWY)
+  rand!(rng, upperWY)
 
   decomp_ref = Base.RefValue{Union{Nothing,Decomp}}(decomp)
   step_ref = Base.RefValue{Union{Nothing,NullStep,SpanStep}}(step)
@@ -318,9 +318,9 @@ function WYWeight(
   WYWeight(
     decomp_ref,
     step_ref,
-    leftWY,
+    lowerWY,
     bbc,
-    rightWY,
+    upperWY,
     upper_ranks,
     upper_compressed,
     lower_ranks,
@@ -366,7 +366,7 @@ dimension) or for a NullStep (from null spaces).  If `find_maximum` is
 that the structure can hold multiple types of decompositions.
 """
 function set_WYWeight_transform_params!(
-  side::Union{Left,Right},
+  side::Union{Lower,Upper},
   decomp::Union{Decomp,Tuple{Vararg{Decomp}}},
   step::Union{Step,Tuple{Vararg{Step}}},
   m::Int,
@@ -410,7 +410,7 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Right,
+  ::Lower,
   ::LeadingDecomp,
   step::Union{SpanStep,NullStep},
   m::Int,
@@ -470,7 +470,7 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Left,
+  ::Upper,
   ::LeadingDecomp,
   step::Union{SpanStep,NullStep},
   m::Int,
@@ -531,7 +531,7 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Right,
+  ::Upper,
   ::TrailingDecomp,
   step::Union{SpanStep,NullStep},
   m::Int,
@@ -591,7 +591,7 @@ function set_WYWeight_transform_params!(
 end
 
 function set_WYWeight_transform_params!(
-  ::Left,
+  ::Lower,
   ::TrailingDecomp,
   step::Union{SpanStep,NullStep},
   m::Int,
@@ -667,7 +667,7 @@ Compute `sizes`, `num_hs`, `offsets` values, depending on which
 selectors are provided as `Vararg` parameters.
 """
 function get_WYWeight_transform_params(
-  side::Union{Left,Right},
+  side::Union{Lower,Upper},
   decomp::Union{Decomp,Tuple{Vararg{Decomp}}},
   step::Union{Step,Tuple{Vararg{Step}}},
   m::Int,
@@ -735,7 +735,7 @@ Compute requested maxima for `sizes` and `num_hs` for the type(s) of
 decompositions/transforms specified.
 """
 function get_WYWeight_max_transform_params(
-  side::Union{Left,Right},
+  side::Union{Lower,Upper},
   decomp::Union{Decomp,Tuple{Vararg{Decomp}}},
   step::Union{Step,Tuple{Vararg{Step}}},
   m::Int,
@@ -792,11 +792,11 @@ end
 function LinearAlgebra.Matrix(::Type{LeadingDecomp}, wyw::WYWeight)
   bbc = wyw.b
   a = Matrix(bbc)
-  lwy = wyw.leftWY
-  rwy = wyw.rightWY
+  lwy = wyw.lowerWY
+  uwy = wyw.upperWY
   @views for l ∈ Iterators.reverse(LowerCompressed(wyw))
     rows, _ = lower_block_ranges(bbc, l)
-    apply_inv!(a[rows, :], (rwy, l))
+    apply_inv!(a[rows, :], (uwy, l))
   end
   @views for l ∈ Iterators.reverse(UpperCompressed(wyw))
     _, cols = upper_block_ranges(bbc, l)
@@ -808,15 +808,15 @@ end
 function LinearAlgebra.Matrix(::Type{TrailingDecomp}, wyw::WYWeight)
   bbc = wyw.b
   a = Matrix(bbc)
-  lwy = wyw.leftWY
-  rwy = wyw.rightWY
+  lwy = wyw.lowerWY
+  uwy = wyw.upperWY
   @views for l ∈ LowerCompressed(wyw)
     _, cols = lower_block_ranges(bbc, l)
     apply!((lwy, l), a[:, cols])
   end
   @views for l ∈ UpperCompressed(wyw)
     rows, _ = upper_block_ranges(bbc, l)
-    apply_inv!(a[rows, :], (rwy, l))
+    apply_inv!(a[rows, :], (uwy, l))
   end
   a
 end

@@ -6,8 +6,9 @@ export OrthWeightDecomp,
   Step,
   SpanStep,
   NullStep,
-  Left,
-  Right,
+  UpLow,
+  Upper,
+  Lower,
   Sizes,
   Num_hs,
   Offsets,
@@ -15,7 +16,7 @@ export OrthWeightDecomp,
   UpperCompressed,
   getindex_or_scalar,
   maybe_zero,
-  expand_or_set!  
+  expand_or_set!
 
 abstract type OrthWeightDecomp end
 
@@ -43,15 +44,15 @@ struct NullStep <: Step end
 Base.iterate(t::NullStep) = (t, nothing)
 Base.iterate(::NullStep, ::Any) = nothing
 
-abstract type Side end
+abstract type UpLow end
 
-struct Left <: Side end
-Base.iterate(t::Left) = (t, nothing)
-Base.iterate(::Left, ::Any) = nothing
+struct Upper <: UpLow end
+Base.iterate(t::Upper) = (t, nothing)
+Base.iterate(::Upper, ::Any) = nothing
 
-struct Right <: Side end
-Base.iterate(t::Right) = (t, nothing)
-Base.iterate(::Right, ::Any) = nothing
+struct Lower <: UpLow end
+Base.iterate(t::Lower) = (t, nothing)
+Base.iterate(::Lower, ::Any) = nothing
 
 struct Sizes end
 Base.iterate(t::Sizes) = (t, nothing)

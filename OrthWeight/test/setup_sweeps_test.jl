@@ -34,19 +34,18 @@ function test_wy_construction()
     lower_blocks = lower_blocks_sweep,
   )
 
-  sweep = SweepForward(wyw_sweep.leftWY)
+  sweep = SweepForward(wyw_sweep.lowerWY)
   A = Matrix{Float64}(I, 8, 8)
-  sweep ⊛ A
-  sweep ⊘ A
-  @testset "Real Left Sweep Orthogonality" begin
-    @test norm(Matrix{Float64}(I, 8, 8) - A, Inf) <= tol
-  end
-
-  sweep = SweepForward(wyw_sweep.rightWY)
-  A = Matrix{Float64}(I, 7, 7)
   A ⊛ sweep
   A ⊘ sweep
   @testset "Real Right Sweep Orthogonality" begin
+    @test norm(Matrix{Float64}(I, 8, 8) - A, Inf) <= tol
+  end
+  sweep = SweepForward(wyw_sweep.upperWY)
+  A = Matrix{Float64}(I, 7, 7)
+  sweep ⊛ A
+  sweep ⊘ A
+  @testset "Real Left Sweep Orthogonality" begin
     @test norm(Matrix{Float64}(I, 7, 7) - A, Inf) <= tol
   end
 end
