@@ -68,7 +68,7 @@ Base.iterate(t::Offsets) = (t, nothing)
 Base.iterate(::Offsets, ::Any) = nothing
 
 
-# Iterators over blocks.
+# Iterators over blocks that are compressed.
 
 struct LowerCompressed{D}
   decomp::D
@@ -78,39 +78,27 @@ struct UpperCompressed{D}
   decomp::D
 end
 
-@inline function Base.length(
-  rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}},
-)
+function Base.length(lc::LowerCompressed{<:OrthWeightDecomp})
+  len = 0
+  for i ∈ lc
+    len += 1
+  end
+  len
+end
+
+Base.length(rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}}) =
   length(rlc.itr)
-end
 
-@inline function Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp})
-  l = 1
+function Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}, l::Int)
   while (l <= lc.decomp.b.num_blocks) && (!lc.decomp.lower_compressed[l])
     l += 1
   end
   l > lc.decomp.b.num_blocks ? nothing : (l, l + 1)
 end
 
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}},
-)
-  lc = rlc.itr
-  l = lc.decomp.b.num_blocks
-  while (l >= 1) && (!lc.decomp.lower_compressed[l])
-    l -= 1
-  end
-  l < 1 ? nothing : (l, l - 1)
-end
+Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}) = Base.iterate(lc, 1)
 
-@inline function Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}, l::Int)
-  while (l <= lc.decomp.b.num_blocks) && (!lc.decomp.lower_compressed[l])
-    l += 1
-  end
-  l > lc.decomp.b.num_blocks ? nothing : (l, l + 1)
-end
-
-@inline function Base.iterate(
+function Base.iterate(
   rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}},
   l::Int,
 )
@@ -120,57 +108,44 @@ end
   l < 1 ? nothing : (l, l - 1)
 end
 
-@inline function Base.length(lc::UpperCompressed{<:OrthWeightDecomp})
-  l = 1
+Base.iterate(rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}}) =
+  Base.iterate(rlc, rlc.itr.decomp.b.num_blocks)
+
+function Base.length(uc::UpperCompressed{<:OrthWeightDecomp})
   len = 0
-  while l <= lc.decomp.b.num_blocks
-    lc.decomp.upper_compressed[l] && (len += 1)
-    l += 1
+  for i ∈ uc
+    len += 1
   end
   len
 end
 
-@inline function Base.length(
-  rlc::Iterators.Reverse{<:UpperCompressed{<:OrthWeightDecomp}},
+function Base.length(
+  ruc::Iterators.Reverse{<:UpperCompressed{<:OrthWeightDecomp}},
 )
-  length(rlc.itr)
+  length(ruc.itr)
 end
 
-@inline function Base.iterate(lc::UpperCompressed{<:OrthWeightDecomp})
-  l = 1
-  while (l <= lc.decomp.b.num_blocks) && (!lc.decomp.upper_compressed[l])
+function Base.iterate(uc::UpperCompressed{<:OrthWeightDecomp}, l::Int)
+  while (l <= uc.decomp.b.num_blocks) && (!uc.decomp.upper_compressed[l])
     l += 1
   end
-  l > lc.decomp.b.num_blocks ? nothing : (l, l + 1)
+  l > uc.decomp.b.num_blocks ? nothing : (l, l + 1)
 end
 
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:UpperCompressed{<:OrthWeightDecomp}},
-)
-  lc = rlc.itr
-  l = lc.decomp.b.num_blocks
-  while (l >= 1) && (!lc.decomp.upper_compressed[l])
-    l -= 1
-  end
-  l < 1 ? nothing : (l, l - 1)
-end
+Base.iterate(uc::UpperCompressed{<:OrthWeightDecomp}) = Base.iterate(uc, 1)
 
-@inline function Base.iterate(lc::UpperCompressed{<:OrthWeightDecomp}, l::Int)
-  while (l <= lc.decomp.b.num_blocks) && (!lc.decomp.upper_compressed[l])
-    l += 1
-  end
-  l > lc.decomp.b.num_blocks ? nothing : (l, l + 1)
-end
-
-@inline function Base.iterate(
-  rlc::Iterators.Reverse{<:UpperCompressed{<:OrthWeightDecomp}},
+function Base.iterate(
+  ruc::Iterators.Reverse{<:UpperCompressed{<:OrthWeightDecomp}},
   l::Int,
 )
-  while (l >= 1) && (!rlc.itr.decomp.upper_compressed[l])
+  while (l >= 1) && (!ruc.itr.decomp.upper_compressed[l])
     l -= 1
   end
   l < 1 ? nothing : (l, l - 1)
 end
+
+Base.iterate(ruc::Iterators.Reverse{<:UpperCompressed{<:OrthWeightDecomp}}) =
+  Base.iterate(ruc, ruc.itr.decomp.b.num_blocks)
 
 # Set or increase xref[k] to y.
 expand_or_set!(b, xref, k, y) = xref[k] = b ? max(xref[k], y) : y

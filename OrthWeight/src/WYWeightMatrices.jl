@@ -328,16 +328,6 @@ function WYWeight(
   )
 end
 
-function Base.length(lc::LowerCompressed{<:OrthWeightDecomp})
-  l = 1
-  len = 0
-  while l <= lc.decomp.b.num_blocks
-    lc.decomp.lower_compressed[l] && (len += 1)
-    l += 1
-  end
-  len
-end
-
 """
     set_WYWeight_transform_params!(
       side::Union{Left, Right},
@@ -820,6 +810,5 @@ function LinearAlgebra.Matrix(::Type{TrailingDecomp}, wyw::WYWeight)
   end
   a
 end
-
 
 end
