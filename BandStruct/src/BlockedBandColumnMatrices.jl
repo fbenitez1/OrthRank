@@ -54,10 +54,6 @@ with additional leading block information and without the `roffset`,
 
   - `n::Int`: Matrix and elements number of columns.
 
-  - `roffset::Int`: Uniform column offset, used to identify submatrices.
-
-  - `coffset::Int`: Uniform row offset, used to identify submatrices.
-
   - `bw_max::Int`: Elements array number of rows.
 
   - `upper_bw_max::Int`: Maximum upper bandwidth.
@@ -243,7 +239,7 @@ function BlockedBandColumn(
   lower_blocks::Array{Int,2},
 ) where {E<:Number}
 
-  num_blocks = size(lower_blocks,2)
+  num_blocks = size(lower_blocks, 2)
   cols_first_last = similar_zeros(upper_blocks, 6, n)
   rows_first_last = similar_zeros(upper_blocks, m, 6)
   # Upper and lower ranks
