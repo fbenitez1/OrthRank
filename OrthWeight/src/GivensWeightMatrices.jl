@@ -401,13 +401,13 @@ function set_givens_weight_transform_params!(
   upper_blocks::Union{AbstractArray{Int,2},Nothing} = nothing,
   upper_ranks::Union{AbstractVector{Int},Nothing} = nothing,
   sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
-  num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+  num_rots::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   offsets::Union{AbstractVector{Int},Nothing} = nothing,
   expand_values::Bool = false,
 )
   num_blocks = size(lower_blocks, 2)
 
-  maybe_zero(expand_values, sizes, num_hs)
+  maybe_zero(expand_values, sizes, num_rots)
 
   # trailing lower
   old_rows_lb = 1:0
@@ -422,7 +422,7 @@ function set_givens_weight_transform_params!(
 
     expand_or_set!(
       expand_values,
-      num_hs,
+      num_rots,
       lb,
       (tsize - lower_ranks[lb]) * lower_ranks[lb],
     )
@@ -558,7 +558,7 @@ end
       upper_ranks::Union{AbstractVector{Int},Nothing} = nothing,
     )
 
-Compute requested maxima for `sizes` and `num_hs` for the type(s) of
+Compute requested maxima for `sizes` and `num_rots` for the type(s) of
 decompositions/transforms specified.
 """
 function get_givens_weight_max_transform_params(
