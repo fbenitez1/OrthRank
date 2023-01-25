@@ -13,7 +13,7 @@ response = replace(readline(stdin), r" " => "")
 if match(r"^$", response) != nothing
   up = false
 else
-  up = match(r"(y|Yes|yes|Y)", response) != nothing
+  up = match(r"(Yes|yes|Y)", response) != nothing
   noup = match(r"(n|No|no|N)", response) != nothing
   xor(up, noup) || error("Answer y or n.")
 end
