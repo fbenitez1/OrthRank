@@ -18,8 +18,8 @@ using Random
 """
     WYWeight{LWY,B,RWY}
 
-A WYWeight matrix with weight matrix of type `B` and left and weight
-WY transformations of type `LWY` and `RWY` respectively.
+A WYWeight matrix with weight matrix of type `B` and lower and upper
+WY transformations of type `LWY` and `UWY` respectively.
 
 # Fields
 
@@ -707,6 +707,7 @@ function get_WYWeight_transform_params(
   length(result) == 1 ? result[1] : tuple(result...)
 
 end
+
 """
     get_WYWeight_max_transform_params(
       side::Union{Left,Right},

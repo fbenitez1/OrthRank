@@ -11,12 +11,14 @@ export OrthWeightDecomp,
   Lower,
   Sizes,
   Num_hs,
+  NumRots,
   Offsets,
   LowerCompressed,
   UpperCompressed,
   getindex_or_scalar,
   maybe_zero,
-  expand_or_set!
+  expand_or_set!,
+  maybe_set!
 
 abstract type OrthWeightDecomp end
 
@@ -61,6 +63,10 @@ Base.iterate(::Sizes, ::Any) = nothing
 struct Num_hs end
 Base.iterate(t::Num_hs) = (t, nothing)
 Base.iterate(::Num_hs, ::Any) = nothing
+
+struct NumRots end
+Base.iterate(t::NumRots) = (t, nothing)
+Base.iterate(::NumRots, ::Any) = nothing
 
 
 struct Offsets end
@@ -152,6 +158,13 @@ expand_or_set!(b, xref, k, y) = xref[k] = b ? max(xref[k], y) : y
 
 # Increase xref[] to y as needed, to get a running maximum.
 expand_or_set!(_, xref::Ref{Int}, _, y) = xref[] = max(xref[], y)
+
+expand_or_set!(_, ::Nothing, _, y) = return y
+
+# Set values if given a vector.
+maybe_set!(a::AbstractVector, k, y) = a[k] = y
+maybe_set!(::Nothing, _, y) = return y
+
 
 # Initialize with zero if not expanding.
 maybe_zero(expand::Bool, r::Ref{Int}) = expand || (r[] = 0)
