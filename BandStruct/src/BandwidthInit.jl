@@ -98,8 +98,8 @@ end
 function get_cols_first_last(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
+  lower_blocks::AbstractMatrix{Int},
   r_upper::Int,
   r_lower::Int
 )
@@ -122,11 +122,11 @@ end
 function get_cols_first_last!(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
+  lower_blocks::AbstractMatrix{Int},
   r_upper::Int,
   r_lower::Int,
-  cols_first_last::AbstractArray{Int,2}
+  cols_first_last::AbstractMatrix{Int}
 )
   get_cols_first_last_upper!(m, n, upper_blocks, r_upper, cols_first_last)
   get_cols_first_last_lower!(m, n, lower_blocks, r_lower, cols_first_last)
@@ -135,8 +135,8 @@ end
 function get_rows_first_last(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
+  lower_blocks::AbstractMatrix{Int},
   r_upper::Int,
   r_lower::Int
 )
@@ -159,11 +159,11 @@ end
 function get_rows_first_last!(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
-  lower_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
+  lower_blocks::AbstractMatrix{Int},
   r_upper::Int,
   r_lower::Int,
-  rows_first_last::AbstractArray{Int,2}
+  rows_first_last::AbstractMatrix{Int}
 )
   get_rows_first_last_upper!(m, n, upper_blocks, r_upper, rows_first_last)
   get_rows_first_last_lower!(m, n, lower_blocks, r_lower, rows_first_last)
@@ -172,7 +172,7 @@ end
 function get_cols_first_last_lower(
   m::Int,
   n::Int,
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   r::Int
 )
   cols_first_last = similar_zeros(lower_blocks, 6, n)
@@ -258,9 +258,9 @@ end
 function get_cols_first_last_lower!(
   m::Int,
   n::Int,
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   r::Int,
-  cols_first_last::AbstractArray{Int,2}
+  cols_first_last::AbstractMatrix{Int}
 )
   # Trace through a leading to trailing conversion to fill in last
   # storable in cols_first_last suitable for a decomposition with
@@ -342,7 +342,7 @@ end
 function get_cols_first_last_upper(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   r::Int
 )
   cols_first_last = similar_zeros(upper_blocks, 6, n)
@@ -431,9 +431,9 @@ end
 function get_cols_first_last_upper!(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   r::Int,
-  cols_first_last::AbstractArray{Int,2}
+  cols_first_last::AbstractMatrix{Int}
 )
 
   # Trace through a leading to trailing conversion to fill in first
@@ -517,7 +517,7 @@ end
 function get_rows_first_last_lower(
   m::Int,
   n::Int,
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   r::Int
 )
   rows_first_last = similar_zeros(lower_blocks, m, 6)
@@ -528,9 +528,9 @@ end
 function get_rows_first_last_lower!(
   m::Int,
   n::Int,
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   r::Int,
-  rows_first_last::AbstractArray{Int,2}
+  rows_first_last::AbstractMatrix{Int}
 )
 
   function extend_to(k, range)
@@ -600,7 +600,7 @@ end
 function get_rows_first_last_upper(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   r::Int
 )
   rows_first_last = similar_zeros(upper_blocks, m, 6)
@@ -611,9 +611,9 @@ end
 function get_rows_first_last_upper!(
   m::Int,
   n::Int,
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   r::Int,
-  rows_first_last::AbstractArray{Int,2}
+  rows_first_last::AbstractMatrix{Int}
 )
 
   function extend_to(k, range)
@@ -677,7 +677,7 @@ end
 
 """
     lower_block_ranges(
-      lower_blocks::AbstractArray{Int,2},
+      lower_blocks::AbstractMatrix{Int},
       m :: Int,
       n :: Int,
       l::Integer
@@ -687,7 +687,7 @@ For lower blocks and a given matrix size m×n, compute ranges for lower
 block ``l``.
 """
 @inline function lower_block_ranges(
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   m :: Int,
   n :: Int,
   l::Integer,
@@ -705,7 +705,7 @@ end
 
 """
     size_lower_block(
-      lower_blocks::AbstractArray{Int,2},
+      lower_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
       l::Int,
@@ -715,7 +715,7 @@ Compute the size of lower block ``l`` for an m×n matrix using the
 lower_block sequence `lower_blocks`.
 """
 @inline function size_lower_block(
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
   l::Int,
@@ -726,7 +726,7 @@ end
 
 """
     intersect_lower_block(
-      lower_blocks::Array{Int,2},
+      lower_blocks::Matrix{Int},
       m :: Int,
       n :: Int,
       l::Integer,
@@ -738,7 +738,7 @@ Determine if column ``k`` intersects with lower block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_lower_block(
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   m :: Int,
   n :: Int,
   l::Integer,
@@ -751,7 +751,7 @@ end
 
 """
     intersect_lower_block(
-      lower_blocks::AbstractArray{Int,2},
+      lower_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
       l::Int,
@@ -763,7 +763,7 @@ Determine if row ``j`` intersects with lower block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_lower_block(
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
   l::Int,
@@ -776,7 +776,7 @@ in a matrix of size ``m×n``.
 
 """
     upper_block_ranges(
-      upper_blocks::AbstractArray{Int,2},
+      upper_blocks::AbstractMatrix{Int},
       m :: Int,
       n :: Int,
       l::Integer
@@ -786,7 +786,7 @@ For upper blocks and a given matrix size m×n, compute ranges for upper
 block ``l``.
 """
 @inline function upper_block_ranges(
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
   l::Integer,
@@ -804,7 +804,7 @@ end
 
 """
     size_upper_block(
-      upper_blocks::AbstractArray{Int,2},
+      upper_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
       l::Int,
@@ -814,7 +814,7 @@ Compute the size of upper block ``l`` for an m×n matrix using the
 upper_block sequence `upper_blocks`.
 """
 @inline function size_upper_block(
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
   l::Int,
@@ -826,7 +826,7 @@ end
 
 """
     intersect_upper_block(
-      upper_blocks::AbstractArray{Int,2},
+      upper_blocks::AbstractMatrix{Int},
       m :: Int,
       n :: Int,
       l::Integer,
@@ -838,7 +838,7 @@ Determine if column ``k`` intersects with upper block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_upper_block(
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
   l::Integer,
@@ -851,7 +851,7 @@ in a matrix of size ``m×n``.
 
 """
     intersect_upper_block(
-      upper_blocks::AbstractArray{Int,2},
+      upper_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
       l::Int,
@@ -863,7 +863,7 @@ Determine if row ``j`` intersects with upper block ``l``
 in a matrix of size ``m×n``.
 """
 @inline function intersect_upper_block(
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
   l::Integer,
@@ -878,8 +878,8 @@ in a matrix of size ``m×n``.
     function constrain_upper_ranks!(
       mA::Int,
       nA::Int;
-      blocks::AbstractArray{Int,2},
-      ranks::AbstractArray{Int,1},
+      blocks::AbstractMatrix{Int},
+      ranks::AbstractVector{Int},
     )
 
 Take a nominal upper rank sequence and constrain it to be minimal and
@@ -889,8 +889,8 @@ ranks as upper bound is bounded by the new ranks.
 function constrain_upper_ranks!(
   mA::Int,
   nA::Int;
-  blocks::AbstractArray{Int,2},
-  ranks::AbstractArray{Int,1},
+  blocks::AbstractMatrix{Int},
+  ranks::AbstractVector{Int},
 )
 
   m(k) = blocks[1,k]
@@ -912,8 +912,8 @@ end
 function constrain_upper_ranks(
   mA::Int,
   nA::Int;
-  blocks::AbstractArray{Int,2},
-  ranks::AbstractArray{Int,1},
+  blocks::AbstractMatrix{Int},
+  ranks::AbstractVector{Int},
 )
   rs = copy(ranks)
   constrain_upper_ranks!(mA, nA, blocks = blocks, ranks = rs)
@@ -924,8 +924,8 @@ end
     function constrain_lower_ranks!(
       mA::Int,
       nA::Int;
-      blocks::AbstractArray{Int,2},
-      ranks::AbstractArray{Int,1},
+      blocks::AbstractMatrix{Int},
+      ranks::AbstractVector{Int},
     )
 
 Take a nominal lower rank sequence and constrain it to be minimal and
@@ -935,8 +935,8 @@ ranks as upper bound is bounded by the new ranks.
 function constrain_lower_ranks!(
   mA::Int,
   nA::Int;
-  blocks::AbstractArray{Int,2},
-  ranks::AbstractArray{Int,1},
+  blocks::AbstractMatrix{Int},
+  ranks::AbstractVector{Int},
 )
 
   m(k) = mA - blocks[1,k]
@@ -958,8 +958,8 @@ end
 function constrain_lower_ranks(
   mA::Int,
   nA::Int;
-  blocks::AbstractArray{Int,2},
-  ranks::AbstractArray{Int,1},
+  blocks::AbstractMatrix{Int},
+  ranks::AbstractVector{Int},
 )
   rs = copy(ranks)
   constrain_lower_ranks!(mA, nA, blocks = blocks, ranks = rs)
@@ -968,22 +968,22 @@ end
 
 """
     leading_lower_ranks_to_cols_first_last!(
-      lower_blocks::AbstractArray{Int,2},
+      lower_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
-      cols_first_last::AbstractArray{Int,2},
-      rs::AbstractArray{Int,1},
+      cols_first_last::AbstractMatrix{Int},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a leading decomposition
 associated with a given lower rank sequence.
 """
 function leading_lower_ranks_to_cols_first_last!(
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
-  cols_first_last::AbstractArray{Int,2},
-  rs::AbstractArray{Int,1},
+  cols_first_last::AbstractMatrix{Int},
+  rs::AbstractVector{Int},
 )
   num_blocks = size(lower_blocks, 2)
   rs1 = constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = rs)
@@ -1000,22 +1000,22 @@ end
 
 """
     trailing_lower_ranks_to_cols_first_last!(
-      lower_blocks::AbstractArray{Int,2},
+      lower_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
-      cols_first_last::AbstractArray{Int,2},
-      rs::AbstractArray{Int,1},
+      cols_first_last::AbstractMatrix{Int},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a trailing decomposition
 associated with a given lower rank sequence.
 """
 function trailing_lower_ranks_to_cols_first_last!(
-  lower_blocks::AbstractArray{Int,2},
+  lower_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
-  cols_first_last::AbstractArray{Int,2},
-  rs::AbstractArray{Int,1},
+  cols_first_last::AbstractMatrix{Int},
+  rs::AbstractVector{Int},
 )
   num_blocks = size(lower_blocks, 2)
   rs1 = constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = rs)
@@ -1033,22 +1033,22 @@ end
 
 """
     leading_upper_ranks_to_cols_first_last!(
-      upper_blocks::AbstractArray{Int,2},
+      upper_blocks::AbstractMatrix{Int},
       m::Int,
       n::Int,
-      cols_first_last::AbstractArray{Int,2},
-      rs::AbstractArray{Int,1},
+      cols_first_last::AbstractMatrix{Int},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a leading decomposition associated
 with a given upper rank sequence
 """
 function leading_upper_ranks_to_cols_first_last!(
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
-  cols_first_last::AbstractArray{Int,2},
-  rs::AbstractArray{Int,1},
+  cols_first_last::AbstractMatrix{Int},
+  rs::AbstractVector{Int},
 )
 
   num_blocks = size(upper_blocks, 2)
@@ -1069,18 +1069,18 @@ end
 """
     trailing_upper_ranks_to_cols_first_last!(
       bbc::BlockedBandColumn,
-      rs::AbstractArray{Int,1},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a leading decomposition
 associated with a given upper rank sequence
 """
 function trailing_upper_ranks_to_cols_first_last!(
-  upper_blocks::AbstractArray{Int,2},
+  upper_blocks::AbstractMatrix{Int},
   m::Int,
   n::Int,
-  cols_first_last::AbstractArray{Int,2},
-  rs::AbstractArray{Int,1},
+  cols_first_last::AbstractMatrix{Int},
+  rs::AbstractVector{Int},
 )
 
   num_blocks = size(upper_blocks, 2)

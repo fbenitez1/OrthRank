@@ -198,7 +198,7 @@ Base.showerror(io::IO, e::NoStorageForIndex) = print(
 
 # AbstractBandColumn
 
-    AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2}
+    AbstractBandColumn{S,E,AE,AI} <: AbstractMatrix{E}
 
 An AbstractBandColumn should implement the following:
 
@@ -247,7 +247,7 @@ An AbstractBandColumn should implement the following:
 - `notch_lower!(bc, j::Int, k::Int)`
 
 """
-abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2} end
+abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractMatrix{E} end
 
 """
     inband_hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
@@ -362,7 +362,7 @@ end
 
 # BandColumn
 
-    BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}}
+    BandColumn{S,E<:Number,AE<:AbstractMatrix{E},AI<:AbstractMatrix{Int}}
     <: AbstractBandColumn{S,E,AE,AI}
 
 A band column structure that does not include leading
@@ -515,7 +515,7 @@ where
                            3 6 6 8 7 7;
                            6 6 6 8 7 7 ]
 """
-struct BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
+struct BandColumn{S,E<:Number,AE<:AbstractMatrix{E},AI<:AbstractMatrix{Int}} <:
        AbstractBandColumn{S,E,AE,AI}
   sub :: S
   m_nonsub::Int
@@ -539,7 +539,7 @@ InPlace.structure_type(::Type{B}) where {E,S,B<:AbstractBandColumn{S,E}} =
 
 @inline toBandColumn(bc::BandColumn) = bc
 
-const BCFloat64 = BandColumn{NonSub,Float64,Array{Float64,2},Array{Int,2}}
+const BCFloat64 = BandColumn{NonSub,Float64,Matrix{Float64},Matrix{Int}}
 
 @inline row_size(bc::BandColumn) = bc.m
 @inline col_size(bc::BandColumn) = bc.n
@@ -2473,7 +2473,7 @@ Operations for validating and computing rows_first_last.
 """
     compute_rows_first_last!(
       bc::AbstractBandColumn{NonSub},
-      first_last::AbstractArray{Int,2},
+      first_last::AbstractMatrix{Int},
     )
 
 Compute row first and last elements, filling them into a separate
@@ -2481,7 +2481,7 @@ array.  This is not intended to work on views.
 """
 function compute_rows_first_last!(
   bc::AbstractBandColumn{NonSub},
-  first_last::AbstractArray{Int,2},
+  first_last::AbstractMatrix{Int},
 )
   (m, n) = size(bc)
   first_last[:, 2] .= zero(Int)
@@ -2935,7 +2935,7 @@ Base.print(io::IO, bc::BandColumn) = print(
 Base.print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
 
 struct Wilk
-  arr :: Array{Char,2}
+  arr :: Matrix{Char}
 end
 
 function Base.show(io::IO, w::Wilk)
