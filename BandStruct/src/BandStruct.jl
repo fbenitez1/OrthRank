@@ -8,6 +8,9 @@ include("BandColumnMatrices.jl")
 include("BandwidthInit.jl")
 @reexport using .BandwidthInit
 
+include("IndexLists.jl")
+@reexport using .IndexLists
+
 include("BlockedBandColumnMatrices.jl")
 @reexport using .BlockedBandColumnMatrices
 
