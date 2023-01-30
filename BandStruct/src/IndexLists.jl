@@ -1,5 +1,7 @@
 module IndexLists
 
+using ErrorTypes
+
 export IndexList,
   ListIndex,
   SortedError,
@@ -7,6 +9,10 @@ export IndexList,
   is_first,
   is_last,
   is_free,
+  is_sorted,
+  Before,
+  After,
+  BeforeAfterError,
   next_list_index,
   prev_list_index,
   first_list_index,
@@ -67,7 +73,7 @@ end
 
 function IndexList(
   v::AbstractVector{E};
-  max_length = length(v),
+  max_length::Int = length(v),
   copy = true,
 ) where {E}
   n = length(v)
@@ -115,12 +121,21 @@ Base.isempty(xs::IndexList) = xs.length == 0
 
 is_free(xs::IndexList, i::ListIndex) = xs.is_free[i.index]
 
+is_sorted(xs::IndexList) = xs.sorted
+
 struct FreeIndexError end
 
 function Base.getindex(xs::IndexList, i::ListIndex)
   xs.is_free[i.index] && throw(FreeIndexError)
   xs.data[i.index]
 end
+
+function Base.setindex!(xs::IndexList, x, i::ListIndex)
+  xs.is_free[i.index] && throw(FreeIndexError)
+  xs.data[i.index] = x
+end
+
+Base.view(xs::IndexList, i::ListIndex) = xs[i]
 
 struct SortedError <: Exception
   arr::IndexList
@@ -197,18 +212,31 @@ end
 
 collect_elements(xs) = [xs[j] for j ∈ xs]
 
-function next_list_index(xs::IndexList, i::ListIndex)
-  xs.is_free[i.index] && throw(FreeIndexError)
-  isempty(xs) && throw(ArgumentError("List must be nonempty."))
-  is_last(xs, i) && error("No next_index for the last block.")
-  ListIndex(xs.prev_next_indices[2, i.index])
+struct After end
+struct Before end
+
+struct BeforeAfterError <: Exception
+  err::Union{Before, After}
 end
 
-function prev_list_index(xs::IndexList, i::ListIndex)
+function next_list_index(
+  xs::IndexList,
+  i::ListIndex,
+)::Result{ListIndex,BeforeAfterError}
   xs.is_free[i.index] && throw(FreeIndexError)
   isempty(xs) && throw(ArgumentError("List must be nonempty."))
-  is_first(xs,i) && error("No prev_index for the first block.")
-  ListIndex(xs.prev_next_indices[1, i.index])
+  is_last(xs, i) && (return Err(BeforeAfterError(After())))
+  return Ok(ListIndex(xs.prev_next_indices[2, i.index]))
+end
+
+function prev_list_index(
+  xs::IndexList,
+  i::ListIndex,
+)::Result{ListIndex,BeforeAfterError}
+  xs.is_free[i.index] && throw(FreeIndexError)
+  isempty(xs) && throw(ArgumentError("List must be nonempty."))
+  is_first(xs, i) && (return Err(BeforeAfterError(Before())))
+  return Ok(ListIndex(xs.prev_next_indices[1, i.index]))
 end
 
 function last_list_index(xs::IndexList) 
@@ -453,7 +481,7 @@ function validate(xs::IndexList)
     indices = [j]
     while xs.prev_next_indices[2, j.index] != 0
       xs.is_free[j.index] == false || error("Incorrectly marked as free.")
-      jnext = next_list_index(xs, j)
+      jnext = unwrap(next_list_index(xs, j))
       jnext == ListIndex(xs.prev_next_indices[2, j.index]) ||
         error("next_list_index, bad successor.")
       j == ListIndex(xs.prev_next_indices[1, jnext.index]) ||
@@ -474,7 +502,7 @@ function validate(xs::IndexList)
     indices = [j]
     while xs.prev_next_indices[1, j.index] != 0
       xs.is_free[j.index] == false || error("Reverse incorrectly marked as free.")
-      jprev = prev_list_index(xs, j)
+      jprev = unwrap(prev_list_index(xs, j))
       jprev == ListIndex(xs.prev_next_indices[1, j.index]) ||
         error("prev_list_index, bad predecessor.")
       j == ListIndex(xs.prev_next_indices[2, jprev.index]) ||

@@ -125,18 +125,22 @@
 
 @safetestset "BandStruct First Last Init" begin
   using BandStruct.BandwidthInit
+  using BandStruct.IndexLists
 
-  lower_blocks = transpose([ 2 2
-                             5 5
-                             6 6
-                             8 10
-                             9 12])
+  lbl = transpose([ 2 2
+                    5 5
+                    6 6
+                    8 10
+                    9 12])
 
-  upper_blocks = transpose([ 1 4
-                             3 6
-                             4 9
-                             6 11
-                             8 13])
+  ubl = transpose([ 1 4
+                    3 6
+                    4 9
+                    6 11
+                    8 13])
+
+  lower_blocks = IndexList([BlockSize(lbl[1,j], lbl[2,j]) for j∈1:5], max_length = 5)
+  upper_blocks = IndexList([BlockSize(ubl[1,j], ubl[2,j]) for j∈1:5], max_length = 5)
 
 
   get_cols_first_last(11,14,upper_blocks, lower_blocks, 2, 2)

@@ -10,6 +10,7 @@ using Householder
 using InPlace
 
 using ..BandColumnMatrices
+using ..BandwidthInit
 using ..BlockedBandColumnMatrices
 using ..BandRotations
 using ..BandHouseholder
@@ -36,7 +37,7 @@ function makeBForQR(
   block_size::Int
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
 
-  blocks = [k for _ ∈ 1:2, k ∈ 1:m]
+  blocks = [BlockSize(k,k) for k ∈ 1:m]
   bbc = BlockedBandColumn(
     T,
     LeadingDecomp(),
@@ -61,7 +62,7 @@ function makeBForLQ(
   block_size::Int
 ) where {R<:AbstractFloat,E<:Union{R,Complex{R}}}
 
-  blocks = [k for j ∈ 1:2, k ∈ 1:m]
+  blocks = [BlockSize(k,k) for k ∈ 1:m]
   bbc = BlockedBandColumn(
     T,
     LeadingDecomp(),
