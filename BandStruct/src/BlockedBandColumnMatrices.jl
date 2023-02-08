@@ -287,23 +287,23 @@ function BlockedBandColumn(
      isa(lower_bw_max, Nothing)
 
     get_cols_first_last!(
-      m,
-      n,
-      upper_blocks_list,
-      lower_blocks_list,
-      upper_rank_max,
-      lower_rank_max,
-      cols_first_last,
+      m = m,
+      n = n,
+      upper_blocks = upper_blocks_list,
+      lower_blocks = lower_blocks_list,
+      max_ru = upper_rank_max,
+      max_rl = lower_rank_max,
+      cols_first_last = cols_first_last,
     )
 
     get_rows_first_last!(
-      m,
-      n,
-      upper_blocks_list,
-      lower_blocks_list,
-      upper_rank_max,
-      lower_rank_max,
-      rows_first_last,
+      m = m,
+      n = n,
+      upper_blocks = upper_blocks_list,
+      lower_blocks = lower_blocks_list,
+      max_ru = upper_rank_max,
+      max_rl = lower_rank_max,
+      rows_first_last = rows_first_last,
     )
     middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
     ubw_max = get_upper_bw_max(m, n, cols_first_last)
@@ -317,22 +317,23 @@ function BlockedBandColumn(
          isa(lower_bw_max, Int)
 
     get_cols_first_last!(
-      m,
-      n,
-      upper_blocks_list,
-      lower_blocks_list,
-      0,
-      0,
-      cols_first_last,
+      m=m,
+      n=n,
+      upper_blocks=upper_blocks_list,
+      lower_blocks=lower_blocks_list,
+      max_ru=0,
+      max_rl=0,
+      cols_first_last = cols_first_last,
     )
+
     get_rows_first_last!(
-      m,
-      n,
-      upper_blocks_list,
-      lower_blocks_list,
-      0,
-      0,
-      rows_first_last,
+      m = m,
+      n = n,
+      upper_blocks = upper_blocks_list,
+      lower_blocks = lower_blocks_list,
+      max_ru = 0,
+      max_rl = 0,
+      rows_first_last = rows_first_last,
     )
 
     middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
