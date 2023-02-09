@@ -22,6 +22,7 @@ export AbstractBlockData,
   upper_block_ranges,
   size_lower_block,
   size_upper_block,
+  NonUnitRangeError,
   setdiffᵣ,
   ∪ᵣ,
   get_cols_first_last,
@@ -66,6 +67,8 @@ An AbstractBlockedBandColumn should implement the following:
 abstract type AbstractBlockedBandColumn{E,AE,AI} <:
               AbstractBandColumn{NonSub,E,AE,AI} end
 
+struct NonUnitRangeError <: Exception end
+
 """
     function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
 
@@ -84,7 +87,7 @@ function setdiffᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
   elseif y1 == x1
     x0:y0-1
   else
-    error("setdiffᵣ produces non-UnitRange")
+    throw(NonUnitRangeError)
   end
 end
 
@@ -108,7 +111,7 @@ function ∪ᵣ(xs::AbstractUnitRange{Int}, ys::AbstractUnitRange{Int})
   elseif x0 ∈ ys || x0 == y1 + 1
     y0:x1
   else
-    error("∪ᵣ produces non-UnitRange")
+    throw(NonUnitRangeError)
   end
 end
 
@@ -386,7 +389,6 @@ function get_cols_first_last!(;
   end
   return nothing
 end
-
 
 function get_rows_first_last!(;
   m::Int,
