@@ -26,9 +26,6 @@ mutable struct WYBlockData <: AbstractCompressibleData
   wy_index::Int
 end
 
-function block_sizes(a::AbstractMatrix; bd=BlockSize)
-  [bd(;mb=a[1, j], nb=a[2, j]) for j ∈ axes(a, 2)]
-end
 # const empty_WY_Float64 = WYTrans(Float64, 0, 0, 0, 0)
 # const empty_WY_Complex64 = WYTrans(Complex{Float64}, 0, 0, 0, 0)
 

@@ -10,6 +10,7 @@ using InPlace
 
 export AbstractBlockData,
   BlockSize,
+  block_sizes,
   leading_lower_ranks_to_cols_first_last!,
   leading_upper_ranks_to_cols_first_last!,
   trailing_lower_ranks_to_cols_first_last!,
@@ -44,6 +45,11 @@ struct BlockSize <: AbstractBlockData
 end
 
 BlockSize(; mb=0, nb=0) = BlockSize(mb, nb)
+
+function block_sizes(a::AbstractMatrix; bd=BlockSize)
+  [bd(;mb=a[1, j], nb=a[2, j]) for j ∈ axes(a, 2)]
+end
+
 
 Base.iterate(bd::BlockSize) = (bd.mb, 1)
 Base.iterate(bd::BlockSize, i) =
