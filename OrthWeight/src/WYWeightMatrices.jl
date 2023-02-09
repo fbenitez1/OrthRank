@@ -141,17 +141,45 @@ function WYWeight(
   max_num_lower_blocks = length(lower_blocks),
 ) where {E<:Number}
 
-  upper_blocks_wy = [
-    let (; mb, nb) = bd
-      WYBlockData(mb = mb, nb = nb)
-    end for bd in upper_blocks
-  ]
+  upper_blocks_wy = to_block_data_index_list(
+    upper_blocks,
+    B = WYBlockData,
+    max_length = max_num_upper_blocks,
+  )
 
-  lower_blocks_wy = [
-    let (; mb, nb) = bd
-      WYBlockData(mb = mb, nb = nb)
-    end for bd in lower_blocks
-  ]
+  lower_blocks_wy = to_block_data_index_list(
+    lower_blocks,
+    B = WYBlockData,
+    max_length = max_num_lower_blocks,
+  )
+
+  if upper_blocks isa IndexList
+    upper_blocks_wy = [
+      let (; mb, nb) = upper_blocks[il]
+        WYBlockData(mb = mb, nb = nb)
+      end for il in upper_blocks
+        ]
+  else
+    upper_blocks_wy = [
+      let (; mb, nb) = bd
+        WYBlockData(mb = mb, nb = nb)
+      end for bd in upper_blocks
+        ]
+  end
+
+  if lower_blocks isa IndexList
+    lower_blocks_wy = [
+      let (; mb, nb) = lower_blocks[il]
+        WYBlockData(mb = mb, nb = nb)
+      end for il in lower_blocks
+        ]
+  else
+    lower_blocks_wy = [
+      let (; mb, nb) = bd
+        WYBlockData(mb = mb, nb = nb)
+      end for bd in lower_blocks
+        ]
+  end
 
   bbc = BlockedBandColumn(
     E,
@@ -282,17 +310,17 @@ function WYWeight(
   max_num_lower_blocks::Int = length(lower_blocks),
 ) where {E<:Number}
 
-  upper_blocks_wy = IndexList([
-    let (; mb, nb) = bd
-      WYBlockData(mb = mb, nb = nb)
-    end for bd in upper_blocks
-  ], max_length = max_num_upper_blocks)
+  upper_blocks_wy = to_block_data_index_list(
+    upper_blocks,
+    B = WYBlockData,
+    max_length = max_num_upper_blocks,
+  )
 
-  lower_blocks_wy = IndexList([
-    let (; mb, nb) = bd
-      WYBlockData(mb = mb, nb = nb)
-    end for bd in lower_blocks
-  ], max_length = max_num_lower_blocks)
+  lower_blocks_wy = to_block_data_index_list(
+    lower_blocks,
+    B = WYBlockData,
+    max_length = max_num_lower_blocks,
+  )
 
   num_upper_blocks = length(upper_blocks)
   num_lower_blocks = length(lower_blocks)

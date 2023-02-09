@@ -1,6 +1,7 @@
 module BasicTypes
 
 using BandStruct
+using Base: something
 
 export OrthWeightDecomp,
   Consts,
@@ -21,7 +22,33 @@ export OrthWeightDecomp,
   getindex_or_scalar,
   maybe_zero,
   expand_or_set!,
-  maybe_set!
+  maybe_set!,
+  to_block_data_index_list
+
+function to_block_data_index_list(
+  blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  };
+  B = BlockSize,
+  max_length::Union{Int,Nothing} = nothing,
+)
+  if blocks isa IndexList
+    blocks_B = IndexList([
+      let (; mb, nb) = blocks[li]
+        B(mb = mb, nb = nb)
+      end for li in blocks
+        ], max_length = something(max_length, blocks.max_length))
+  else
+    blocks_B = IndexList([
+      let (; mb, nb) = bd
+        B(mb = mb, nb = nb)
+      end for bd in blocks
+        ], max_length = something(max_length, length(blocks)))
+  end
+  return blocks_B
+end
+
 
 # Constant array of given size.
 struct Consts{T} <: AbstractVector{T}
