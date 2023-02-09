@@ -72,15 +72,21 @@ mutable struct IndexList{E}
 end
 
 function IndexList(
-  v::AbstractVector{E};
+  v::Union{AbstractVector{E}, IndexList{E}};
   max_length::Int = length(v),
   copy = true,
 ) where {E}
   n = length(v)
   max_length = max(max_length, n)
   v1 = Vector{E}(undef, max_length)
-  for j ∈ 1:n
-    v1[j] = copy ? deepcopy(v[j]) : v[j]
+  if v isa IndexList
+    for (j, li) ∈ zip(1:n, v)
+      v1[j] = copy ? deepcopy(v[li]) : v[li]
+    end
+  else
+    for (j, x) ∈ zip(1:n, v)
+      v1[j] = copy ? deepcopy(x) : x
+    end
   end
   indices = zeros(Int, 2, max_length)
   indices[1, 2:n] = 1:(n - 1)
