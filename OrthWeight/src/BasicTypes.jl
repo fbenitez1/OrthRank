@@ -3,6 +3,7 @@ module BasicTypes
 using BandStruct
 
 export OrthWeightDecomp,
+  Consts,
   AbstractCompressibleData,
   Step,
   SpanStep,
@@ -21,6 +22,32 @@ export OrthWeightDecomp,
   maybe_zero,
   expand_or_set!,
   maybe_set!
+
+# Constant array of given size.
+struct Consts{T} <: AbstractVector{T}
+  length::Int
+  value::T
+end
+
+Base.size(C::Consts) = (C.length,)
+
+function Base.getindex(C::Consts, i::Int)
+  if i ∈ axes(C, 1)
+    C.value
+  else
+    throw(BoundsError(C, i))
+  end
+end
+
+function Base.setindex!(C::Consts{T}, i::Int, x::T) where {T}
+  if i ∈ axes(C, 1)
+    C.value = x
+  else
+    throw(BoundsError(C, i))
+  end
+end
+
+Base.IndexStyle(::Type{Consts{T}}) where T = IndexLinear()
 
 abstract type OrthWeightDecomp end
 
