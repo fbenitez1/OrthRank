@@ -3,6 +3,7 @@ module BasicTypes
 using BandStruct
 
 export OrthWeightDecomp,
+  AbstractCompressibleData,
   Step,
   SpanStep,
   NullStep,
@@ -13,6 +14,7 @@ export OrthWeightDecomp,
   Num_hs,
   NumRots,
   Offsets,
+  filter_compressed,
   LowerCompressed,
   UpperCompressed,
   getindex_or_scalar,
@@ -21,6 +23,9 @@ export OrthWeightDecomp,
   maybe_set!
 
 abstract type OrthWeightDecomp end
+
+abstract type AbstractCompressibleData <: AbstractBlockData end
+
 
 abstract type Step end
 
@@ -76,12 +81,24 @@ Base.iterate(::Offsets, ::Any) = nothing
 
 # Iterators over blocks that are compressed.
 
+function filter_compressed(
+  l::IndexList{B},
+) where {B<:AbstractCompressibleData}
+  Iterators.filter(ind -> l[ind].compressed, l)
+end
+
+function filter_compressed(
+  l::Iterators.Reverse{IndexList{B}},
+) where {B<:AbstractCompressibleData}
+  Iterators.filter(ind -> l.itr[ind].compressed, l)
+end
+
 struct LowerCompressed{D}
-  decomp::D
+  blocks::D
 end
 
 struct UpperCompressed{D}
-  decomp::D
+  blocks::D
 end
 
 function Base.length(lc::LowerCompressed{<:OrthWeightDecomp})
@@ -96,10 +113,10 @@ Base.length(rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}}) =
   length(rlc.itr)
 
 function Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}, l::Int)
-  while (l <= lc.decomp.b.num_blocks) && (!lc.decomp.lower_compressed[l])
+  while (l <= lc.blocks.b.num_blocks) && (!lc.blocks.lower_compressed[l])
     l += 1
   end
-  l > lc.decomp.b.num_blocks ? nothing : (l, l + 1)
+  l > lc.blocks.b.num_blocks ? nothing : (l, l + 1)
 end
 
 Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}) = Base.iterate(lc, 1)
@@ -132,10 +149,10 @@ function Base.length(
 end
 
 function Base.iterate(uc::UpperCompressed{<:OrthWeightDecomp}, l::Int)
-  while (l <= uc.decomp.b.num_blocks) && (!uc.decomp.upper_compressed[l])
+  while (l <= uc.blocks.b.num_blocks) && (!uc.blocks.upper_compressed[l])
     l += 1
   end
-  l > uc.decomp.b.num_blocks ? nothing : (l, l + 1)
+  l > uc.blocks.b.num_blocks ? nothing : (l, l + 1)
 end
 
 Base.iterate(uc::UpperCompressed{<:OrthWeightDecomp}) = Base.iterate(uc, 1)
