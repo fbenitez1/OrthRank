@@ -593,7 +593,7 @@ function BlockedBandColumn(
   )
   leading_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   leading_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   rand!(rng, bbc)
   bbc
 end
@@ -630,7 +630,7 @@ function BlockedBandColumn(
   )
   leading_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   leading_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   fill!(bbc, x)
   bbc
 end
@@ -690,7 +690,7 @@ function BlockedBandColumn(
   )
   trailing_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   trailing_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   rand!(rng, bbc)
   bbc
 end
@@ -726,7 +726,7 @@ function BlockedBandColumn(
   )
   trailing_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   trailing_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   fill!(bbc, x)
   bbc
 end
@@ -940,14 +940,14 @@ end
 @inline BandColumnMatrices.col_size(::Type{NonSub}, bbc::BlockedBandColumn) =
   bbc.n
 
-function BandColumnMatrices.compute_rows_first_last!(bbc::BlockedBandColumn)
-  compute_rows_first_last!(bbc, bbc.rows_first_last)
+function BandColumnMatrices.compute_rows_first_last_inband!(bbc::BlockedBandColumn)
+  compute_rows_first_last_inband!(bbc, bbc.rows_first_last)
 end
 
 function BandColumnMatrices.validate_rows_first_last(
   bbc::BlockedBandColumn,
 )
-  rfl = compute_rows_first_last(bbc)
+  rfl = compute_rows_first_last_inband(bbc)
   @views rfl[:,2] == bbc.rows_first_last[:,2]
   @views rfl[:,5] == bbc.rows_first_last[:,5]
 end

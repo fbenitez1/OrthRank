@@ -123,7 +123,7 @@
 #    |     | |    O O|L L|X X
 
 
-# @safetestset "BandStruct First Last Init" begin
+@safetestset "BandStruct First Last Init" begin
   using BandStruct
 
   @testset "cols_first_last test." begin
@@ -275,5 +275,5 @@
                               ])
   end
 
-# end
+end
 nothing

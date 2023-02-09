@@ -2,7 +2,6 @@ module BandColumnMatrices
 
 using Printf
 using LinearAlgebra
-import InPlace
 using InPlace
 
 export BandColumn,
@@ -27,7 +26,7 @@ export BandColumn,
   row_size,
   col_size,
   band_elements,
-  compute_rows_first_last!, # One method only, to access rows_first_last array
+  compute_rows_first_last_inband!, # One method only, to access rows_first_last array
   validate_rows_first_last,
   unsafe_set_first_inband_index!,
   unsafe_set_last_inband_index!,
@@ -76,7 +75,7 @@ export BandColumn,
   upper_bw,
   middle_bw,
   lower_bw,
-  compute_rows_first_last,
+  compute_rows_first_last_inband,
   get_elements,
   setindex_no_bulge!,
   wilk,
@@ -234,7 +233,7 @@ An AbstractBandColumn should implement the following:
 
 - `band_elements(bc)`
 
-- `compute_rows_first_last!`: One method only, to access rows_first_last array.
+- `compute_rows_first_last_inband!`
 
 - `validate_rows_first_last`
 
@@ -2471,7 +2470,7 @@ Operations for validating and computing rows_first_last.
 =#
 
 """
-    compute_rows_first_last!(
+    compute_rows_first_last_inband!(
       bc::AbstractBandColumn{NonSub},
       first_last::AbstractMatrix{Int},
     )
@@ -2479,7 +2478,7 @@ Operations for validating and computing rows_first_last.
 Compute row first and last elements, filling them into a separate
 array.  This is not intended to work on views.
 """
-function compute_rows_first_last!(
+function compute_rows_first_last_inband!(
   bc::AbstractBandColumn{NonSub},
   first_last::AbstractMatrix{Int},
 )
@@ -2498,25 +2497,24 @@ function compute_rows_first_last!(
 end
 
 """
-    compute_rows_first_last!(bc::BandColumn{NonSub})
+    compute_rows_first_last_inband!(bc::BandColumn{NonSub})
 
 Compute row first and last elements, filling them into `bc.rows_first_last`.
-
 """
-function compute_rows_first_last!(bc::BandColumn{NonSub})
-  compute_rows_first_last!(bc, bc.rows_first_last)
+function compute_rows_first_last_inband!(bc::BandColumn{NonSub})
+  compute_rows_first_last_inband!(bc, bc.rows_first_last)
 end
 
 """
-    compute_rows_first_last(bc::AbstractBandColumn{NonSub})
+    compute_rows_first_last_inband(bc::AbstractBandColumn{NonSub})
 
 Compute row upper and lower bandwidths from column bandwidths, filling
 them into a newly allocated array.
 """
-function compute_rows_first_last(bc::AbstractBandColumn{NonSub})
+function compute_rows_first_last_inband(bc::AbstractBandColumn{NonSub})
   first_last_arr = similar_zeros(bc.rows_first_last)
-  compute_rows_first_last!(bc, first_last_arr)
-  first_last_arr
+  compute_rows_first_last_inband!(bc, first_last_arr)
+  return first_last_arr
 end
 
 """
@@ -2525,7 +2523,7 @@ end
 Check that the upper and lower first and last elements are consistent.
 """
 function validate_rows_first_last(bc::BandColumn{NonSub})
-  rfl = compute_rows_first_last(bc)
+  rfl = compute_rows_first_last_inband(bc)
   @views rfl[:,2] == bc.rows_first_last[:,2]
   @views rfl[:,5] == bc.rows_first_last[:,5]
 end
