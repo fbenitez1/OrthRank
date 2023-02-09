@@ -100,13 +100,21 @@ end
 
     WYWeight(
       ::Type{E},
-      step::Union{SpanStep, NullStep},
+      step::Union{SpanStep,NullStep},
       m::Int,
       n::Int;
       upper_rank_max::Int,
       lower_rank_max::Int,
-      upper_blocks::AbstractVector{BlockSize}
-      lower_blocks::AbstractVector{BlockSize}
+      upper_blocks::Union{
+        AbstractVector{<:AbstractBlockData},
+        IndexList{<:AbstractBlockData},
+      },
+      max_num_upper_blocks = length(upper_blocks),
+      lower_blocks::Union{
+        AbstractVector{<:AbstractBlockData},
+        IndexList{<:AbstractBlockData},
+      },
+      max_num_lower_blocks = length(lower_blocks),
     ) where {E<:Number}
 
 Generic `WYWeight` with zero ranks but room for either a leading or
@@ -121,9 +129,15 @@ function WYWeight(
   n::Int;
   upper_rank_max::Int,
   lower_rank_max::Int,
-  upper_blocks::AbstractVector{<:AbstractBlockData},
+  upper_blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
   max_num_upper_blocks = length(upper_blocks),
-  lower_blocks::AbstractVector{<:AbstractBlockData},
+  lower_blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
   max_num_lower_blocks = length(lower_blocks),
 ) where {E<:Number}
 
@@ -173,7 +187,7 @@ function WYWeight(
     max_num_hs = lower_max_num_hs,
     work_size = lower_work_size,
   )
-  
+
   wy_index = 0
   for lb ∈ lower_blocks_wy
     wy_index += 1
@@ -203,14 +217,15 @@ function WYWeight(
     max_num_hs = upper_max_num_hs,
     work_size = upper_work_size,
   )
-  
+
   wy_index = 0
   for ub ∈ upper_blocks_wy
     wy_index += 1
     upper_blocks_wy[ub].wy_index = wy_index
   end
 
-  decomp_ref = Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}(nothing)
+  decomp_ref =
+    Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}(nothing)
   step_ref = Base.RefValue{Union{Nothing,NullStep,SpanStep}}(step)
 
   return WYWeight(decomp_ref, step_ref, bbc, lowerWY, upperWY)
@@ -219,17 +234,25 @@ end
 """
     WYWeight(
       ::Type{E},
-      step::Union{SpanStep, NullStep},
-      decomp::Union{Nothing, Decomp},
+      step::Union{SpanStep,NullStep},
+      decomp::Union{Nothing,Decomp},
       rng::AbstractRNG,
       m::Int,
       n::Int;
-      upper_ranks::Vector{Int},
-      lower_ranks::Vector{Int},
+      upper_ranks::Union{Vector{Int},Nothing} = nothing,
+      lower_ranks::Union{Vector{Int},Nothing} = nothing,
       upper_rank_max::Int = maximum(upper_ranks),
       lower_rank_max::Int = maximum(lower_ranks),
-      upper_blocks::Array{Int,2},
-      lower_blocks::Array{Int,2},
+      upper_blocks::Union{
+        AbstractVector{<:AbstractBlockData},
+        IndexList{<:AbstractBlockData},
+      },
+      max_num_upper_blocks::Int = length(upper_blocks),
+      lower_blocks::Union{
+        AbstractVector{<:AbstractBlockData},
+        IndexList{<:AbstractBlockData},
+      },
+      max_num_lower_blocks::Int = length(lower_blocks),
     ) where {E<:Number}
 
 A random WYWeight with specified upper and lower ranks.  The structure provides
@@ -247,10 +270,16 @@ function WYWeight(
   lower_ranks::Union{Vector{Int},Nothing} = nothing,
   upper_rank_max::Int = maximum(upper_ranks),
   lower_rank_max::Int = maximum(lower_ranks),
-  upper_blocks::AbstractVector{<:AbstractBlockData},
+  upper_blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
   max_num_upper_blocks::Int = length(upper_blocks),
-  lower_blocks::AbstractVector{<:AbstractBlockData},
-  max_num_lower_blocks::Int = length(lower_blocks)
+  lower_blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
+  max_num_lower_blocks::Int = length(lower_blocks),
 ) where {E<:Number}
 
   upper_blocks_wy = IndexList([
@@ -391,19 +420,19 @@ end
 
 """
     set_WYWeight_transform_params!(
-      side::Union{Left, Right},
-      decomp::Union{Decomp, Tuple{Vararg{Decomp}}},
-      step::Union{Step, Tuple{Vararg{Step}}},
+      side::Union{Lower,Upper},
+      decomp::Union{Decomp,Tuple{Vararg{Decomp}}},
+      step::Union{Step,Tuple{Vararg{Step}}},
       m::Int,
       n::Int;
-      lower_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
-      lower_ranks::Union{AbstractVector{Int}, Int, Nothing} = nothing,
-      upper_blocks::Union{AbstractArray{Int,2}, Nothing} = nothing,
-      upper_ranks::Union{AbstractVector{Int}, Int, Nothing} = nothing,
-      sizes::Union{AbstractVector{Int}, Ref{Int}, Nothing}=nothing,
-      num_hs::Union{AbstractVector{Int}, Ref{Int}, Nothing}=nothing,
-      offsets::Union{AbstractVector{Int}, Nothing}=nothing,
-      find_maximum::Bool=false,
+      lower_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
+      lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
+      upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
+      upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
+      sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+      num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+      offsets::Union{AbstractVector{Int},Nothing} = nothing,
+      find_maximum::Bool = false,
     )
 
 Compute `sizes`, `num_hs`, `offsets` values in place, depending on
