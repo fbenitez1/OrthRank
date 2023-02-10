@@ -3,6 +3,7 @@ using Rotations
 using Householder
 using Random
 using LinearAlgebra
+using BandStruct
 
 function run_first_last_init()
   blocks = IndexList([BlockSize(2,2), BlockSize(5,5)])
@@ -25,6 +26,8 @@ function run_index(::Type{E}) where {E}
     BandStruct.standard_test_case(E, upper_rank_max = 3, lower_rank_max = 2)
   eachindex(bc0)
   eachindex(bbc0)
+  bc0[1,1]
+  bbc0[1,1]
   bc0[1,1] = zero(E)
   bbc0[1,1] = zero(E)
 end

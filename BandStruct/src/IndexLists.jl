@@ -235,6 +235,20 @@ function next_list_index(
   return Ok(ListIndex(xs.prev_next_indices[2, i.index]))
 end
 
+function next_list_index(
+  ::IndexList,
+  ::After
+)::Result{ListIndex,BeforeAfterError}
+  return Err(BeforeAfterError(After()))
+end
+
+function next_list_index(
+  ::IndexList,
+  ::Before
+)::Result{ListIndex,BeforeAfterError}
+  return Err(BeforeAfterError(Before()))
+end
+
 function prev_list_index(
   xs::IndexList,
   i::ListIndex,
@@ -243,6 +257,20 @@ function prev_list_index(
   isempty(xs) && throw(ArgumentError("List must be nonempty."))
   is_first(xs, i) && (return Err(BeforeAfterError(Before())))
   return Ok(ListIndex(xs.prev_next_indices[1, i.index]))
+end
+
+function prev_list_index(
+  ::IndexList,
+  ::After
+)::Result{ListIndex,BeforeAfterError}
+  return Err(BeforeAfterError(After()))
+end
+
+function prev_list_index(
+  ::IndexList,
+  ::Before
+)::Result{ListIndex,BeforeAfterError}
+  return Err(BeforeAfterError(Before()))
 end
 
 function last_list_index(xs::IndexList) 
