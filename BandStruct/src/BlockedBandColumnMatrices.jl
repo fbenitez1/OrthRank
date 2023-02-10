@@ -384,20 +384,22 @@ function BlockedBandColumn(
   )
 end
 
+# Basic lower block functions
+
 """
-    function view_lower_block(
+    function BandwidthInit.lower_block_ranges(
       bbc::BlockedBandColumn,
       l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     )
 
-Get a view of lower block l.
+Get ranges for lower block ``l``.
 """
-@inline function view_lower_block(
+@inline function BandwidthInit.lower_block_ranges(
   bbc::BlockedBandColumn,
   l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
-  (rows, cols) = lower_block_ranges(bbc, l)
-  view(bbc, rows, cols)
+  m, n = size(bbc)
+  lower_block_ranges(bbc.lower_blocks, m, n, l)
 end
 
 """
@@ -415,6 +417,24 @@ Compute the size of lower block ``l`` for a `BlockedBandColumn.
   (rows, cols) = lower_block_ranges(bbc, l)
   (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
+
+"""
+    function view_lower_block(
+      bbc::BlockedBandColumn,
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
+    )
+
+Get a view of lower block l.
+"""
+@inline function view_lower_block(
+  bbc::BlockedBandColumn,
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
+)
+  (rows, cols) = lower_block_ranges(bbc, l)
+  view(bbc, rows, cols)
+end
+
+# Basic upper block functions
 
 """
     function BandwidthInit.upper_block_ranges(
@@ -449,7 +469,7 @@ Get a view of upper block l.
 end
 
 """
-    size_upper_block(
+    BandwidthInit.size_upper_block(
       bbc::BlockedBandColumn,
       l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     ) 
@@ -463,6 +483,8 @@ Compute the size of lower block ``l`` for a `BlockedBandColumn.
   (rows, cols) = upper_block_ranges(bbc, l)
   (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
+
+# Bandwidth functions
 
 function get_middle_bw_max(::Int, n::Int, cols_first_last::AbstractMatrix{Int})
   middle_bw_max = 0
@@ -1092,69 +1114,7 @@ end
   )
 end
 
-"""
-    function BandwidthInit.lower_block_ranges(
-      bbc::BlockedBandColumn,
-      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-    )
 
-Get ranges for lower block ``l``.
-"""
-@inline function BandwidthInit.lower_block_ranges(
-  bbc::BlockedBandColumn,
-  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-)
-  m, n = size(bbc)
-  lower_block_ranges(bbc.lower_blocks, m, n, l)
-end
-
-"""
-    BandwidthInit.size_lower_block(
-      bbc::BlockedBandColumn,
-      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-    ) 
-
-Compute the size of lower block ``l`` for a `BlockedBandColumn.
-"""
-@inline function BandwidthInit.size_lower_block(
-  bbc::BlockedBandColumn,
-  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-)
-  (rows, cols) = lower_block_ranges(bbc, l)
-  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
-end
-
-"""
-    function BandwidthInit.upper_block_ranges(
-      bbc::BlockedBandColumn,
-      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-    )
-
-Get ranges for upper block ``l``.
-"""
-@inline function BandwidthInit.upper_block_ranges(
-  bbc::BlockedBandColumn,
-  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-)
-  (m, n) = size(bbc)
-  @views upper_block_ranges(bbc.upper_blocks, m, n, l)
-end
-
-"""
-    BandwidthInit.size_upper_block(
-      bbc::BlockedBandColumn,
-      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-    ) 
-
-Compute the size of lower block ``l`` for a `BlockedBandColumn.
-"""
-@inline function BandwidthInit.size_upper_block(
-  bbc::BlockedBandColumn,
-  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
-)
-  (rows, cols) = upper_block_ranges(bbc, l)
-  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
-end
 
 """
     BandwidthInit.leading_lower_ranks_to_cols_first_last!(
