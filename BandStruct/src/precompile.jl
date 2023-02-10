@@ -5,10 +5,7 @@ using Random
 using LinearAlgebra
 
 function run_first_last_init()
-  blocks = transpose([
-    2 2
-    5 5
-  ])
+  blocks = IndexList([BlockSize(2,2), BlockSize(5,5)])
   get_cols_first_last(11, 14, blocks, blocks, 2, 2)
   get_rows_first_last(11, 14, blocks, blocks, 2, 2)
 end

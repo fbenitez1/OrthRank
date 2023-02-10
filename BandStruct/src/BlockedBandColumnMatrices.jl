@@ -1,11 +1,13 @@
 module BlockedBandColumnMatrices
 using Printf
 using Random
+using ErrorTypes
 
 using InPlace
 
 using ..BandColumnMatrices
 using ..BandwidthInit
+using ..IndexLists
 
 export BlockedBandColumn,
   UpperBlock,
@@ -32,21 +34,31 @@ struct TrailingDecomp <: Decomp end
 Base.iterate(t::TrailingDecomp) = (t, nothing)
 Base.iterate(::TrailingDecomp, ::Any) = nothing
 
-
 """
 
 # BlockedBandColumn
 
-    struct BlockedBandColumn{
-      E<:Number,
-      AE<:AbstractArray{E,2},
-      AI<:AbstractArray{Int,2},
-    } <: AbstractBandColumn{NonSub,E,AE,AI}
+    struct BlockedBandColumn{E<:Number, BD<:AbstractBlockData} <:
+           AbstractBandColumn{NonSub,E,Matrix{E},Matrix{Int}}
+      m::Int
+      n::Int
+      bw_max::Int
+      upper_bw_max::Int
+      middle_lower_bw_max::Int
+      rows_first_last::Matrix{Int}
+      cols_first_last::Matrix{Int}
+      band_elements::Matrix{E}
+      upper_blocks :: IndexList{BD}
+      lower_blocks :: IndexList{BD}
+    end
 
 A banded matrix with structure defined by leading blocks and stored in
 a compressed column-wise format.  This is basically a `BandColumn`
 with additional leading block information and without the `roffset`,
-`coffset`, `sub`, `m_nosub`, and `n_nosub` fields.
+`coffset`, `sub`, `m_nosub`, and `n_nosub` fields.  The type `BD`
+should be a struct that has fields `mb` and `nb`.  That is, it at
+least provides leading block sizes for each partition, possibly along
+with additional information.
 
 # Fields
 
@@ -60,7 +72,7 @@ with additional leading block information and without the `roffset`,
 
   - `middle_lower_bw_max::Int`: Maximum middle + lower bandwidth.
 
-  - `rows_first_last::AI`: `rows_first_last[j,:]` contains
+  - `rows_first_last::Matrix{Int}`: `rows_first_last[j,:]` contains
    
       - `rows_first_last[j,1]`: Index of the first storable element in row
         `j`.
@@ -82,7 +94,7 @@ with additional leading block information and without the `roffset`,
       - `rows_first_last[j,6]`: Index of the last storable element in row
         `j`.
 
-  - `cols_first_last::AI`: `cols_first_last[:,k]` contains
+  - `cols_first_last::Matrix{Int}`: `cols_first_last[:,k]` contains
    
       - `cols_first_last[1,k]`: Index of the first storable element in column
         `k`.
@@ -104,10 +116,14 @@ with additional leading block information and without the `roffset`,
       - `cols_first_last[6,k]`: Index of the last storable element in column
         `k`.
 
-  - `band_elements::AE`: Column-wise storage of the band elements with
+  - `band_elements::Matrix{E}`: Column-wise storage of the band elements with
      dimensions:
    
      ``(upper_bw_max + middle_bw_max lower_bw_max) × n``
+
+  - `upper_blocks::IndexList{BD}`: List of upper block data.
+
+  - `lower_blocks::IndexList{BD}`: List of lower block data.
 
 It is assumed that the middle bandwidths and the first row subdiagonal
 and column superdiagonal will never change.  In the case of a
@@ -184,42 +200,46 @@ where
                          # first storable, first inband, last lower, first upper,
                          # last inband, last storable
 
-    upper_blocks =       [ 1  3  4  6   # rows
-                           3  4  6  7 ]  # columns
+    upper_blocks =       IndexList[ BlockSize(1,3),
+                                    BlockSize(3,4),
+                                    BlockSize(4,6),
+                                    BlockSize(6,7) ]
 
-    lower_blocks =       [ 2  4  5  7   # rows
-                           2  3  4  6 ]  # columns
+    lower_blocks =       IndexList[ BlockSize(2,2),
+                                    BlockSize(4,3),
+                                    BlockSize(5,4),
+                                    BlockSize(7,6) ]
 """
-struct BlockedBandColumn{
-  E<:Number,
-  AE<:AbstractArray{E,2},
-  AI<:AbstractArray{Int,2},
-} <: AbstractBandColumn{NonSub,E,AE,AI}
-  # Fields for the BandColumn structure.
+struct BlockedBandColumn{E<:Number, BD<:AbstractBlockData} <:
+       AbstractBandColumn{NonSub,E,Matrix{E},Matrix{Int}}
   m::Int
   n::Int
   bw_max::Int
   upper_bw_max::Int
   middle_lower_bw_max::Int
-  rows_first_last :: AI
-  cols_first_last :: AI
-  band_elements::AE
-  # Fields for the leading block structure
-  num_blocks::Int
-  upper_blocks::AI
-  lower_blocks::AI
+  rows_first_last::Matrix{Int}
+  cols_first_last::Matrix{Int}
+  band_elements::Matrix{E}
+  upper_blocks :: IndexList{BD}
+  lower_blocks :: IndexList{BD}
 end
 
 """
-    BlockedBandColumn(
+    function BlockedBandColumn(
       ::Type{E},
       m::Int,
       n::Int;
-      upper_bw_max::Int,
-      lower_bw_max::Int,
-      upper_blocks::Array{Int,2},
-      lower_blocks::Array{Int,2},
-    ) where {E<:Number}
+      upper_bw_max::Union{Nothing,Int} = nothing,
+      lower_bw_max::Union{Nothing,Int} = nothing,
+      upper_rank_max::Union{Nothing,Int} = nothing,
+      lower_rank_max::Union{Nothing,Int} = nothing,
+      upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      max_num_blocks::Int = max(
+        length(upper_blocks),
+        length(lower_blocks),
+      ),
+    ) where {E<:Number,BD<:AbstractBlockData}
 
 Construct an empty (all zero) `BlockedBandColumn` structure from the
 matrix size, blocksizes, and either upper/lower rank bounds or
@@ -231,50 +251,90 @@ function BlockedBandColumn(
   ::Type{E},
   m::Int,
   n::Int;
-  upper_bw_max::Union{Nothing,Int}=nothing,
-  lower_bw_max::Union{Nothing,Int}=nothing,
-  upper_rank_max::Union{Nothing,Int}=nothing,
-  lower_rank_max::Union{Nothing,Int}=nothing,
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
-) where {E<:Number}
+  upper_bw_max::Union{Nothing,Int} = nothing,
+  lower_bw_max::Union{Nothing,Int} = nothing,
+  upper_rank_max::Union{Nothing,Int} = nothing,
+  lower_rank_max::Union{Nothing,Int} = nothing,
+  upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  max_num_blocks::Int = max(
+    length(upper_blocks),
+    length(lower_blocks),
+  ),
+) where {E<:Number,BD<:AbstractBlockData}
 
-  num_blocks = size(lower_blocks, 2)
-  cols_first_last = similar_zeros(upper_blocks, 6, n)
-  rows_first_last = similar_zeros(upper_blocks, m, 6)
+  num_lower_blocks = length(lower_blocks)
+  num_upper_blocks = length(upper_blocks)
+
+  upper_blocks_list = IndexList(upper_blocks, max_length = max_num_blocks)
+  lower_blocks_list = IndexList(lower_blocks, max_length = max_num_blocks)
+
+  if isa(max_num_blocks, Nothing)
+    num_lower_blocks == num_upper_blocks || error(
+      "If max_num_blocks is not provided, BlockedBandColumn " *
+      "requires num_lower_blocks == num_upper_blocks",
+    )
+    max_num_blocks = num_lower_blocks
+  end
+
+  cols_first_last = zeros(Int, 6, n)
+  rows_first_last = zeros(Int, m, 6)
+
   # Upper and lower ranks
-  if isa(upper_rank_max, Int) && isa(lower_rank_max, Int) &&
-    isa(upper_bw_max, Nothing) && isa(lower_bw_max, Nothing)
+  if isa(upper_rank_max, Int) &&
+     isa(lower_rank_max, Int) &&
+     isa(upper_bw_max, Nothing) &&
+     isa(lower_bw_max, Nothing)
 
     get_cols_first_last!(
-      m,
-      n,
-      upper_blocks,
-      lower_blocks,
-      upper_rank_max,
-      lower_rank_max,
-      cols_first_last,
+      m = m,
+      n = n,
+      upper_blocks = upper_blocks_list,
+      lower_blocks = lower_blocks_list,
+      max_ru = upper_rank_max,
+      max_rl = lower_rank_max,
+      cols_first_last = cols_first_last,
     )
+
     get_rows_first_last!(
-      m,
-      n,
-      upper_blocks,
-      lower_blocks,
-      upper_rank_max,
-      lower_rank_max,
-      rows_first_last,
+      m = m,
+      n = n,
+      upper_blocks = upper_blocks_list,
+      lower_blocks = lower_blocks_list,
+      max_ru = upper_rank_max,
+      max_rl = lower_rank_max,
+      rows_first_last = rows_first_last,
     )
     middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
     ubw_max = get_upper_bw_max(m, n, cols_first_last)
     lbw_max = get_lower_bw_max(m, n, cols_first_last)
     bw_max = ubw_max + middle_bw_max + lbw_max
 
-  #Upper and lower bandwidths  
-  elseif isa(upper_rank_max, Nothing) && isa(lower_rank_max, Nothing) &&
-    isa(upper_bw_max, Int) && isa(lower_bw_max, Int)
+    #Upper and lower bandwidths
+  elseif isa(upper_rank_max, Nothing) &&
+         isa(lower_rank_max, Nothing) &&
+         isa(upper_bw_max, Int) &&
+         isa(lower_bw_max, Int)
 
-    get_cols_first_last!(m, n, upper_blocks, lower_blocks, 0, 0, cols_first_last)
-    get_rows_first_last!(m, n, upper_blocks, lower_blocks, 0, 0, rows_first_last)
+    get_cols_first_last!(
+      m=m,
+      n=n,
+      upper_blocks=upper_blocks_list,
+      lower_blocks=lower_blocks_list,
+      max_ru=0,
+      max_rl=0,
+      cols_first_last = cols_first_last,
+    )
+
+    get_rows_first_last!(
+      m = m,
+      n = n,
+      upper_blocks = upper_blocks_list,
+      lower_blocks = lower_blocks_list,
+      max_ru = 0,
+      max_rl = 0,
+      rows_first_last = rows_first_last,
+    )
 
     middle_bw_max = get_middle_bw_max(m, n, cols_first_last)
     ubw_max = upper_bw_max
@@ -282,13 +342,13 @@ function BlockedBandColumn(
     bw_max = ubw_max + middle_bw_max + lbw_max
 
     for k = 1:n
-      j0 = cols_first_last[3,k] - ubw_max
-      cols_first_last[1,k] = project(1 + j0, m)
-      cols_first_last[6,k] = project(bw_max + j0, m)
+      j0 = cols_first_last[3, k] - ubw_max
+      cols_first_last[1, k] = project(1 + j0, m)
+      cols_first_last[6, k] = project(bw_max + j0, m)
     end
 
-    rows_first_last[:,1] .= n+1
-    rows_first_last[:,6] .= 0
+    rows_first_last[:, 1] .= n + 1
+    rows_first_last[:, 6] .= 0
 
     for k = 1:n
       j0 = cols_first_last[1, k]
@@ -304,9 +364,9 @@ function BlockedBandColumn(
     error("BlockedBandColumn must specify ranks or bandwidths (and not both).")
 
   end
-  
+
   middle_lower_bw_max = middle_bw_max + lbw_max
-  band_elements = similar_zeros(upper_blocks, E, bw_max, n)
+  band_elements = zeros(E, bw_max, n)
 
   # Set the ranges for storable elements.
 
@@ -319,194 +379,114 @@ function BlockedBandColumn(
     rows_first_last,
     cols_first_last,
     band_elements,
-    num_blocks,
-    upper_blocks,
-    lower_blocks,
+    upper_blocks_list,
+    lower_blocks_list,
   )
 end
 
+# Basic lower block functions
+
 """
-    function lower_block_ranges(
+    function BandwidthInit.lower_block_ranges(
       bbc::BlockedBandColumn,
-      l::Integer,
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     )
 
 Get ranges for lower block ``l``.
 """
 @inline function BandwidthInit.lower_block_ranges(
   bbc::BlockedBandColumn,
-  l::Int,
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
-  
-  (m, n) = size(bbc)
+  m, n = size(bbc)
   lower_block_ranges(bbc.lower_blocks, m, n, l)
 end
 
 """
-    function BandwidthInit.view_lower_block(
+    BandwidthInit.size_lower_block(
       bbc::BlockedBandColumn,
-      l::Int,
-    )
-
-Get a view of lower block l.
-"""
-@inline function view_lower_block(
-  bbc::BlockedBandColumn,
-  l::Int,
-)
-  (rows, cols) = lower_block_ranges(bbc, l)
-  view(bbc, rows, cols)
-end
-
-"""
-    size_lower_block(
-      bbc::BlockedBandColumn,
-      l::Int,
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     ) 
 
 Compute the size of lower block ``l`` for a `BlockedBandColumn.
 """
 @inline function BandwidthInit.size_lower_block(
   bbc::BlockedBandColumn,
-  l::Int,
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
   (rows, cols) = lower_block_ranges(bbc, l)
   (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
 
 """
-    function intersect_lower_block(
+    function view_lower_block(
       bbc::BlockedBandColumn,
-      l::Integer,
-      ::Colon,
-      k::Int
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     )
 
-Determine if column ``k`` intersects with lower block ``l``
-in a `BlockedBandColumn`.
+Get a view of lower block l.
 """
-@inline function BandwidthInit.intersect_lower_block(
+@inline function view_lower_block(
   bbc::BlockedBandColumn,
-  l::Integer,
-  ::Colon,
-  k::Int
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
-  (_, cols) = lower_block_ranges(bbc, l)
-  k ∈ cols
+  (rows, cols) = lower_block_ranges(bbc, l)
+  view(bbc, rows, cols)
 end
 
-"""
-    intersect_lower_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      j::Int,
-      ::Colon,
-    )
-
-Determine if row ``j`` intersects with lower block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function BandwidthInit.intersect_lower_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  j::Int,
-  ::Colon,
-)
-  (rows, _) = lower_block_ranges(bbc, l)
-  j ∈ rows
- end
+# Basic upper block functions
 
 """
-    function upper_block_ranges(
+    function BandwidthInit.upper_block_ranges(
       bbc::BlockedBandColumn,
-      l::Integer,
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     )
 
 Get ranges for upper block ``l``.
 """
 @inline function BandwidthInit.upper_block_ranges(
   bbc::BlockedBandColumn,
-  l::Integer,
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
   (m, n) = size(bbc)
   upper_block_ranges(bbc.upper_blocks, m, n, l)
 end
 
 """
-    function BandwidthInit.view_upper_block(
+    function view_upper_block(
       bbc::BlockedBandColumn,
-      l::Int,
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     )
 
 Get a view of upper block l.
 """
 @inline function view_upper_block(
   bbc::BlockedBandColumn,
-  l::Int,
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
   (rows, cols) = upper_block_ranges(bbc, l)
   view(bbc, rows, cols)
 end
 
 """
-    size_upper_block(
+    BandwidthInit.size_upper_block(
       bbc::BlockedBandColumn,
-      l::Int,
+      l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
     ) 
 
 Compute the size of lower block ``l`` for a `BlockedBandColumn.
 """
 @inline function BandwidthInit.size_upper_block(
   bbc::BlockedBandColumn,
-  l::Int,
+  l::Union{ListIndex, Int, Result{ListIndex, BeforeAfterError}}
 )
   (rows, cols) = upper_block_ranges(bbc, l)
   (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
 end
 
-"""
-    function intersect_upper_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      ::Colon,
-      k::Int
-    )
+# Bandwidth functions
 
-Determine if column ``k`` intersects with upper block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function BandwidthInit.intersect_upper_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  ::Colon,
-  k::Int
-)
-  (_, cols) = upper_block_ranges(bbc, l)
-  k ∈ cols
- end
-
-"""
-    intersect_upper_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      j::Int,
-      ::Colon,
-    )
-
-Determine if row ``j`` intersects with upper block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function BandwidthInit.intersect_upper_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  j::Int,
-  ::Colon,
-)
-  (rows, _) = upper_block_ranges(bbc, l)
-  j ∈ rows
- end
-
-function get_middle_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
+function get_middle_bw_max(::Int, n::Int, cols_first_last::AbstractMatrix{Int})
   middle_bw_max = 0
   for k ∈ 1:n
     middle_bw_max =
@@ -515,7 +495,7 @@ function get_middle_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
   middle_bw_max
 end
 
-function get_upper_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
+function get_upper_bw_max(::Int, n::Int, cols_first_last::AbstractMatrix{Int})
   upper_bw_max = 0
   for k ∈ 1:n
     upper_bw_max =
@@ -524,7 +504,7 @@ function get_upper_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
   upper_bw_max
 end
 
-function get_lower_bw_max(::Int, n::Int, cols_first_last::AbstractArray{Int,2})
+function get_lower_bw_max(::Int, n::Int, cols_first_last::AbstractMatrix{Int})
   lower_bw_max = 0
   for k ∈ 1:n
     lower_bw_max =
@@ -580,19 +560,23 @@ end
 
 
 """
-    BlockedBandColumn(
+    function BlockedBandColumn(
       ::Type{E},
       ::LeadingDecomp,
       rng::AbstractRNG,
       m::Int,
       n::Int;
-      upper_ranks::Array{Int,1},
-      lower_ranks::Array{Int,1},
+      upper_ranks::AbstractVector{Int},
+      lower_ranks::AbstractVector{Int},
       upper_rank_max::Int=maximum(upper_ranks),
       lower_rank_max::Int=maximum(lower_ranks),
-      upper_blocks::Array{Int,2},
-      lower_blocks::Array{Int,2},
-    ) where {E<:Number}
+      upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      max_num_blocks::Int = max(
+        length(upper_blocks),
+        length(lower_blocks),
+      ),
+    ) where {E<:Number, BD<:AbstractBlockData}
 
 Construct a random LeadingDecomp `BlockedBandColumn` structure from
 the matrix size, blocksizes, upper/lower rank bounds, and upper/lower
@@ -605,13 +589,18 @@ function BlockedBandColumn(
   rng::AbstractRNG,
   m::Int,
   n::Int;
-  upper_ranks::Array{Int,1},
-  lower_ranks::Array{Int,1},
+  upper_ranks::AbstractVector{Int},
+  lower_ranks::AbstractVector{Int},
   upper_rank_max::Int=maximum(upper_ranks),
   lower_rank_max::Int=maximum(lower_ranks),
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
-) where {E<:Number}
+  upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  max_num_blocks::Int = max(
+    length(upper_blocks),
+    length(lower_blocks),
+  ),
+) where {E<:Number, BD<:AbstractBlockData}
+
   bbc = BlockedBandColumn(
     E,
     m,
@@ -620,12 +609,13 @@ function BlockedBandColumn(
     lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
+    max_num_blocks = max_num_blocks,
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
   )
   leading_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   leading_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   rand!(rng, bbc)
   bbc
 end
@@ -636,13 +626,18 @@ function BlockedBandColumn(
   x::E,
   m::Int,
   n::Int;
-  upper_ranks::Array{Int,1},
-  lower_ranks::Array{Int,1},
+  upper_ranks::AbstractVector{Int},
+  lower_ranks::AbstractVector{Int},
   upper_rank_max::Int=maximum(upper_ranks),
   lower_rank_max::Int=maximum(lower_ranks),
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
-) where {E<:Number}
+  upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  max_num_blocks::Int = max(
+    length(upper_blocks),
+    length(lower_blocks),
+  ),
+) where {E<:Number, BD<:AbstractBlockData}
+
   bbc = BlockedBandColumn(
     E,
     m,
@@ -651,30 +646,35 @@ function BlockedBandColumn(
     lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
+    max_num_blocks = max_num_blocks,
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
   )
   leading_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   leading_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   fill!(bbc, x)
   bbc
 end
 
 """
-    BlockedBandColumn(
+    function BlockedBandColumn(
       ::Type{E},
       ::TrailingDecomp,
       rng::AbstractRNG,
       m::Int,
       n::Int;
-      upper_ranks::Array{Int,1},
-      lower_ranks::Array{Int,1},
+      upper_ranks::AbstractVector{Int},
+      lower_ranks::AbstractVector{Int},
       upper_rank_max::Int=maximum(upper_ranks),
       lower_rank_max::Int=maximum(lower_ranks),
-      upper_blocks::Array{Int,2},
-      lower_blocks::Array{Int,2},
-    ) where {E<:Number}
+      upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      max_num_blocks::Int = max(
+        length(upper_blocks),
+        length(lower_blocks),
+      ),
+    ) where {E<:Number, BD<:AbstractBlockData}
 
 Construct a random TrailingDecomp `BlockedBandColumn` structure from
 the matrix size, blocksizes, upper/lower rank bounds, and upper/lower
@@ -687,13 +687,17 @@ function BlockedBandColumn(
   rng::AbstractRNG,
   m::Int,
   n::Int;
-  upper_ranks::Array{Int,1},
-  lower_ranks::Array{Int,1},
+  upper_ranks::AbstractVector{Int},
+  lower_ranks::AbstractVector{Int},
   upper_rank_max::Int=maximum(upper_ranks),
   lower_rank_max::Int=maximum(lower_ranks),
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
-) where {E<:Number}
+  upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  max_num_blocks::Int = max(
+    length(upper_blocks),
+    length(lower_blocks),
+  ),
+) where {E<:Number, BD<:AbstractBlockData}
   bbc = BlockedBandColumn(
     E,
     m,
@@ -702,12 +706,13 @@ function BlockedBandColumn(
     lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
+    max_num_blocks = max_num_blocks,
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
   )
   trailing_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   trailing_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   rand!(rng, bbc)
   bbc
 end
@@ -718,13 +723,17 @@ function BlockedBandColumn(
   x::E,
   m::Int,
   n::Int;
-  upper_ranks::Array{Int,1},
-  lower_ranks::Array{Int,1},
+  upper_ranks::AbstractVector{Int},
+  lower_ranks::AbstractVector{Int},
   upper_rank_max::Int=maximum(upper_ranks),
   lower_rank_max::Int=maximum(lower_ranks),
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
-) where {E<:Number}
+  upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  max_num_blocks::Int = max(
+    length(upper_blocks),
+    length(lower_blocks),
+  ),
+) where {E<:Number, BD<:AbstractBlockData}
   bbc = BlockedBandColumn(
     E,
     m,
@@ -733,29 +742,34 @@ function BlockedBandColumn(
     lower_bw_max = nothing,
     upper_rank_max = upper_rank_max,
     lower_rank_max = lower_rank_max,
+    max_num_blocks = max_num_blocks,
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
   )
   trailing_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   trailing_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
-  compute_rows_first_last!(bbc)
+  compute_rows_first_last_inband!(bbc)
   fill!(bbc, x)
   bbc
 end
 
 """
-    BlockedBandColumn(
+    function BlockedBandColumn(
       ::Type{E},
       D::Decomp,
       m::Int,
       n::Int;
-      upper_ranks::Array{Int,1},
-      lower_ranks::Array{Int,1},
+      upper_ranks::AbstractVector{Int},
+      lower_ranks::AbstractVector{Int},
       upper_rank_max::Int=maximum(upper_ranks),
       lower_rank_max::Int=maximum(lower_ranks),
-      upper_blocks::Array{Int,2},
-      lower_blocks::Array{Int,2},
-    ) where {E<:Number}
+      upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+      max_num_blocks::Int = max(
+        length(upper_blocks),
+        length(lower_blocks),
+      ),
+    ) where {E<:Number, BD<:AbstractBlockData}
 
 Construct a random LeadingDecomp or TrailingDecomp `BlockedBandColumn`
 structure from the matrix size, blocksizes, upper/lower rank bounds,
@@ -768,13 +782,17 @@ function BlockedBandColumn(
   D::Decomp,
   m::Int,
   n::Int;
-  upper_ranks::Array{Int,1},
-  lower_ranks::Array{Int,1},
+  upper_ranks::AbstractVector{Int},
+  lower_ranks::AbstractVector{Int},
   upper_rank_max::Int=maximum(upper_ranks),
   lower_rank_max::Int=maximum(lower_ranks),
-  upper_blocks::Array{Int,2},
-  lower_blocks::Array{Int,2},
-) where {E<:Number}
+  upper_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  lower_blocks::Union{AbstractVector{BD},IndexList{BD}},
+  max_num_blocks::Int = max(
+    length(upper_blocks),
+    length(lower_blocks),
+  ),
+) where {E<:Number, BD<:AbstractBlockData}
   BlockedBandColumn(
     E,
     D,
@@ -785,6 +803,7 @@ function BlockedBandColumn(
     lower_rank_max = lower_rank_max,
     upper_blocks = upper_blocks,
     lower_blocks = lower_blocks,
+    max_num_blocks = max_num_blocks,
     upper_ranks = upper_ranks,
     lower_ranks = lower_ranks,
   )
@@ -943,14 +962,14 @@ end
 @inline BandColumnMatrices.col_size(::Type{NonSub}, bbc::BlockedBandColumn) =
   bbc.n
 
-function BandColumnMatrices.compute_rows_first_last!(bbc::BlockedBandColumn)
-  compute_rows_first_last!(bbc, bbc.rows_first_last)
+function BandColumnMatrices.compute_rows_first_last_inband!(bbc::BlockedBandColumn)
+  compute_rows_first_last_inband!(bbc, bbc.rows_first_last)
 end
 
 function BandColumnMatrices.validate_rows_first_last(
   bbc::BlockedBandColumn,
 )
-  rfl = compute_rows_first_last(bbc)
+  rfl = compute_rows_first_last_inband(bbc)
   @views rfl[:,2] == bbc.rows_first_last[:,2]
   @views rfl[:,5] == bbc.rows_first_last[:,5]
 end
@@ -974,8 +993,6 @@ function Base.show(io::IO, bbc::BlockedBandColumn)
     bbc.rows_first_last,
     ", ",
     bbc.cols_first_last,
-    ", ",
-    bbc.num_blocks,
     ", ",
     bbc.lower_blocks,
     ", ",
@@ -1019,8 +1036,6 @@ Base.print(io::IO, bbc::BlockedBandColumn) = print(
   bbc.cols_first_last,
   ", ",
   bbc.band_elements,
-  ", ",
-  bbc.num_blocks,
   ", ",
   bbc.upper_blocks,
   ", ",
@@ -1099,455 +1114,148 @@ end
   )
 end
 
+
+
 """
-    function lower_block_ranges(
+    BandwidthInit.leading_lower_ranks_to_cols_first_last!(
       bbc::BlockedBandColumn,
-      l::Integer,
-    )
-
-Get ranges for lower block ``l``.
-"""
-@inline function lower_block_ranges(
-  bbc::BlockedBandColumn,
-  l::Int,
-)
-  
-  (m, n) = size(bbc)
-  lower_block_ranges(bbc.lower_blocks, m, n, l)
-end
-
-"""
-    lower_block_ranges(
-      lower_blocks::AbstractArray{Int,2},
-      m :: Int,
-      n :: Int,
-      l::Integer
-    )
-
-For lower blocks and a given matrix size m×n, compute ranges for lower
-block ``l``.
-"""
-@inline function lower_block_ranges(
-  lower_blocks::AbstractArray{Int,2},
-  m :: Int,
-  n :: Int,
-  l::Integer,
-)
-  if l < 1
-    (UnitRange(1,m), UnitRange(1,0))
-  elseif l > size(lower_blocks,2)
-    (UnitRange(m+1,m), UnitRange(1,n))
-  else
-    j_first = lower_blocks[1, l] + 1
-    k_last = lower_blocks[2, l]
-    (UnitRange(j_first, m), UnitRange(1, k_last))
-  end
-end
-
-"""
-    size_lower_block(
-      lower_blocks::AbstractArray{Int,2},
-      m::Int,
-      n::Int,
-      l::Int,
-    )
-  
-Compute the size of lower block ``l`` for an m×n matrix using the
-lower_block sequence `lower_blocks`.
-"""
-@inline function size_lower_block(
-  lower_blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  l::Int,
-)
-  (rows, cols) = lower_block_ranges(lower_blocks, m, n, l)
-  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
-end
-
-"""
-    size_lower_block(
-      bbc::BlockedBandColumn,
-      l::Int,
-    ) 
-
-Compute the size of lower block ``l`` for a `BlockedBandColumn.
-"""
-@inline function size_lower_block(
-  bbc::BlockedBandColumn,
-  l::Int,
-)
-  (rows, cols) = lower_block_ranges(bbc, l)
-  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
-end
-
-"""
-    function intersect_lower_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      ::Colon,
-      k::Int
-    )
-
-Determine if column ``k`` intersects with lower block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function intersect_lower_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  ::Colon,
-  k::Int
-)
-  (_, cols) = lower_block_ranges(bbc, l)
-  k ∈ cols
-end
-
-"""
-    intersect_lower_block(
-      lower_blocks::Array{Int,2},
-      m :: Int,
-      n :: Int,
-      l::Integer,
-      ::Colon,
-      k::Int
-    )
-
-Determine if column ``k`` intersects with lower block ``l``
-in a matrix of size ``m×n``.
-"""
-@inline function intersect_lower_block(
-  lower_blocks::AbstractArray{Int,2},
-  m :: Int,
-  n :: Int,
-  l::Integer,
-  ::Colon,
-  k::Int
-)
-  (_, cols) = lower_block_ranges(lower_blocks, m, n, l)
-  k ∈ cols
-end
-
-"""
-    intersect_lower_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      j::Int,
-      ::Colon,
-    )
-
-Determine if row ``j`` intersects with lower block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function intersect_lower_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  j::Int,
-  ::Colon,
-)
-  (rows, _) = lower_block_ranges(bbc, l)
-  j ∈ rows
- end
-
-"""
-    intersect_lower_block(
-      lower_blocks::AbstractArray{Int,2},
-      m::Int,
-      n::Int,
-      l::Int,
-      j::Int,
-      ::Colon,
-    )
-
-Determine if row ``j`` intersects with lower block ``l``
-in a matrix of size ``m×n``.
-"""
-@inline function intersect_lower_block(
-  lower_blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  l::Int,
-  j::Int,
-  ::Colon,
-)
-  (rows, _) = lower_block_ranges(lower_blocks, m, n, l)
-  j ∈ rows
- end
-
-"""
-    function upper_block_ranges(
-      bbc::BlockedBandColumn,
-      l::Integer,
-    )
-
-Get ranges for upper block ``l``.
-"""
-@inline function upper_block_ranges(bbc::BlockedBandColumn, l::Integer)
-  (m, n) = size(bbc)
-  upper_block_ranges(bbc.upper_blocks, m, n, l)
-end
-
-"""
-    upper_block_ranges(
-      upper_blocks::AbstractArray{Int,2},
-      m :: Int,
-      n :: Int,
-      l::Integer
-    )
-
-For upper blocks and a given matrix size m×n, compute ranges for upper
-block ``l``.
-"""
-@inline function upper_block_ranges(
-  upper_blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  l::Integer,
-)
-  if l < 1
-    (UnitRange(1, 0), UnitRange(1, n))
-  elseif l > size(upper_blocks, 2)
-    (UnitRange(1, m), UnitRange((n + 1):n))
-  else
-    j_last = upper_blocks[1, l]
-    k_first = upper_blocks[2, l] + 1
-    (UnitRange(1, j_last), UnitRange(k_first, n))
-  end
-end
-
-"""
-    size_upper_block(
-      upper_blocks::AbstractArray{Int,2},
-      m::Int,
-      n::Int,
-      l::Int,
-    )
-  
-Compute the size of upper block ``l`` for an m×n matrix using the
-upper_block sequence `upper_blocks`.
-"""
-@inline function size_upper_block(
-  upper_blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  l::Int,
-)
-  (rows, cols) = upper_block_ranges(upper_blocks, m, n, l)
-  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
-end
-
-"""
-    size_upper_block(
-      bbc::BlockedBandColumn,
-      l::Int,
-    ) 
-
-Compute the size of lower block ``l`` for a `BlockedBandColumn.
-"""
-@inline function size_upper_block(
-  bbc::BlockedBandColumn,
-  l::Int,
-)
-  (rows, cols) = upper_block_ranges(bbc, l)
-  (last(rows) - first(rows) + 1, last(cols) - first(cols) + 1)
-end
-
-"""
-    function intersect_upper_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      ::Colon,
-      k::Int
-    )
-
-Determine if column ``k`` intersects with upper block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function intersect_upper_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  ::Colon,
-  k::Int
-)
-  (_, cols) = upper_block_ranges(bbc, l)
-  k ∈ cols
- end
-
-"""
-    intersect_upper_block(
-      upper_blocks::AbstractArray{Int,2},
-      m :: Int,
-      n :: Int,
-      l::Integer,
-      ::Colon,
-      k::Int
-    )
-
-Determine if column ``k`` intersects with upper block ``l``
-in a matrix of size ``m×n``.
-"""
-@inline function intersect_upper_block(
-  upper_blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  l::Integer,
-  ::Colon,
-  k::Int
-)
-  (_, cols) = upper_block_ranges(upper_blocks, m, n, l)
-  k ∈ cols
- end
-
-"""
-    intersect_upper_block(
-      bbc::BlockedBandColumn,
-      l::Integer,
-      j::Int,
-      ::Colon,
-    )
-
-Determine if row ``j`` intersects with upper block ``l``
-in a `BlockedBandColumn`.
-"""
-@inline function intersect_upper_block(
-  bbc::BlockedBandColumn,
-  l::Integer,
-  j::Int,
-  ::Colon,
-)
-  (rows, _) = upper_block_ranges(bbc, l)
-  j ∈ rows
- end
-
-"""
-    intersect_upper_block(
-      upper_blocks::AbstractArray{Int,2},
-      m::Int,
-      n::Int,
-      l::Int,
-      j::Int,
-      ::Colon,
-    )
-
-Determine if row ``j`` intersects with upper block ``l``
-in a matrix of size ``m×n``.
-"""
-@inline function intersect_upper_block(
-  upper_blocks::AbstractArray{Int,2},
-  m::Int,
-  n::Int,
-  l::Integer,
-  j::Int,
-  ::Colon,
-)
-  (rows, _) = upper_block_ranges(upper_blocks, m, n, l)
-  j ∈ rows
- end
-
-"""
-    leading_lower_ranks_to_cols_first_last!(
-      bbc::BlockedBandColumn,
-      rs::AbstractArray{Int,1},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a leading decomposition
 associated with a given lower rank sequence.
 """
-function leading_lower_ranks_to_cols_first_last!(
+function BandwidthInit.leading_lower_ranks_to_cols_first_last!(
   bbc::BlockedBandColumn,
-  rs::AbstractArray{Int,1},
+  rs::AbstractVector{Int},
 )
 
   m, n = size(bbc)
-  rs1 = constrain_lower_ranks(m, n, blocks = bbc.lower_blocks, ranks = rs)
-  for lb = 1:bbc.num_blocks
+  rs1 = constrain_lower_ranks(
+    m,
+    n,
+    blocks = bbc.lower_blocks,
+    ranks = rs,
+  )
+  lb_count = 0
+  for lb ∈ bbc.lower_blocks
+    lb_count += 1
     rows_lb, cols_lb = lower_block_ranges(bbc, lb)
-    rows_lb1, _ = lower_block_ranges(bbc, lb+1) # empty if lb+1 > num_blocks
+    # empty if after last index.
+    lb1 = next_list_index(bbc.lower_blocks, lb)
+    rows_lb1, _ = lower_block_ranges(bbc, lb1)
     dᵣ = setdiffᵣ(rows_lb, rows_lb1)
     if !isempty(dᵣ)
-      bbc.cols_first_last[5, last(cols_lb, rs1[lb])] .= last(dᵣ)
+      bbc.cols_first_last[5, last(cols_lb, rs1[lb_count])] .= last(dᵣ)
     end
   end
 end
 
 """
-    trailing_lower_ranks_to_cols_first_last!(
+    BandwidthInit.trailing_lower_ranks_to_cols_first_last!(
       bbc::BlockedBandColumn,
-      rs::AbstractArray{Int,1},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a trailing decomposition
 associated with a given lower rank sequence.
 """
-function trailing_lower_ranks_to_cols_first_last!(
+function BandwidthInit.trailing_lower_ranks_to_cols_first_last!(
   bbc::BlockedBandColumn,
-  rs::AbstractArray{Int,1},
+  rs::AbstractVector{Int},
 )
 
   m, n = size(bbc)
-  rs1 = constrain_lower_ranks(m, n, blocks = bbc.lower_blocks, ranks = rs)
-  for lb = bbc.num_blocks:-1:1
+  rs1 = constrain_lower_ranks(
+    m,
+    n,
+    blocks = bbc.lower_blocks,
+    ranks = rs,
+  )
+  lb_count = length(bbc.lower_blocks)
+  for lb ∈ Iterators.Reverse(bbc.lower_blocks)
     rows_lb, cols_lb = lower_block_ranges(bbc, lb)
-    _, cols_lb1 = lower_block_ranges(bbc, lb-1) # empty if lb-1 < 1
+    # empty if previous to lb is before the first index.
+    lb1 = prev_list_index(bbc.lower_blocks, lb)
+    _, cols_lb1 = lower_block_ranges(bbc, lb1)
     dᵣ = setdiffᵣ(cols_lb, cols_lb1)
     if !isempty(dᵣ)
       rows_lb_first = isempty(rows_lb) ? m : first(rows_lb)
-      bbc.cols_first_last[5, dᵣ] .= min(m, rows_lb_first + rs1[lb] - 1)
+      bbc.cols_first_last[5, dᵣ] .= min(m, rows_lb_first + rs1[lb_count] - 1)
     end
+    lb_count -= 1
   end
 end
 
 """
-    leading_upper_ranks_to_cols_first_last!(
+    BandwidthInit.leading_upper_ranks_to_cols_first_last!(
       bbc::BlockedBandColumn,
-      rs::AbstractArray{Int,1},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a leading decomposition associated
 with a given upper rank sequence
 """
-function leading_upper_ranks_to_cols_first_last!(
+function BandwidthInit.leading_upper_ranks_to_cols_first_last!(
   bbc::BlockedBandColumn,
-  rs::AbstractArray{Int,1},
+  rs::AbstractVector{Int},
 )
 
   m, n = size(bbc)
-  rs1 = constrain_upper_ranks(m, n, blocks = bbc.upper_blocks, ranks = rs)
+  rs1 = constrain_upper_ranks(
+    m,
+    n,
+    blocks = bbc.upper_blocks,
+    ranks = rs,
+  )
 
-  for ub = 1:bbc.num_blocks
+  ub_count = 0
+  for ub ∈ bbc.upper_blocks
+    ub_count += 1
     rows_ub, cols_ub = upper_block_ranges(bbc, ub)
-    _, cols_ub1 = upper_block_ranges(bbc, ub+1) # empty if ub+1 > num_blocks
+    ub1 = next_list_index(bbc.upper_blocks, ub)
+    _, cols_ub1 = upper_block_ranges(bbc, ub1) # empty if ub+1 > num_blocks
     dᵣ = setdiffᵣ(cols_ub, cols_ub1)
     if !isempty(dᵣ)
       rows_ub_last = isempty(rows_ub) ? 0 : last(rows_ub)
       bbc.cols_first_last[2, dᵣ] .= 
-        max(1, rows_ub_last - rs1[ub] + 1)
+        max(1, rows_ub_last - rs1[ub_count] + 1)
     end
   end
 end
 
 """
-    trailing_upper_ranks_to_cols_first_last!(
+    BandwidthInit.trailing_upper_ranks_to_cols_first_last!(
       bbc::BlockedBandColumn,
-      rs::AbstractArray{Int,1},
+      rs::AbstractVector{Int},
     )
 
 Set first_last indices appropriate for a leading decomposition
 associated with a given upper rank sequence
 """
-function trailing_upper_ranks_to_cols_first_last!(
+function BandwidthInit.trailing_upper_ranks_to_cols_first_last!(
   bbc::BlockedBandColumn,
-  rs::AbstractArray{Int,1},
+  rs::AbstractVector{Int},
 )
 
   m, n = size(bbc)
-  rs1 = constrain_upper_ranks(m, n, blocks = bbc.upper_blocks, ranks = rs)
-  for ub = bbc.num_blocks:-1:1
+  rs1 = constrain_upper_ranks(
+    m,
+    n,
+    blocks = bbc.upper_blocks,
+    ranks = rs,
+  )
+
+  ub_count = length(bbc.upper_blocks)
+  for ub ∈ Iterators.Reverse(bbc.upper_blocks)
     rows_ub, cols_ub = upper_block_ranges(bbc, ub)
-    rows_ub1, _ = upper_block_ranges(bbc, ub - 1) # empty if ub-1 < 1
+    ub1 = prev_list_index(bbc.upper_blocks, ub)
+    rows_ub1, _ = upper_block_ranges(bbc, ub1) # empty if ub1 < 1
     dᵣ = setdiffᵣ(rows_ub, rows_ub1)
     if !isempty(dᵣ)
-      bbc.cols_first_last[2, first(cols_ub, rs1[ub])] .= first(dᵣ)
+      bbc.cols_first_last[2, first(cols_ub, rs1[ub_count])] .= first(dᵣ)
     end
+    ub_count -= 1
   end
 end
 
@@ -1558,9 +1266,9 @@ end
   fill!(a[2:2:(2 * m), :], ' ')
   fill!(a[:, 2:2:(2 * n)], ' ')
   #insert boundaries for lower and upper blocks.
-  for i = 1:bbc.num_blocks
-    jl = bbc.lower_blocks[1, i]
-    kl = bbc.lower_blocks[2, i]
+  for i ∈ bbc.lower_blocks
+    jl = bbc.lower_blocks[i].mb
+    kl = bbc.lower_blocks[i].nb
     fill!(a[(2 * jl + 1):(2 * m - 1), 2 * kl], '|')
     a[2 * jl, 2 * kl] = '+'
     fill!(a[2 * jl, 1:(2 * kl - 1)], '-')
@@ -1569,9 +1277,10 @@ end
         a[2 * jl, kk] = '+'
       end
     end
-
-    ju = bbc.upper_blocks[1, i]
-    ku = bbc.upper_blocks[2, i]
+  end
+  for i = bbc.upper_blocks
+    ju = bbc.upper_blocks[i].mb
+    ku = bbc.upper_blocks[i].nb
     # fill!(a[(2 * ju + 1):(2 * m), 2 * ku], '|')
     fill!(a[1:(2 * ju - 1), 2 * ku], '|')
     a[2 * ju, 2 * ku] = '+'
@@ -1602,9 +1311,8 @@ function Base.copy(bbc::BlockedBandColumn)
     copy(bbc.rows_first_last),
     copy(bbc.cols_first_last),
     copy(bbc.band_elements),
-    bbc.num_blocks,
-    bbc.upper_blocks,
-    bbc.lower_blocks,
+    deepcopy(bbc.upper_blocks),
+    deepcopy(bbc.lower_blocks),
   )
 end
 

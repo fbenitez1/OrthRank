@@ -6,20 +6,21 @@ using Householder
 using OrthWeight
 using Random
 using InPlace
+using Test
 
 function test_wy_construction()
 
   tol = 1e-14
 
-  lower_blocks_sweep = [
+  lower_blocks_sweep = block_sizes([
     2 4 5 7
     2 3 4 6
-  ]
+  ])
 
-  upper_blocks_sweep = [
+  upper_blocks_sweep = block_sizes([
     1 3 4 6
     3 4 6 7
-  ]
+  ])
 
   wyw_sweep = WYWeight(
     Float64,
@@ -28,8 +29,8 @@ function test_wy_construction()
     Random.default_rng(),
     8,
     7,
-    upper_ranks = [2 for j ∈ 1:size(upper_blocks_sweep, 2)],
-    lower_ranks = [2 for j ∈ 1:size(lower_blocks_sweep, 2)],
+    upper_ranks = [2 for j ∈ 1:length(upper_blocks_sweep)],
+    lower_ranks = [2 for j ∈ 1:length(lower_blocks_sweep)],
     upper_blocks = upper_blocks_sweep,
     lower_blocks = lower_blocks_sweep,
   )

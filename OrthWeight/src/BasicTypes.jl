@@ -1,8 +1,11 @@
 module BasicTypes
 
 using BandStruct
+using Base: something
 
 export OrthWeightDecomp,
+  Consts,
+  AbstractCompressibleData,
   Step,
   SpanStep,
   NullStep,
@@ -13,14 +16,70 @@ export OrthWeightDecomp,
   Num_hs,
   NumRots,
   Offsets,
+  filter_compressed,
   LowerCompressed,
   UpperCompressed,
   getindex_or_scalar,
   maybe_zero,
   expand_or_set!,
-  maybe_set!
+  maybe_set!,
+  to_block_data_index_list
+
+function to_block_data_index_list(
+  blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  };
+  B = BlockSize,
+  max_length::Union{Int,Nothing} = nothing,
+)
+  if blocks isa IndexList
+    blocks_B = IndexList([
+      let (; mb, nb) = blocks[li]
+        B(mb = mb, nb = nb)
+      end for li in blocks
+        ], max_length = something(max_length, blocks.max_length))
+  else
+    blocks_B = IndexList([
+      let (; mb, nb) = bd
+        B(mb = mb, nb = nb)
+      end for bd in blocks
+        ], max_length = something(max_length, length(blocks)))
+  end
+  return blocks_B
+end
+
+
+# Constant array of given size.
+struct Consts{T} <: AbstractVector{T}
+  length::Int
+  value::T
+end
+
+Base.size(C::Consts) = (C.length,)
+
+function Base.getindex(C::Consts, i::Int)
+  if i ∈ axes(C, 1)
+    C.value
+  else
+    throw(BoundsError(C, i))
+  end
+end
+
+function Base.setindex!(C::Consts{T}, i::Int, x::T) where {T}
+  if i ∈ axes(C, 1)
+    C.value = x
+  else
+    throw(BoundsError(C, i))
+  end
+end
+
+Base.IndexStyle(::Type{Consts{T}}) where T = IndexLinear()
 
 abstract type OrthWeightDecomp end
+
+abstract type AbstractCompressibleData <: AbstractBlockData end
+
 
 abstract type Step end
 
@@ -76,12 +135,24 @@ Base.iterate(::Offsets, ::Any) = nothing
 
 # Iterators over blocks that are compressed.
 
+function filter_compressed(
+  l::IndexList{B},
+) where {B<:AbstractCompressibleData}
+  Iterators.filter(ind -> l[ind].compressed, l)
+end
+
+function filter_compressed(
+  l::Iterators.Reverse{IndexList{B}},
+) where {B<:AbstractCompressibleData}
+  Iterators.filter(ind -> l.itr[ind].compressed, l)
+end
+
 struct LowerCompressed{D}
-  decomp::D
+  blocks::D
 end
 
 struct UpperCompressed{D}
-  decomp::D
+  blocks::D
 end
 
 function Base.length(lc::LowerCompressed{<:OrthWeightDecomp})
@@ -96,10 +167,10 @@ Base.length(rlc::Iterators.Reverse{<:LowerCompressed{<:OrthWeightDecomp}}) =
   length(rlc.itr)
 
 function Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}, l::Int)
-  while (l <= lc.decomp.b.num_blocks) && (!lc.decomp.lower_compressed[l])
+  while (l <= lc.blocks.b.num_blocks) && (!lc.blocks.lower_compressed[l])
     l += 1
   end
-  l > lc.decomp.b.num_blocks ? nothing : (l, l + 1)
+  l > lc.blocks.b.num_blocks ? nothing : (l, l + 1)
 end
 
 Base.iterate(lc::LowerCompressed{<:OrthWeightDecomp}) = Base.iterate(lc, 1)
@@ -132,10 +203,10 @@ function Base.length(
 end
 
 function Base.iterate(uc::UpperCompressed{<:OrthWeightDecomp}, l::Int)
-  while (l <= uc.decomp.b.num_blocks) && (!uc.decomp.upper_compressed[l])
+  while (l <= uc.blocks.b.num_blocks) && (!uc.blocks.upper_compressed[l])
     l += 1
   end
-  l > uc.decomp.b.num_blocks ? nothing : (l, l + 1)
+  l > uc.blocks.b.num_blocks ? nothing : (l, l + 1)
 end
 
 Base.iterate(uc::UpperCompressed{<:OrthWeightDecomp}) = Base.iterate(uc, 1)

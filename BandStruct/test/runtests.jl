@@ -1,5 +1,6 @@
 using SafeTestsets
 
+include("index_lists.jl")
 include("first_last_init.jl")
 include("wilkinson.jl")
 include("index.jl")

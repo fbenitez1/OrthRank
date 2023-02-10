@@ -2,7 +2,6 @@ module BandColumnMatrices
 
 using Printf
 using LinearAlgebra
-import InPlace
 using InPlace
 
 export BandColumn,
@@ -27,7 +26,7 @@ export BandColumn,
   row_size,
   col_size,
   band_elements,
-  compute_rows_first_last!, # One method only, to access rows_first_last array
+  compute_rows_first_last_inband!, # One method only, to access rows_first_last array
   validate_rows_first_last,
   unsafe_set_first_inband_index!,
   unsafe_set_last_inband_index!,
@@ -76,7 +75,7 @@ export BandColumn,
   upper_bw,
   middle_bw,
   lower_bw,
-  compute_rows_first_last,
+  compute_rows_first_last_inband,
   get_elements,
   setindex_no_bulge!,
   wilk,
@@ -198,7 +197,7 @@ Base.showerror(io::IO, e::NoStorageForIndex) = print(
 
 # AbstractBandColumn
 
-    AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2}
+    AbstractBandColumn{S,E,AE,AI} <: AbstractMatrix{E}
 
 An AbstractBandColumn should implement the following:
 
@@ -234,7 +233,7 @@ An AbstractBandColumn should implement the following:
 
 - `band_elements(bc)`
 
-- `compute_rows_first_last!`: One method only, to access rows_first_last array.
+- `compute_rows_first_last_inband!`
 
 - `validate_rows_first_last`
 
@@ -247,7 +246,7 @@ An AbstractBandColumn should implement the following:
 - `notch_lower!(bc, j::Int, k::Int)`
 
 """
-abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractArray{E,2} end
+abstract type AbstractBandColumn{S,E,AE,AI} <: AbstractMatrix{E} end
 
 """
     inband_hull(bc::AbstractBandColumn, js::UnitRange{Int}, ::Colon)
@@ -362,7 +361,7 @@ end
 
 # BandColumn
 
-    BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}}
+    BandColumn{S,E<:Number,AE<:AbstractMatrix{E},AI<:AbstractMatrix{Int}}
     <: AbstractBandColumn{S,E,AE,AI}
 
 A band column structure that does not include leading
@@ -515,7 +514,7 @@ where
                            3 6 6 8 7 7;
                            6 6 6 8 7 7 ]
 """
-struct BandColumn{S,E<:Number,AE<:AbstractArray{E,2},AI<:AbstractArray{Int,2}} <:
+struct BandColumn{S,E<:Number,AE<:AbstractMatrix{E},AI<:AbstractMatrix{Int}} <:
        AbstractBandColumn{S,E,AE,AI}
   sub :: S
   m_nonsub::Int
@@ -539,7 +538,7 @@ InPlace.structure_type(::Type{B}) where {E,S,B<:AbstractBandColumn{S,E}} =
 
 @inline toBandColumn(bc::BandColumn) = bc
 
-const BCFloat64 = BandColumn{NonSub,Float64,Array{Float64,2},Array{Int,2}}
+const BCFloat64 = BandColumn{NonSub,Float64,Matrix{Float64},Matrix{Int}}
 
 @inline row_size(bc::BandColumn) = bc.m
 @inline col_size(bc::BandColumn) = bc.n
@@ -2471,17 +2470,17 @@ Operations for validating and computing rows_first_last.
 =#
 
 """
-    compute_rows_first_last!(
+    compute_rows_first_last_inband!(
       bc::AbstractBandColumn{NonSub},
-      first_last::AbstractArray{Int,2},
+      first_last::AbstractMatrix{Int},
     )
 
 Compute row first and last elements, filling them into a separate
 array.  This is not intended to work on views.
 """
-function compute_rows_first_last!(
+function compute_rows_first_last_inband!(
   bc::AbstractBandColumn{NonSub},
-  first_last::AbstractArray{Int,2},
+  first_last::AbstractMatrix{Int},
 )
   (m, n) = size(bc)
   first_last[:, 2] .= zero(Int)
@@ -2498,25 +2497,24 @@ function compute_rows_first_last!(
 end
 
 """
-    compute_rows_first_last!(bc::BandColumn{NonSub})
+    compute_rows_first_last_inband!(bc::BandColumn{NonSub})
 
 Compute row first and last elements, filling them into `bc.rows_first_last`.
-
 """
-function compute_rows_first_last!(bc::BandColumn{NonSub})
-  compute_rows_first_last!(bc, bc.rows_first_last)
+function compute_rows_first_last_inband!(bc::BandColumn{NonSub})
+  compute_rows_first_last_inband!(bc, bc.rows_first_last)
 end
 
 """
-    compute_rows_first_last(bc::AbstractBandColumn{NonSub})
+    compute_rows_first_last_inband(bc::AbstractBandColumn{NonSub})
 
 Compute row upper and lower bandwidths from column bandwidths, filling
 them into a newly allocated array.
 """
-function compute_rows_first_last(bc::AbstractBandColumn{NonSub})
+function compute_rows_first_last_inband(bc::AbstractBandColumn{NonSub})
   first_last_arr = similar_zeros(bc.rows_first_last)
-  compute_rows_first_last!(bc, first_last_arr)
-  first_last_arr
+  compute_rows_first_last_inband!(bc, first_last_arr)
+  return first_last_arr
 end
 
 """
@@ -2525,7 +2523,7 @@ end
 Check that the upper and lower first and last elements are consistent.
 """
 function validate_rows_first_last(bc::BandColumn{NonSub})
-  rfl = compute_rows_first_last(bc)
+  rfl = compute_rows_first_last_inband(bc)
   @views rfl[:,2] == bc.rows_first_last[:,2]
   @views rfl[:,5] == bc.rows_first_last[:,5]
 end
@@ -2935,7 +2933,7 @@ Base.print(io::IO, bc::BandColumn) = print(
 Base.print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
 
 struct Wilk
-  arr :: Array{Char,2}
+  arr :: Matrix{Char}
 end
 
 function Base.show(io::IO, w::Wilk)
