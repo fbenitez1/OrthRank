@@ -2,7 +2,6 @@ module WYWeightMatrices
 
 export WYWeight,
   WYBlockData,
-  block_sizes,
   set_WYWeight_transform_params!,
   get_WYWeight_transform_params,
   get_WYWeight_max_transform_params
@@ -152,34 +151,6 @@ function WYWeight(
     B = WYBlockData,
     max_length = max_num_lower_blocks,
   )
-
-  if upper_blocks isa IndexList
-    upper_blocks_wy = [
-      let (; mb, nb) = upper_blocks[il]
-        WYBlockData(mb = mb, nb = nb)
-      end for il in upper_blocks
-        ]
-  else
-    upper_blocks_wy = [
-      let (; mb, nb) = bd
-        WYBlockData(mb = mb, nb = nb)
-      end for bd in upper_blocks
-        ]
-  end
-
-  if lower_blocks isa IndexList
-    lower_blocks_wy = [
-      let (; mb, nb) = lower_blocks[il]
-        WYBlockData(mb = mb, nb = nb)
-      end for il in lower_blocks
-        ]
-  else
-    lower_blocks_wy = [
-      let (; mb, nb) = bd
-        WYBlockData(mb = mb, nb = nb)
-      end for bd in lower_blocks
-        ]
-  end
 
   bbc = BlockedBandColumn(
     E,

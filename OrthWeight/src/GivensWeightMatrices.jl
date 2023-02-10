@@ -14,37 +14,18 @@ export AbstractGivensWeight,
   get_max_Δn,
   get_max_Δm,
   max_num_rots,
-  Consts,
   set_givens_weight_transform_params!,
   get_givens_weight_transform_params,
   get_givens_weight_max_transform_params
 
 
-# Constant array of given size.
-struct Consts{T} <: AbstractVector{T}
-  length::Int
-  value::T
+mutable struct GivensBlockData <: AbstractCompressibleData
+  mb::Int
+  nb::Int
+  block_rank::Int
+  compressed::Bool
+  givens_index::Int
 end
-
-Base.size(C::Consts) = (C.length,)
-
-function Base.getindex(C::Consts, i::Int)
-  if i ∈ axes(C, 1)
-    C.value
-  else
-    throw(BoundsError(C, i))
-  end
-end
-
-function Base.setindex!(C::Consts{T}, i::Int, x::T) where {T}
-  if i ∈ axes(C, 1)
-    C.value = x
-  else
-    throw(BoundsError(C, i))
-  end
-end
-
-Base.IndexStyle(::Type{Consts{T}}) where T = IndexLinear()
 
 # Givens-weight represenation.
 
@@ -113,16 +94,34 @@ function GivensWeight(
   ::Type{E},
   m::Int,
   n::Int;
-  lower_blocks::AbstractMatrix{Int},
-  lower_rank_max::Int,
-  upper_blocks::AbstractMatrix{Int},
   upper_rank_max::Int,
-) where {E}
+  lower_rank_max::Int,
+  upper_blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
+  max_num_upper_blocks = length(upper_blocks),
+  lower_blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
+  max_num_lower_blocks = length(lower_blocks),
+) where {E <: Number}
 
-  num_blocks = size(upper_blocks, 2)
+  # num_upper_blocks = length(upper_blocks)
+  # num_lower_blocks = length(lower_blocks)
 
-  lower_blocks = Matrix(lower_blocks)
-  upper_blocks = Matrix(upper_blocks)
+  upper_blocks_givens = to_block_data_index_list(
+    upper_blocks,
+    B = GivensBlockData,
+    max_length = max_num_upper_blocks,
+  )
+
+  lower_blocks_givens = to_block_data_index_list(
+    lower_blocks,
+    B = GivensBlockData,
+    max_length = max_num_lower_blocks,
+  )
 
   bbc = BlockedBandColumn(
     E,
