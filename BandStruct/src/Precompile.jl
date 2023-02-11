@@ -1,3 +1,5 @@
+module Precompile
+
 using InPlace
 using Rotations
 using Householder
@@ -252,8 +254,14 @@ function run_householder(::Type{E}) where {E}
   bc ⊘ h
 end
 
-# function run_WY(::Type{E}) where {E}
-function run_WY(bc0)
+function run_WY(::Type{E}) where {E}
+  (bc, bbc) =
+    BandStruct.standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
+  run_WY0(bc)
+  run_WY0(bbc)
+end
+
+function run_WY0(bc0)
   E = eltype(bc0)
   (m, n) = size(bc0)
   mx_bc0 = Matrix(bc0)
@@ -348,7 +356,7 @@ function run_WY(bc0)
   bcwy_23_57w ⊛ wyr
 end
 
-function run_cases()
+function run_all()
 
   run_first_last_init()
   run_wilkinson(Float64)
@@ -367,16 +375,9 @@ function run_cases()
   run_rotations(Complex{Float64})
   run_householder(Float64)
   run_householder(Complex{Float64})
-
-  (bc, bbc) =
-    BandStruct.standard_test_case(Float64, upper_rank_max = 2, lower_rank_max = 2)
-  run_WY(bc)
-  run_WY(bbc)
-  (bc, bbc) =
-    BandStruct.standard_test_case(Complex{Float64}, upper_rank_max = 2, lower_rank_max = 2)
-  run_WY(bc)
-  run_WY(bbc)
+  run_WY(Float64)
+  run_WY(Complex{Float64})
   nothing
 end
 
-run_cases()
+end

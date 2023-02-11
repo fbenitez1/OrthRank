@@ -26,9 +26,12 @@ include("BandFactor.jl")
 using Random
 include("../test/standard_test_case.jl")
 
+include("Precompile.jl")
+import .Precompile
+
 import SnoopPrecompile
 SnoopPrecompile.@precompile_all_calls begin
-  include("precompile.jl")
+  Precompile.run_all()
 end
 
 end

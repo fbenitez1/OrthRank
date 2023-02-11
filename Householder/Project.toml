@@ -3,6 +3,12 @@ uuid = "c865288b-f3c9-4f4c-a1b9-0a546e45b448"
 authors = ["Michael Stewart <mastewart@gsu.edu>"]
 version = "0.1.0"
 
+[weakdeps]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+
+[extensions]
+JETExt = "JET"
+
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 InPlace = "be40da39-38af-4299-9425-252ac2c40a94"

@@ -197,8 +197,9 @@ function apply!(
   b::AbstractArray{E,2};
   offset = 0,
 ) where {E<:Number}
-  @views b[(offset + 1):end, (offset + 1):end] =
-    t * b[(offset + 1):end, (offset + 1):end]
+  m, n = size(b)
+  b[(offset + 1):end, (offset + 1):end] =
+    t * view(b, (offset + 1):m, (offset + 1):n)
   nothing
 end
 
@@ -233,13 +234,17 @@ function apply_inv!(
   t::AbstractArray{E,2};
   offset = 0,
 ) where {E<:Number}
-  @views b[(offset + 1):end, (offset + 1):end] =
-    b[(offset + 1):end, (offset + 1):end] / t
+  m, n = size(b)
+  b[(offset + 1):end, (offset + 1):end] =
+    view(b, (offset + 1):m, (offset + 1):n) / t
   nothing
 end
 
+include("Precompile.jl")
+import .Precompile
+
 SnoopPrecompile.@precompile_all_calls begin
-  include("precompile.jl")
+  Precompile.run_all()
 end
 
 end # module

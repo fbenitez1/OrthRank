@@ -3,6 +3,12 @@ uuid = "839fd882-bd41-41b1-9826-d7cfd97ab335"
 authors = ["Michael Stewart <mastewart@mastewart.org>"]
 version = "0.1.0"
 
+[weakdeps]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+
+[extensions]
+JETExt = "JET"
+
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ErrorTypes = "7f495686-c6d2-4c77-9e8e-e4c865675f9d"

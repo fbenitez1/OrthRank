@@ -11,9 +11,12 @@ include("WY.jl")
 include("Factor.jl")
 @reexport using .Factor
 
+include("Precompile.jl")
+import .Precompile
+
 import SnoopPrecompile
 SnoopPrecompile.@precompile_all_calls begin
-  include("precompile.jl")
+  Precompile.run_all()
 end
 
 end # module

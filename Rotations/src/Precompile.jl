@@ -1,6 +1,9 @@
+module Precompile
+
+using LinearAlgebra
 using InPlace
 using Random
-using LinearAlgebra
+using Rotations
 
 function run_givens(::Type{E}) where {E}
   A = randn(E, 3, 3)
@@ -46,9 +49,9 @@ function run_givens(::Type{E}) where {E}
   A ⊛ r
 end
 
-function run_cases()
+function run_all()
   run_givens(Float64)
   run_givens(Complex{Float64})
 end
 
-run_cases()
+end
