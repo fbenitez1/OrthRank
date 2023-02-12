@@ -19,9 +19,26 @@ functions = [
 
 for (func, params) in functions
   @eval begin
+
     function BandStruct.Precompile.$func(
-      $params,
-      s::Symbol;
+      s::Symbol,
+      xs...;
+      ignore_opt = (Base,),
+      ignore_call = nothing,
+      target = nothing,
+    )
+      BandStruct.Precompile.$func(
+        s,
+        xs,
+        ignore_opt = ignore_opt,
+        ignore_call = ignore_call,
+        target = target,
+      )
+    end
+
+    function BandStruct.Precompile.$func(
+      s::Symbol,
+      $params::Tuple;
       ignore_opt = (Base,),
       ignore_call = nothing,
       target = nothing,

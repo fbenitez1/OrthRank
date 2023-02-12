@@ -7,9 +7,26 @@ functions = [(:run_givens, :((a,))), (:run_all, :(()))]
 
 for (func, params) in functions
   @eval begin
+
     function Rotations.Precompile.$func(
-      $params,
-      s::Symbol;
+      s::Symbol,
+      xs...;
+      ignore_opt = (Base,),
+      ignore_call = nothing,
+      target = nothing,
+    )
+      Rotations.Precompile.$func(
+        s,
+        xs,
+        ignore_opt = ignore_opt,
+        ignore_call = ignore_call,
+        target = target,
+      )
+    end
+
+    function Rotations.Precompile.$func(
+      s::Symbol,
+      $params::Tuple;
       ignore_opt = (Base,),
       ignore_call = nothing,
       target = nothing,

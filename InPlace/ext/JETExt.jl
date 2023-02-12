@@ -7,9 +7,26 @@ functions = [(:run_inplace, :((a,))), (:run_all, :(()))]
 
 for (func, params) in functions
   @eval begin
+
     function InPlace.Precompile.$func(
-      $params,
-      s::Symbol;
+      s::Symbol,
+      xs...;
+      ignore_opt = (Base,),
+      ignore_call = nothing,
+      target = nothing,
+    )
+      InPlace.Precompile.$func(
+        s,
+        xs,
+        ignore_opt = ignore_opt,
+        ignore_call = ignore_call,
+        target = target,
+      )
+    end
+
+    function InPlace.Precompile.$func(
+      s::Symbol,
+      $params::Tuple;
       ignore_opt = (Base,),
       ignore_call = nothing,
       target = nothing,
