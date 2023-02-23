@@ -128,6 +128,7 @@ Base.isempty(xs::IndexList) = xs.length == 0
 is_free(xs::IndexList, i::ListIndex) = xs.is_free[i.index]
 
 is_sorted(xs::IndexList) = xs.sorted
+is_sorted(xs::AbstractVector) = true
 
 struct FreeIndexError end
 

@@ -525,10 +525,17 @@ function get_rows_first_last!(;
 end
 
 """
+    @inline function lower_block_ranges(
+      lower_block::BD,
+      m::Int,
+      n::Int,
+    ) where {BD<:AbstractBlockData}
+
+
     lower_block_ranges(
       lower_blocks::IndexList{BD},
-      m :: Int,
-      n :: Int,
+      m::Int,
+      n::Int,
       l::Int
     ) where {BD<:AbstractBlockData}
 
@@ -536,27 +543,52 @@ For lower blocks and a given matrix size m×n, compute ranges for lower
 block ``l``.
 """
 @inline function lower_block_ranges(
-  lower_blocks::IndexList{BD},
-  m :: Int,
-  n :: Int,
-  l :: Int,
-) where {BD<:AbstractBlockData}
-  is_sorted(lower_blocks) || throw(SortedError(lower_blocks, l))
-  if l < 1
-    (UnitRange(1,m), UnitRange(1,0))
-  elseif l > length(lower_blocks)
-    (UnitRange(m+1,m), UnitRange(1,n))
-  else
-    lower_block_ranges(lower_blocks, m, n, ListIndex(l))
-  end
+  lower_block::AbstractBlockData,
+  m::Int,
+  ::Int,
+)
+  j_first = lower_block.mb + 1
+  k_last = lower_block.nb
+  return (UnitRange(j_first, m), UnitRange(1, k_last))
 end
 
 @inline function lower_block_ranges(
   lower_blocks::IndexList{BD},
   m::Int,
   n::Int,
-  le::Result{ListIndex,BeforeAfterError},
+  l::ListIndex,
 ) where {BD<:AbstractBlockData}
+  lower_block_ranges(lower_blocks[l], m, n)
+end
+
+@inline function lower_block_ranges(
+  lower_blocks::L,
+  m::Int,
+  n::Int,
+  l::Int,
+) where {L<:Union{AbstractVector{<:AbstractBlockData},
+                  IndexList{<:AbstractBlockData}}}
+
+  is_sorted(lower_blocks) || throw(SortedError(lower_blocks, l))
+  if l < 1
+    (UnitRange(1,m), UnitRange(1,0))
+  elseif l > length(lower_blocks)
+    (UnitRange(m+1,m), UnitRange(1,n))
+  else
+    if L <: AbstractVector
+      lower_block_ranges(lower_blocks[l], m, n)
+    else
+      lower_block_ranges(lower_blocks[ListIndex(l)], m, n)
+    end
+  end
+end
+
+@inline function lower_block_ranges(
+  lower_blocks::IndexList{<:AbstractBlockData},
+  m::Int,
+  n::Int,
+  le::Result{ListIndex,BeforeAfterError},
+)
 
   err = @unwrap_error_or le (
     return lower_block_ranges(lower_blocks, m, n, unwrap(le))
@@ -570,17 +602,6 @@ end
   end
 end
 
-@inline function lower_block_ranges(
-  lower_blocks::IndexList{BD},
-  m :: Int,
-  :: Int,
-  l::ListIndex,
-  ) where {BD<:AbstractBlockData}
-  j_first = lower_blocks[l].mb + 1
-  k_last = lower_blocks[l].nb
-  return (UnitRange(j_first, m), UnitRange(1, k_last))
-end
-
 """
     size_lower_block(
       lower_blocks::IndexList{BD},
@@ -588,7 +609,7 @@ end
       n::Int,
       l::Int,
     ) where {BD<:AbstractBlockData}
-  
+
 Compute the size of lower block ``l`` for an m×n matrix using the
 lower_block sequence `lower_blocks`.
 """
@@ -605,27 +626,54 @@ end
 """
     upper_block_ranges(
       upper_blocks::IndexList{BD},
-      m :: Int,
-      n :: Int,
+      m::Int,
+      n::Int,
       l::Int
     ) where {BD<:AbstractBlockData}
 
 For upper blocks and a given matrix size m×n, compute ranges for upper
 block ``l``.
 """
+
+@inline function upper_block_ranges(
+  upper_block::AbstractBlockData,
+  ::Int,
+  n::Int,
+)
+  j_last = upper_block.mb
+  k_first = upper_block.nb + 1
+  return (UnitRange(1, j_last), UnitRange(k_first, n))
+end
+
 function upper_block_ranges(
-  upper_blocks::IndexList{BD},
+  upper_blocks::IndexList{<:AbstractBlockData},
+  m::Int,
+  n::Int,
+  l::ListIndex,
+  )
+  upper_block_ranges(upper_blocks[l], m, n)
+end
+
+
+function upper_block_ranges(
+  upper_blocks::U,
   m::Int,
   n::Int,
   l::Int,
-) where {BD<:AbstractBlockData}
+) where {U<:Union{AbstractVector{<:AbstractBlockData},
+                  IndexList{<:AbstractBlockData}}}
+
   is_sorted(upper_blocks) || throw(SortedError(upper_blocks, l))
   if l < 1
     (UnitRange(1, 0), UnitRange(1, n))
   elseif l > length(upper_blocks)
     (UnitRange(1, m), UnitRange((n + 1):n))
   else
-    upper_block_ranges(upper_blocks, m, n, ListIndex(l))
+    if U <: AbstractVector
+      upper_block_ranges(upper_blocks[l], m, n)
+    else
+      upper_block_ranges(upper_blocks[ListIndex(l)], m, n)
+    end
   end
 end
 
@@ -648,18 +696,6 @@ function upper_block_ranges(
   end
 end
 
-function upper_block_ranges(
-  upper_blocks::IndexList{BD},
-  :: Int,
-  n:: Int,
-  l::ListIndex,
-  ) where {BD<:AbstractBlockData}
-  j_last = upper_blocks[l].mb
-  k_first = upper_blocks[l].nb + 1
-  return (UnitRange(1, j_last), UnitRange(k_first, n))
-end
-
-
 """
     size_upper_block(
       upper_blocks::IndexList{BD},
@@ -667,7 +703,7 @@ end
       n::Int,
       l::Int,
     ) where {BD<:AbstractBlockData}
-  
+
 Compute the size of upper block ``l`` for an m×n matrix using the
 upper_block sequence `upper_blocks`.
 """
@@ -867,7 +903,7 @@ function leading_upper_ranks_to_cols_first_last!(
     dᵣ = setdiffᵣ(cols_ub, cols_ub1)
     if !isempty(dᵣ)
       rows_ub_last = isempty(rows_ub) ? 0 : last(rows_ub)
-      cols_first_last[2, dᵣ] .= 
+      cols_first_last[2, dᵣ] .=
         max(1, rows_ub_last - rs1[ub] + 1)
     end
   end
