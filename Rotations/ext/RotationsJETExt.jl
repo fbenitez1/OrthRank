@@ -1,21 +1,21 @@
-module JETExt
+module RotationsJETExt
 
-using InPlace
+using Rotations
 using JET
 
-functions = [(:run_inplace, :((a,))), (:run_all, :(()))]
+functions = [(:run_givens, :((a,))), (:run_all, :(()))]
 
 for (func, params) in functions
   @eval begin
 
-    function InPlace.Precompile.$func(
+    function Rotations.Precompile.$func(
       s::Symbol,
       xs...;
       ignore_opt = (Base,),
       ignore_call = nothing,
       target = nothing,
     )
-      InPlace.Precompile.$func(
+      Rotations.Precompile.$func(
         s,
         xs,
         ignore_opt = ignore_opt,
@@ -24,7 +24,7 @@ for (func, params) in functions
       )
     end
 
-    function InPlace.Precompile.$func(
+    function Rotations.Precompile.$func(
       s::Symbol,
       $params::Tuple;
       ignore_opt = (Base,),
@@ -33,11 +33,11 @@ for (func, params) in functions
     )
       if s == :opt
         JET.@report_opt ignored_modules = ignore_opt target_modules = target (
-          InPlace.Precompile.$func($params...)
+          Rotations.Precompile.$func($params...)
         )
       else
         JET.@report_call ignored_modules = ignore_opt target_modules = target (
-          InPlace.Precompile.$func($params...)
+          Rotations.Precompile.$func($params...)
         )
       end
     end

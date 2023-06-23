@@ -1,4 +1,4 @@
-module JETExt
+module HouseholderJETExt
 
 using Householder
 using JET
