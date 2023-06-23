@@ -60,6 +60,9 @@ end
 
 const AdjRot{TS,TC} = Rot{TS,TC,Int}
 
+# Make rotations act like a scalar for broadcasting.
+Base.broadcastable(r::Rot) = Ref(r)
+
 function get_inds(r::Rot{TS,TC,Int}) where {TS,TC,Int}
   r.inds, r.inds + 1
 end
