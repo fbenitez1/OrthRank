@@ -3,12 +3,6 @@ uuid = "839fd882-bd41-41b1-9826-d7cfd97ab335"
 authors = ["Michael Stewart <mastewart@mastewart.org>"]
 version = "0.1.0"
 
-[weakdeps]
-JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
-
-[extensions]
-JETExt = "JET"
-
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ErrorTypes = "7f495686-c6d2-4c77-9e8e-e4c865675f9d"
@@ -17,10 +11,16 @@ InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 Match = "7eb4fadd-790c-5f42-8a69-bfa0b872bfbf"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Rotations = "736fae1d-e7b5-4d1b-9fe5-a4d954b343ea"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
-SnoopPrecompile = "66db9d55-30c0-4569-8b51-7e840670fc0c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[weakdeps]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+
+[extensions]
+JETExt = "JET"

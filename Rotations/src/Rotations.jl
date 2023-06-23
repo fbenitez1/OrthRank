@@ -16,12 +16,13 @@ export Rot,
 include("Givens.jl")
 using .Givens
 
-include("Precompile.jl")
-import .Precompile
-
-import SnoopPrecompile
-SnoopPrecompile.@precompile_all_calls begin
-  Precompile.run_all()
+using PrecompileTools
+@setup_workload begin
+  include("Precompile.jl")
+  import .Precompile
+  @compile_workload begin
+    Precompile.run_all()
+  end
 end
 
 end # module

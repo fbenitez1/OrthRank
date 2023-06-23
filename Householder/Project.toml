@@ -3,20 +3,20 @@ uuid = "c865288b-f3c9-4f4c-a1b9-0a546e45b448"
 authors = ["Michael Stewart <mastewart@gsu.edu>"]
 version = "0.1.0"
 
-[weakdeps]
-JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
-
-[extensions]
-JETExt = "JET"
-
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 InPlace = "be40da39-38af-4299-9425-252ac2c40a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
-SnoopPrecompile = "66db9d55-30c0-4569-8b51-7e840670fc0c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[weakdeps]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+
+[extensions]
+JETExt = "JET"
