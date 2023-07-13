@@ -2839,21 +2839,11 @@ function Base.copy(bc::BandColumn)
   )
 end
 
-#=
-
-Print and show.
-
-=#
-
-#=
-
-The method show for BandColumn matrices represents elements for which
-there is no storage with `N`.  Elements that have available storage
-but are not actually stored are represented by `O`.  These are
-elements that are outside the current bandwidth but not outside the
-maximum bandwidth.
-
-=#
+# The method show for BandColumn matrices represents elements for
+# which there is no storage with `N`.  Elements that have available
+# storage but are not actually stored are represented by `O`.  These
+# are elements that are outside the current bandwidth but not outside
+# the maximum bandwidth.
 function Base.show(io::IO, bc::BandColumn)
   print(
     io,
@@ -2898,39 +2888,70 @@ function Base.show(io::IO, bc::BandColumn)
   end
 end
 
-Base.show(io::IO, ::MIME"text/plain", bc::BandColumn) = show(io, bc)
+function Base.show(io::IO, mime::MIME"text/plain", bc::BandColumn)
+  println(io, "$(bc.m)×$(bc.n) $(typeof(bc))")
+  limited = get(io, :limit, false)::Bool
+  if !limited
+    if bc.sub == Sub()
+      println(io, "Full matrix size: $(bc.m_nonsub)×$(bc.n_nonsub)")
+      println(io, "(roffset, coffset):  ($(bc.roffset),$(bc.roffset))")
+    end
+    println(
+      io,
+      "(bw_max, upper_bw_max, middle_lower_bw_max):  " *
+        "($(bc.bw_max), $(bc.upper_bw_max), $(bc.middle_lower_bw_max))")
+    print(io, "rows_first_last: ")
+    show(io, mime, bc.rows_first_last)
+    println(io)
+    print(io, "cols_first_last: ")
+    show(io, mime, bc.cols_first_last)
+  end
+  println()
+  maxhalf = 7
+  lines = Vector{String}[]
+  for j ∈ 1:(bc.m)
+    line = String[]
+    for k ∈ 1:(bc.n)
+      elstring = if check_bc_storage_bounds(Bool, bc, j, k)
+        if is_inband(bc, j, k)
+          @sprintf("%10.2e", bc[j, k])
+        else
+          "         O"
+        end
+      else
+        "         N"
+      end
+      push!(line, elstring)
+    end
+    push!(line, "\n")
+    push!(lines, line)
+  end
+  vdots = "         ⋮"
+  cdots = " ⋯ "
+  blank = "          "
+  sepline = String[]
+  for k ∈ 1:(bc.n)
+    sep = k % maxhalf == 0 ? vdots : blank
+    push!(sepline, sep)
+  end
+  push!(sepline, "\n")
+  if bc.m > 2*maxhalf && limited
+    lines = vcat(first(lines, maxhalf), [sepline], last(lines, maxhalf))
+    for j ∈ 1:length(lines)
+      if j % maxhalf == 0 && j != maxhalf+1
+        lines[j] = vcat(first(lines[j], maxhalf), [cdots], last(lines[j], maxhalf+1))
+      else
+        lines[j] = vcat(first(lines[j], maxhalf), ["   "], last(lines[j], maxhalf+1))
+      end
+    end
+  end
 
-Base.print(io::IO, bc::BandColumn) = print(
-    io,
-    typeof(bc),
-    "(",
-    bc.m_nonsub,
-    ", ",
-    bc.n_nonsub,
-    ", ",
-    bc.m,
-    ", ",
-    bc.n,
-    ", ",
-    bc.bw_max,
-    ", ",
-    bc.roffset,
-    ", ",
-    bc.coffset,
-    ", ",
-    bc.upper_bw_max,
-    ", ",
-    bc.middle_lower_bw_max,
-    ", ",
-    bc.rows_first_last,
-    ", ",
-    bc.cols_first_last,
-    ", ",
-    bc.band_elements,
-    ")",
-)
-
-Base.print(io::IO, ::MIME"text/plain", bc::BandColumn) = print(io, bc)
+  for l ∈ lines
+    for el ∈ l
+      print(io, el)
+    end
+  end
+end
 
 struct Wilk
   arr :: Matrix{Char}
@@ -2942,16 +2963,6 @@ function Base.show(io::IO, w::Wilk)
     println(io)
     for k = 1:n
       print(io,w.arr[j, k], " ")
-    end
-  end
-end
-
-function Base.show(w::Wilk)
-  (m, n) = size(w.arr)
-  for j = 1:m
-    println()
-    for k = 1:n
-      print(w.arr[j, k], " ")
     end
   end
 end
