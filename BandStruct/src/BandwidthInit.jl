@@ -721,7 +721,7 @@ end
     function constrain_upper_ranks!(
       mA::Int,
       nA::Int;
-      blocks::IndexList{BD},
+      blocks::Union{IndexList{BD}, AbstractVector{BD}},
       ranks::AbstractVector{Int},
     ) where {BD<:AbstractBlockData}
 
@@ -732,7 +732,7 @@ ranks as upper bound is bounded by the new ranks.
 function constrain_upper_ranks!(
   ::Int,
   nA::Int;
-  blocks::IndexList{BD},
+  blocks::Union{IndexList{BD}, AbstractVector{BD}},
   ranks::AbstractVector{Int},
 ) where {BD<:AbstractBlockData}
 
@@ -754,7 +754,7 @@ end
 function constrain_upper_ranks(
   mA::Int,
   nA::Int;
-  blocks::IndexList{BD},
+  blocks::Union{IndexList{BD}, AbstractVector{BD}},
   ranks::AbstractVector{Int},
 ) where {BD<:AbstractBlockData}
   rs = copy(ranks)
@@ -766,7 +766,7 @@ end
     function constrain_lower_ranks!(
       mA::Int,
       nA::Int;
-      blocks::IndexList{BD},
+      blocks::Union{IndexList{BD}, AbstractVector{BD}},
       ranks::AbstractVector{Int},
     ) where {BD<:AbstractBlockData}
 
@@ -777,7 +777,7 @@ ranks as upper bound is bounded by the new ranks.
 function constrain_lower_ranks!(
   mA::Int,
   ::Int;
-  blocks::IndexList{BD},
+  blocks::Union{IndexList{BD}, AbstractVector{BD}},
   ranks::AbstractVector{Int},
 ) where {BD<:AbstractBlockData}
 
@@ -799,7 +799,7 @@ end
 function constrain_lower_ranks(
   mA::Int,
   nA::Int;
-  blocks::IndexList{BD},
+  blocks::Union{IndexList{BD}, AbstractVector{BD}},
   ranks::AbstractVector{Int},
 ) where {BD<:AbstractBlockData}
   rs = copy(ranks)
