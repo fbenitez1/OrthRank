@@ -632,4 +632,50 @@ function print_list(xs::IndexList)
   display(xs.data)
 end
 
+function Base.show(
+  io::IO,
+  ::MIME"text/plain",
+  xs::IndexList{E}
+) where E
+  sorted = xs.sorted ? "sorted" : "unsorted"
+  limited = get(io, :limit, false)::Bool
+  println(
+    io,
+    "Length $(xs.length[]) $sorted IndexList{$(E)} with max_length=$(xs.max_length):",
+  )
+  if !limited || length(xs) < 30
+    for i ∈ xs
+      println(io, " $(xs[i])")
+    end
+  else
+    for i ∈ first(xs,10)
+      println(io, " $(xs[i])")
+    end
+    println(io, " ⋮")
+    for i ∈ last(xs,10)
+      println(io, " $(xs[i])")
+    end
+  end
+end
+
+function Base.show(
+  io::IO,
+  xs::IndexList{E}
+) where E
+  sorted = xs.sorted ? "sorted" : "unsorted"
+  println("Length $(xs.length[]) $sorted IndexList{$(E)} with max_length=$(xs.max_length):")
+  print(io, "[")
+  sep = ""
+  for i ∈ xs
+    print(io, sep)
+    print(io, "$(xs[i])")
+    sep = ", "
+  end
+  print(io, "]")
+end
+
+
+# hdots::AbstractString = "  \u2026  ",
+# vdots::AbstractString = "\u22ee",
+
 end
