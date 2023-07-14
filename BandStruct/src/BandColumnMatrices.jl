@@ -90,7 +90,14 @@ export BandColumn,
   # types
   BCFloat64,
   NonSub,
-  Sub
+  Sub,
+  show_partial_band_matrix,
+  vdots,
+  cdots,
+  blank,
+  open_el,
+  nonstorable_el,
+  format_el
 
 @inline function project(j::Int, m::Int)
   min(max(j, 1), m)
@@ -1445,6 +1452,10 @@ Base.@propagate_inbounds function lower_inband_index_range_storage(
   lower_inband_index_range(NonSub, bc, :, k) .- storage_offset(NonSub, bc, k)
 end
 
+# Generic fall through for unstructured matrices
+is_inband(A::AbstractMatrix, j::Int, k::Int) =
+  j ∈ axes(A, 1) && k ∈ axes(A, 2)
+
 """
     is_inband(
       bc::AbstractBandColumn,
@@ -1500,6 +1511,9 @@ Base.@propagate_inbounds function is_inband(
   krange ⊆ inband_index_range(NonSub, bc, j, :)
 end
 
+# Generic fall through for unstructured matrices
+check_bc_storage_bounds(::Type{Bool}, A::AbstractMatrix, j::Int, k::Int) =
+  j ∈ axes(A, 1) && k ∈ axes(A, 2)
 
 """
     check_bc_storage_bounds(
@@ -2888,6 +2902,73 @@ function Base.show(io::IO, bc::BandColumn)
   end
 end
 
+vdots(::Type{Float64}) = "         ⋮"
+cdots(::Type{Float64}) = "  ⋯"
+blank(::Type{Float64}) = "          "
+open_el(::Type{Float64}) = "         O"
+nonstorable_el(::Type{Float64}) = "         N"
+format_el(::Type{Float64}) = "%10.2e"
+length_el(::Type{Float64}) = 10
+
+function show_partial_band_matrix(
+  io,
+  A::AbstractMatrix{E};
+  maxhalf = nothing,
+) where {E}
+  _, cols = displaysize(io)
+  if isnothing(maxhalf)
+    maxhalf = max((cols ÷ (2*length_el(E))), 2)
+  end
+  limited = get(io, :limit, false)::Bool
+  Base.require_one_based_indexing(A)
+  m, n = size(A)
+  lines = Vector{String}[]
+  for j ∈ 1:m
+    line = String[]
+    for k ∈ 1:n
+      elstring = if check_bc_storage_bounds(Bool, A, j, k)
+        if is_inband(A, j, k)
+          Printf.format(Printf.Format(format_el(E)), A[j, k])
+        else
+          open_el(E)
+        end
+      else
+        nonstorable_el(E)
+      end
+      push!(line, elstring)
+    end
+    push!(line, "\n")
+    push!(lines, line)
+  end
+  sepline = String[]
+  vdots_skip = 1
+  for k ∈ 1:n
+    sep = k % vdots_skip == 0 ? vdots(E) : blank(E)
+    push!(sepline, sep)
+  end
+  push!(sepline, "\n")
+  lines = m > 2 * maxhalf && limited ?
+    vcat(first(lines, maxhalf), [sepline], last(lines, maxhalf)) : lines
+  cdots_skip = 1
+  if n > 2 * maxhalf && limited
+    for j ∈ 1:length(lines)
+      if j % cdots_skip == 0 && (j != maxhalf + 1 || m <= 2 * maxhalf)
+        lines[j] =
+          vcat(first(lines[j], maxhalf), [cdots(E)], last(lines[j], maxhalf + 1))
+      else
+        lines[j] =
+          vcat(first(lines[j], maxhalf), ["   "], last(lines[j], maxhalf + 1))
+      end
+    end
+  end
+
+  for l ∈ lines
+    for el ∈ l
+      print(io, el)
+    end
+  end
+end
+
 function Base.show(io::IO, mime::MIME"text/plain", bc::BandColumn)
   println(io, "$(bc.m)×$(bc.n) $(typeof(bc))")
   limited = get(io, :limit, false)::Bool
@@ -2907,50 +2988,7 @@ function Base.show(io::IO, mime::MIME"text/plain", bc::BandColumn)
     show(io, mime, bc.cols_first_last)
   end
   println()
-  maxhalf = 7
-  lines = Vector{String}[]
-  for j ∈ 1:(bc.m)
-    line = String[]
-    for k ∈ 1:(bc.n)
-      elstring = if check_bc_storage_bounds(Bool, bc, j, k)
-        if is_inband(bc, j, k)
-          @sprintf("%10.2e", bc[j, k])
-        else
-          "         O"
-        end
-      else
-        "         N"
-      end
-      push!(line, elstring)
-    end
-    push!(line, "\n")
-    push!(lines, line)
-  end
-  vdots = "         ⋮"
-  cdots = " ⋯ "
-  blank = "          "
-  sepline = String[]
-  for k ∈ 1:(bc.n)
-    sep = k % maxhalf == 0 ? vdots : blank
-    push!(sepline, sep)
-  end
-  push!(sepline, "\n")
-  if bc.m > 2*maxhalf && limited
-    lines = vcat(first(lines, maxhalf), [sepline], last(lines, maxhalf))
-    for j ∈ 1:length(lines)
-      if j % maxhalf == 0 && j != maxhalf+1
-        lines[j] = vcat(first(lines[j], maxhalf), [cdots], last(lines[j], maxhalf+1))
-      else
-        lines[j] = vcat(first(lines[j], maxhalf), ["   "], last(lines[j], maxhalf+1))
-      end
-    end
-  end
-
-  for l ∈ lines
-    for el ∈ l
-      print(io, el)
-    end
-  end
+  show_partial_band_matrix(io, bc)
 end
 
 struct Wilk
