@@ -60,6 +60,58 @@ end
 
 const AdjRot{TS,TC} = Rot{TS,TC,Int}
 
+function Base.show(io::IO, r::AdjRot{S,C}) where {C,S}
+  comp = get(io, :compact, false)::Bool
+  if comp
+    print(io, "(")
+    show(io, r.c)
+    print(io, ", ")
+    show(io, r.s)
+    print(io, ", ")
+    show(io, r.inds)
+    print(io, ")")
+  else
+    print(io, "AdjRot{")
+    show(io, S)
+    print(io, ",")
+    show(io, C)
+    print(io, "}(")
+    show(io, r.c)
+    print(io, ", ")
+    show(io, r.s)
+    print(io, ", ")
+    show(io, r.inds)
+    print(io, ")")
+  end
+end
+
+function Base.show(io::IO, r::Rot{S,C,J}) where {C,S,J}
+  comp = get(io, :compact, false)::Bool
+  if comp
+    print(io, "(")
+    show(io, r.c)
+    print(io, ", ")
+    show(io, r.s)
+    print(io, ", ")
+    show(io, r.inds)
+    print(io, ")")
+  else
+    print(io, "Rot{")
+    show(io, S)
+    print(io, ",")
+    show(io, C)
+    print(io, ",")
+    show(io, J)
+    print(io, "}(")
+    show(io, r.s)
+    print(io, ", ")
+    show(io, r.c)
+    print(io, ", ")
+    show(io, r.inds)
+    print(io, ")")
+  end
+end
+
 # Make rotations act like a scalar for broadcasting.
 Base.broadcastable(r::Rot) = Ref(r)
 
