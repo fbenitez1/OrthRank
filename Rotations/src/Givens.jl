@@ -38,7 +38,7 @@ It should be interpreted as a matrix
 [  c       s       ;
   -conj(s) conj(c) ]
 """
-struct Rot{TS,TC,J}
+struct Rot{TC,TS,J}
   c::TC
   s::TS
   inds::J
@@ -47,20 +47,20 @@ struct Rot{TS,TC,J}
     s::TS,
     j::Int,
   ) where {R<:Real,TC<:Union{R,Complex{R}},TS<:Union{R,Complex{R}}}
-    new{TS,TC,Int}(c, s, j)
+    new{TC,TS,Int}(c, s, j)
   end
   function Rot(
     c::TC,
     s::TS,
     inds::Tuple{Int,Int}
   ) where {R<:Real,TC<:Union{R,Complex{R}},TS<:Union{R,Complex{R}}}
-    new{TS,TC,Tuple{Int,Int}}(c, s, inds)
+    new{TC,TS,Tuple{Int,Int}}(c, s, inds)
   end
 end
 
-const AdjRot{TS,TC} = Rot{TS,TC,Int}
+const AdjRot{TC,TS} = Rot{TC,TS,Int}
 
-function Base.show(io::IO, r::AdjRot{S,C}) where {C,S}
+function Base.show(io::IO, r::AdjRot{C,S}) where {C,S}
   comp = get(io, :compact, false)::Bool
   if comp
     print(io, "(")
@@ -72,9 +72,9 @@ function Base.show(io::IO, r::AdjRot{S,C}) where {C,S}
     print(io, ")")
   else
     print(io, "AdjRot{")
-    show(io, S)
-    print(io, ",")
     show(io, C)
+    print(io, ",")
+    show(io, S)
     print(io, "}(")
     show(io, r.c)
     print(io, ", ")
@@ -97,9 +97,9 @@ function Base.show(io::IO, r::Rot{S,C,J}) where {C,S,J}
     print(io, ")")
   else
     print(io, "Rot{")
-    show(io, S)
-    print(io, ",")
     show(io, C)
+    print(io, ",")
+    show(io, S)
     print(io, ",")
     show(io, J)
     print(io, "}(")
@@ -115,11 +115,11 @@ end
 # Make rotations act like a scalar for broadcasting.
 Base.broadcastable(r::Rot) = Ref(r)
 
-function get_inds(r::Rot{TS,TC,Int}) where {TS,TC,Int}
+function get_inds(r::Rot{TC,TS,Int}) where {TC,TS,Int}
   r.inds, r.inds + 1
 end
 
-function get_inds(r::Rot{TS,TC,Tuple{Int,Int}}) where {TS,TC,Int}
+function get_inds(r::Rot{TC,TS,Tuple{Int,Int}}) where {TC,TS,Int}
   r.inds[1], r.inds[2]
 end
 
@@ -396,9 +396,9 @@ end
 
 
 """
-    check_inplace_rotation_types(TS,TC,E)
+    check_inplace_rotation_types(TC,TS,E)
 
-Check that a `Rot{TS,TC}` can be applied inplace to an array with
+Check that a `Rot{TC,TS}` can be applied inplace to an array with
 element type `E`.  I would like to require directly that
 `E<:Union{TS,Complex{TS}}`.  But this fails if `TS == Complex{R}`
 because `Complex{TS}` requires `TS<:R`.  This fails even if `E ==
@@ -406,8 +406,8 @@ Complex{R} == TS`.  By making it a method, JET.jl can pick up on
 applying a complex rotation to a real array.
 """
 check_inplace_rotation_types(
-  ::Type{Complex{R}},
   ::Type{R},
+  ::Type{Complex{R}},
   ::Type{Complex{R}},
 ) where {R<:Real} = nothing
 check_inplace_rotation_types(
@@ -416,8 +416,8 @@ check_inplace_rotation_types(
   ::Type{Complex{R}},
 ) where {R<:Real} = nothing
 check_inplace_rotation_types(
-  ::Type{R},
   ::Type{Complex{R}},
+  ::Type{R},
   ::Type{Complex{R}},
 ) where {R<:Real} = nothing
 check_inplace_rotation_types(
@@ -434,12 +434,12 @@ Apply a rotation, acting in-place to modify a.
 Base.@propagate_inbounds function InPlace.apply!(
   ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
-  r::Rot{TS,TC},
+  r::Rot{TC,TS},
   a::AbstractArray{E,2};
   offset = 0,
-) where {TS<:Number,TC<:Number,E<:Number}
+) where {TC<:Number,TS<:Number,E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
@@ -457,11 +457,11 @@ Base.@propagate_inbounds function InPlace.apply!(
   ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   a::AbstractArray{E,2},
-  r::Rot{TS,TC};
+  r::Rot{TC,TS};
   offset = 0
-) where {TS<:Number,TC<:Number,E<:Number}
+) where {TC<:Number,TS<:Number,E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
@@ -481,12 +481,12 @@ Apply an inverse rotation, acting in-place to modify a.
 Base.@propagate_inbounds function InPlace.apply_inv!(
   ::Type{LeftProduct},
   ::Type{GeneralMatrix{E}},
-  r::Rot{TS,TC},
+  r::Rot{TC,TS},
   a::AbstractArray{E,2};
   offset = 0
-) where {TS<:Number, TC<:Number, E<:Number}
+) where {TC<:Number, TS<:Number, E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s
@@ -504,11 +504,11 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
   ::Type{RightProduct},
   ::Type{GeneralMatrix{E}},
   a::AbstractArray{E,2},
-  r::Rot{TS,TC};
+  r::Rot{TC,TS};
   offset = 0
-) where {TS<:Number,TC<:Number,E<:Number}
+) where {TC<:Number,TS<:Number,E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j1, j2 = get_inds(r)
   c = r.c
   s = r.s

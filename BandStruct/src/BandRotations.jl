@@ -24,11 +24,11 @@ end
   ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
-  r::AdjRot{TS,TC};
+  r::AdjRot{TC,TS};
   offset = 0
 ) where {S,TS<:Number,TC<:Number,E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j, _ = get_inds(r)
   k = j + offset
   c = r.c
@@ -52,11 +52,11 @@ end
   ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
-  r::AdjRot{TS,TC};
+  r::AdjRot{TC,TS};
   offset = 0
 ) where {S,TS<:Number,TC<:Number,E<:Number}
   
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j, _ = get_inds(r)
   k = j + offset
   c = r.c
@@ -79,12 +79,12 @@ end
 @propagate_inbounds function InPlace.apply!(
   ::Type{LeftProduct},
   ::Type{Band{E}},
-  r::AdjRot{TS,TC},
+  r::AdjRot{TC,TS},
   bc::AbstractBandColumn{S,E};
   offset = 0
 ) where {S,TS<:Number,TC<:Number,E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j, _ = get_inds(r)
   j = j + offset
   c = r.c
@@ -116,7 +116,7 @@ end
   offset = 0
 ) where {S,TS<:Number,TC<:Number,E<:Number}
 
-  check_inplace_rotation_types(TS, TC, E)
+  check_inplace_rotation_types(TC, TS, E)
   j, _ = get_inds(r)
   j = j + offset
   c = r.c
