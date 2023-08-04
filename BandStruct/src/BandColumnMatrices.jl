@@ -2971,8 +2971,8 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", bc::BandColumn)
   println(io, "$(bc.m)×$(bc.n) $(typeof(bc))")
-  limited = get(io, :limit, false)::Bool
-  if !limited
+  allfields = get(io, :all, false)::Bool
+  if !allfields
     if bc.sub == Sub()
       println(io, "Full matrix size: $(bc.m_nonsub)×$(bc.n_nonsub)")
       println(io, "(roffset, coffset):  ($(bc.roffset),$(bc.roffset))")
@@ -2987,7 +2987,7 @@ function Base.show(io::IO, mime::MIME"text/plain", bc::BandColumn)
     print(io, "cols_first_last: ")
     show(io, mime, bc.cols_first_last)
   end
-  println()
+  println("Band matrix:")
   show_partial_band_matrix(io, bc)
 end
 

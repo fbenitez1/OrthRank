@@ -1015,35 +1015,30 @@ function Base.show(io::IO, bbc::BlockedBandColumn)
   end
 end
 
-Base.show(io::IO, ::MIME"text/plain", bbc::BlockedBandColumn) = show(io, bbc)
+function Base.show(io::IO, mime::MIME"text/plain", bbc::BlockedBandColumn)
+  println(io, "$(bbc.m)×$(bbc.n) $(typeof(bbc))")
+  allfields = get(io, :all, false)::Bool
+  if allfields
+    println(
+      io,
+      "(bw_max, upper_bw_max, middle_lower_bw_max):  " *
+        "($(bbc.bw_max), $(bbc.upper_bw_max), $(bbc.middle_lower_bw_max))")
+    println(io, "rows_first_last: ")
+    show(io, mime, bbc.rows_first_last)
+    println(io)
+    print(io, "cols_first_last: ")
+    show(io, mime, bbc.cols_first_last)
+    println(io)
+  end
+  println(io, "upper_blocks: ")
+  show(io, mime, bbc.upper_blocks)
+  println(io)
+  print(io, "lower_blocks: ")
+  show(io, mime, bbc.lower_blocks)
 
-Base.print(io::IO, bbc::BlockedBandColumn) = print(
-  io,
-  typeof(bbc),
-  "(",
-  bbc.m,
-  ", ",
-  bbc.n,
-  ", ",
-  bbc.bw_max,
-  ", ",
-  bbc.upper_bw_max,
-  ", ",
-  bbc.middle_lower_bw_max,
-  ", ",
-  bbc.rows_first_last,
-  ", ",
-  bbc.cols_first_last,
-  ", ",
-  bbc.band_elements,
-  ", ",
-  bbc.upper_blocks,
-  ", ",
-  bbc.lower_blocks,
-  ")",
-)
-
-Base.print(io::IO, ::MIME"text/plain", bbc::BlockedBandColumn) = print(io, bbc)
+  println("Band matrix:")
+  show_partial_band_matrix(io, bbc)
+end
 
 ##
 ## Index operations.  Scalar operations are defined for

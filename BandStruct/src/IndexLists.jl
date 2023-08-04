@@ -634,7 +634,7 @@ end
 
 function Base.show(
   io::IO,
-  ::MIME"text/plain",
+  mime::MIME"text/plain",
   xs::IndexList{E}
 ) where E
   sorted = xs.sorted ? "sorted" : "unsorted"
@@ -645,15 +645,18 @@ function Base.show(
   )
   if !limited || length(xs) < 30
     for i ∈ xs
-      println(io, " $(xs[i])")
+      show(io, mime, xs[i])
+      println(io)
     end
   else
     for i ∈ first(xs,10)
-      println(io, " $(xs[i])")
+      show(io, mime, xs[i])
+      println(io)
     end
     println(io, " ⋮")
     for i ∈ last(xs,10)
-      println(io, " $(xs[i])")
+      show(io, mime, xs[i])
+      println(io)
     end
   end
 end
