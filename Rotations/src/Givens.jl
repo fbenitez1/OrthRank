@@ -2,6 +2,7 @@ module Givens
 
 export Rot,
   AdjRot,
+  RotationBoundsError,
   get_inds,
   lgivens,
   lgivens1,
@@ -26,6 +27,27 @@ macro real_turbo(t, ex)
                  @inbounds $ex
                end
              end)
+end
+
+struct RotationBoundsError <: Exception
+  a::Any
+  row_or_col::Any
+  i::Any
+  j::Any
+  RotationBoundsError() = new()
+  RotationBoundsError(a) = new(a)
+  RotationBoundsError(a,row_or_col,i,j) = new(a,row_or_col,i,j)
+end
+
+function Base.showerror(io::IO, ex::RotationBoundsError)
+  print(io, "RotationBoundsError")
+  if isdefined(ex, :a)
+    print(io, ": attempt to apply rotation to ")
+    summary(io, ex.a)
+    if isdefined(ex, :row_or_col)
+      print(io, " at ", ex.row_or_col, " ", ex.i, " and ", ex.j)
+    end
+  end
 end
 
 """
@@ -445,6 +467,11 @@ Base.@propagate_inbounds function InPlace.apply!(
   s = r.s
   j1 = j1 + offset
   j2 = j2 + offset
+  @boundscheck begin
+    m = size(a,1)
+    (j1 >= 1 && j1 <= m && j2 >= 1 && j2 <= m) ||
+      throw(RotationBoundsError(a, "rows", j1, j2))
+  end
   @real_turbo E for k ∈ axes(a,2)
     tmp = a[j1, k]
     a[j1, k] = c * tmp + s * a[j2, k]
@@ -467,6 +494,11 @@ Base.@propagate_inbounds function InPlace.apply!(
   s = r.s
   k1 = j1 + offset
   k2 = j2 + offset
+  @boundscheck begin
+    n = size(a,2)
+    (k1 >= 1 && k1 <= n && k2 >= 1 && k2 <= n) ||
+      throw(RotationBoundsError(a, "columns", k1, k1))
+  end
   @real_turbo E for j = axes(a,1)
     tmp = a[j, k1]
     a[j, k1] = c * tmp - conj(s) * a[j, k2]
@@ -492,6 +524,11 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
   s = r.s
   j1 = j1 + offset
   j2 = j2 + offset
+  @boundscheck begin
+    m = size(a,1)
+    (j1 >= 1 && j1 <= m && j2 >= 1 && j2 <= m) ||
+      throw(RotationBoundsError(a, "rows", j1, j2))
+  end
   @real_turbo E for k = axes(a,2)
     tmp = a[j1, k]
     a[j1, k] = conj(c) * tmp - s * a[j2, k]
@@ -514,6 +551,11 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
   s = r.s
   k1 = j1 + offset
   k2 = j2 + offset
+  @boundscheck begin
+    n = size(a,2)
+    (k1 >= 1 && k1 <= n && k2 >= 1 && k2 <= n) ||
+      throw(RotationBoundsError(a, "columns", k1, k2))
+  end
   @real_turbo E for j ∈ axes(a,1)
     tmp = a[j, k1]
     a[j, k1] = conj(c) * tmp + conj(s) * a[j, k2]

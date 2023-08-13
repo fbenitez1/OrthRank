@@ -33,6 +33,10 @@ end
   k = j + offset
   c = r.c
   s = r.s
+  @boundscheck begin
+    n = size(bc,2)
+    (k >= 1 && k+1 <= n) || throw(RotationBoundsError(bc, "columns", k, k+1))
+  end
   jrange = hull(inband_index_range(bc, :, k), inband_index_range(bc, :, k + 1))
   bulge!(bc, :, k:(k+1))
   bc_els = band_elements(bc)
@@ -61,6 +65,10 @@ end
   k = j + offset
   c = r.c
   s = r.s
+  @boundscheck begin
+    n = size(bc,2)
+    (k >= 1 && k+1 <= n) || throw(RotationBoundsError(bc, "columns", k, k+1))
+  end
   jrange = hull(inband_index_range(bc, :, k), inband_index_range(bc, :, k + 1))
   bulge!(bc, :, k:(k+1))
   bc_els = band_elements(bc)
@@ -89,6 +97,10 @@ end
   j = j + offset
   c = r.c
   s = r.s
+  @boundscheck begin
+    m = size(bc,1)
+    (j >= 1 && j+1 <= m) || throw(RotationBoundsError(bc, "rows", j, j+1))
+  end
   krange = hull(inband_index_range(bc, j, :), inband_index_range(bc, j + 1, :))
   bulge!(bc, j:(j+1), :)
 
@@ -121,6 +133,10 @@ end
   j = j + offset
   c = r.c
   s = r.s
+  @boundscheck begin
+    m = size(bc,1)
+    (j >= 1 && j+1 <= m) || throw(RotationBoundsError(bc, "rows", j, j+1))
+  end
   krange = hull(inband_index_range(bc, j, :), inband_index_range(bc, j+1, :))
   bulge!(bc, j:(j+1), :)
 

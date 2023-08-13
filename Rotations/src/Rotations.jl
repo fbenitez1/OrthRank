@@ -2,6 +2,7 @@ module Rotations
 
 export Rot,
   AdjRot,
+  RotationBoundsError,
   get_inds,
   lgivens,
   lgivens1,
