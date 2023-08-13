@@ -537,11 +537,30 @@ function Random.rand!(
   end
 end
 
+function Random.randn!(
+  rng::AbstractRNG,
+  bbc::BlockedBandColumn{E},
+) where {E}
+
+  for k = 1:bbc.n
+    for j = inband_index_range_storage(bbc, k)
+      bbc.band_elements[j, k] = randn(rng, E)
+    end
+  end
+end
+
 function Random.rand!(
   bbc::BlockedBandColumn{E},
 ) where {E}
 
   rand!(Random.default_rng(), bbc)
+end
+
+function Random.randn!(
+  bbc::BlockedBandColumn{E},
+) where {E}
+
+  randn!(Random.default_rng(), bbc)
 end
 
 # Random elements for a particular decomposition.
@@ -554,6 +573,19 @@ function Random.rand!(
   for k = 1:bbc.n
     for j = inband_index_range_storage(bbc, k)
       bbc.band_elements[j, k] = rand(rng, E)
+    end
+  end
+end
+
+function Random.randn!(
+  ::LeadingDecomp,
+  rng::AbstractRNG,
+  bbc::BlockedBandColumn{E}
+) where {E}
+
+  for k = 1:bbc.n
+    for j = inband_index_range_storage(bbc, k)
+      bbc.band_elements[j, k] = randn(rng, E)
     end
   end
 end
@@ -616,7 +648,7 @@ function BlockedBandColumn(
   leading_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   leading_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
   compute_rows_first_last_inband!(bbc)
-  rand!(rng, bbc)
+  randn!(rng, bbc)
   bbc
 end
 
@@ -713,7 +745,7 @@ function BlockedBandColumn(
   trailing_lower_ranks_to_cols_first_last!(bbc, lower_ranks)
   trailing_upper_ranks_to_cols_first_last!(bbc, upper_ranks)
   compute_rows_first_last_inband!(bbc)
-  rand!(rng, bbc)
+  randn!(rng, bbc)
   bbc
 end
 
