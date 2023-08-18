@@ -29,12 +29,12 @@ function test_validate_ranks(E)
   m = 6
   n = 5
 
-  lower_blocks_r = block_sizes([
+  lower_blocks_r = wy_block_sizes([
     1 2 3
     1 2 4
   ])
 
-  upper_blocks_r = block_sizes([
+  upper_blocks_r = wy_block_sizes([
     1 2 3
     1 2 2
   ])

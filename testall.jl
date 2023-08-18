@@ -7,7 +7,7 @@ packages = [
   ("BandStruct", ["InPlace", "Rotations",  "Householder"]),
   ("OrthWeight", ["InPlace", "Rotations",  "Householder", "BandStruct"])
 ]
-println("Update dependencies? [n]")
+println("Update dependencies? (Y/n) [n]")
 response = replace(readline(stdin), r" " => "")
 
 if match(r"^$", response) != nothing

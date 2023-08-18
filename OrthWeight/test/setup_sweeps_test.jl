@@ -12,12 +12,12 @@ function test_wy_construction()
 
   tol = 1e-14
 
-  lower_blocks_sweep = block_sizes([
+  lower_blocks_sweep = wy_block_sizes([
     2 4 5 7
     2 3 4 6
   ])
 
-  upper_blocks_sweep = block_sizes([
+  upper_blocks_sweep = wy_block_sizes([
     1 3 4 6
     3 4 6 7
   ])

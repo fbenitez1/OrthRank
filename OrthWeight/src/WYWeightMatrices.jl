@@ -2,6 +2,8 @@ module WYWeightMatrices
 
 export WYWeight,
   WYBlockData,
+  to_wy_block_data_index_list,
+  wy_block_sizes,
   set_WYWeight_transform_params!,
   get_WYWeight_transform_params,
   get_WYWeight_max_transform_params
@@ -60,6 +62,38 @@ WYBlockData(;
   compressed,
   wy_index,
 )
+
+function wy_block_sizes(a::AbstractMatrix{Int})
+  v = WYBlockData[]
+  for j ∈ axes(a,2)
+    push!(v, WYBlockData(a[1, j], a[2, j]))
+  end
+  return v
+end
+
+function to_wy_block_data_index_list(
+  blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  };
+  max_length::Union{Int,Nothing} = nothing,
+)
+  if blocks isa IndexList
+    blocks_B = IndexList([
+      let (; mb, nb) = blocks[li]
+        WYBlockData(mb, nb)
+      end for li in blocks
+        ], max_length = something(max_length, blocks.max_length))
+  else
+    blocks_B = IndexList([
+      let (; mb, nb) = bd
+        WYBlockData(mb, nb)
+      end for bd in blocks
+        ], max_length = something(max_length, length(blocks)))
+  end
+  return blocks_B
+end
+
 
 
 """
@@ -140,15 +174,13 @@ function WYWeight(
   max_num_lower_blocks = length(lower_blocks),
 ) where {E<:Number}
 
-  upper_blocks_wy = to_block_data_index_list(
+  upper_blocks_wy = to_wy_block_data_index_list(
     upper_blocks,
-    B = WYBlockData,
     max_length = max_num_upper_blocks,
   )
 
-  lower_blocks_wy = to_block_data_index_list(
+  lower_blocks_wy = to_wy_block_data_index_list(
     lower_blocks,
-    B = WYBlockData,
     max_length = max_num_lower_blocks,
   )
 
@@ -162,13 +194,13 @@ function WYWeight(
     lower_blocks = lower_blocks_wy,
   )
 
-  lower_max_sizes, lower_max_num_hs = get_WYWeight_max_transform_params(
+  lower_max_tsizes, lower_max_num_hs = get_WYWeight_max_transform_params(
     Lower(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes(),
+    TransformSizes(),
     Num_hs(),
     upper_blocks = upper_blocks,
     upper_ranks = upper_rank_max,
@@ -178,11 +210,11 @@ function WYWeight(
 
   # n * (max_WY_size + max_num_hs) where max_num_hs is potentially as
   # large as max_WY_size.
-  lower_work_size = n * (2 * lower_max_sizes)
+  lower_work_size = n * (2 * lower_max_tsizes)
   lowerWY = WYTrans(
     E,
     max_num_WY = max_num_lower_blocks,
-    max_WY_size = lower_max_sizes,
+    max_WY_size = lower_max_tsizes,
     max_num_hs = lower_max_num_hs,
     work_size = lower_work_size,
   )
@@ -194,13 +226,13 @@ function WYWeight(
   end
 
 
-  upper_max_sizes, upper_max_num_hs = get_WYWeight_max_transform_params(
+  upper_max_tsizes, upper_max_num_hs = get_WYWeight_max_transform_params(
     Upper(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes(),
+    TransformSizes(),
     Num_hs(),
     upper_blocks = upper_blocks,
     upper_ranks = upper_rank_max,
@@ -208,11 +240,11 @@ function WYWeight(
     lower_ranks = lower_rank_max,
   )
 
-  upper_work_size = m * (2 * upper_max_sizes)
+  upper_work_size = m * (2 * upper_max_tsizes)
   upperWY = WYTrans(
     E,
     max_num_WY = max_num_upper_blocks,
-    max_WY_size = upper_max_sizes,
+    max_WY_size = upper_max_tsizes,
     max_num_hs = upper_max_num_hs,
     work_size = upper_work_size,
   )
@@ -254,9 +286,10 @@ end
       max_num_lower_blocks::Int = length(lower_blocks),
     ) where {E<:Number}
 
-A random WYWeight with specified upper and lower ranks.  The structure provides
-enough bandwidth for conversion.  If no upper or lower ranks are given, use `upper_rank_max`
-and `lower_rank_max`.
+A random WYWeight with specified upper and lower ranks.  The structure
+provides enough bandwidth for conversion.  If no upper or lower ranks
+are given, use `upper_rank_max` and `lower_rank_max`.
+
 """
 function WYWeight(
   ::Type{E},
@@ -281,15 +314,13 @@ function WYWeight(
   max_num_lower_blocks::Int = length(lower_blocks),
 ) where {E<:Number}
 
-  upper_blocks_wy = to_block_data_index_list(
+  upper_blocks_wy = to_wy_block_data_index_list(
     upper_blocks,
-    B = WYBlockData,
     max_length = max_num_upper_blocks,
   )
 
-  lower_blocks_wy = to_block_data_index_list(
+  lower_blocks_wy = to_wy_block_data_index_list(
     lower_blocks,
-    B = WYBlockData,
     max_length = max_num_lower_blocks,
   )
 
@@ -315,13 +346,13 @@ function WYWeight(
     lower_ranks = lower_ranks,
   )
 
-  lower_max_sizes, lower_max_num_hs = get_WYWeight_max_transform_params(
+  lower_max_tsizes, lower_max_num_hs = get_WYWeight_max_transform_params(
     Lower(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes(),
+    TransformSizes(),
     Num_hs(),
     upper_blocks = bbc.upper_blocks,
     upper_ranks = upper_rank_max,
@@ -329,12 +360,12 @@ function WYWeight(
     lower_ranks = lower_rank_max,
   )
 
-  lower_work_size = n * (2 * lower_max_sizes)
+  lower_work_size = n * (2 * lower_max_tsizes)
 
   lowerWY = WYTrans(
     E,
     max_num_WY = max_num_lower_blocks,
-    max_WY_size = lower_max_sizes,
+    max_WY_size = lower_max_tsizes,
     max_num_hs = lower_max_num_hs,
     work_size = lower_work_size,
   )
@@ -358,18 +389,18 @@ function WYWeight(
     lower_ranks = lower_rank_max,
     num_hs = lowerWY.num_hs,
     offsets = lowerWY.offsets,
-    sizes = lowerWY.sizes,
+    tsizes = lowerWY.sizes,
   )
 
   rand!(rng, lowerWY)
 
-  upper_max_sizes, upper_max_num_hs = get_WYWeight_max_transform_params(
+  upper_max_tsizes, upper_max_num_hs = get_WYWeight_max_transform_params(
     Upper(),
     (LeadingDecomp(), TrailingDecomp()),
     step,
     m,
     n,
-    Sizes(),
+    TransformSizes(),
     Num_hs();
     upper_blocks = bbc.upper_blocks,
     upper_ranks = upper_rank_max,
@@ -377,12 +408,12 @@ function WYWeight(
     lower_ranks = lower_rank_max,
   )
 
-  upper_work_size = m * (2 * upper_max_sizes)
+  upper_work_size = m * (2 * upper_max_tsizes)
 
   upperWY = WYTrans(
     E,
     max_num_WY = max_num_upper_blocks,
-    max_WY_size = upper_max_sizes,
+    max_WY_size = upper_max_tsizes,
     max_num_hs = upper_max_num_hs,
     work_size = upper_work_size,
   )
@@ -405,7 +436,7 @@ function WYWeight(
     upper_ranks = upper_rank_max,
     num_hs = upperWY.num_hs,
     offsets = upperWY.offsets,
-    sizes = upperWY.sizes,
+    tsizes = upperWY.sizes,
   )
 
   rand!(rng, upperWY)
@@ -428,13 +459,13 @@ end
       lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
       upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
       upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
-      sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+      tsizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
       num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
       offsets::Union{AbstractVector{Int},Nothing} = nothing,
       find_maximum::Bool = false,
     )
 
-Compute `sizes`, `num_hs`, `offsets` values in place, depending on
+Compute `tsizes`, `num_hs`, `offsets` values in place, depending on
 which is provided.  If a `Ref{Int}` is given, compute the maximum
 value over the range of indices.  This can optionally be done for a WY
 Sweep for a leading or trailing decomposition where the
@@ -454,7 +485,7 @@ function set_WYWeight_transform_params!(
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
   upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
-  sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+  tsizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   offsets::Union{AbstractVector{Int},Nothing} = nothing,
   find_maximum::Bool = false,
@@ -474,7 +505,7 @@ function set_WYWeight_transform_params!(
         lower_ranks = lower_ranks,
         upper_blocks = upper_blocks,
         upper_ranks = upper_ranks,
-        sizes = sizes,
+        tsizes = tsizes,
         num_hs = num_hs,
         offsets = offsets,
         find_maximum = expand,
@@ -498,7 +529,7 @@ function set_WYWeight_transform_params!(
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
   upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
-  sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+  tsizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   offsets::Union{AbstractVector{Int},Nothing} = nothing,
   find_maximum::Bool = false,
@@ -507,7 +538,7 @@ function set_WYWeight_transform_params!(
   lrank(k) = getindex_or_scalar(lower_ranks, k)
   
   # start with zeros if not expanding other values to find a maximum.
-  maybe_zero(find_maximum, sizes, num_hs)
+  maybe_zero(find_maximum, tsizes, num_hs)
 
   # leading lower
   old_cols_lb = 1:0
@@ -521,8 +552,8 @@ function set_WYWeight_transform_params!(
   
     tsize = length(trange)
   
-    if !isa(sizes, Nothing)
-      expand_or_set!(find_maximum, sizes, lb_count, tsize)
+    if !isa(tsizes, Nothing)
+      expand_or_set!(find_maximum, tsizes, lb_count, tsize)
     end
   
     if !isa(num_hs, Nothing)
@@ -560,7 +591,7 @@ function set_WYWeight_transform_params!(
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::IndexList{<:AbstractBlockData},
   upper_ranks::Union{AbstractVector{Int},Int} = nothing,
-  sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+  tsizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   offsets::Union{AbstractVector{Int},Nothing} = nothing,
   find_maximum::Bool = false,
@@ -568,7 +599,7 @@ function set_WYWeight_transform_params!(
 
   urank(k) = getindex_or_scalar(upper_ranks, k)
 
-  maybe_zero(find_maximum, sizes, num_hs)
+  maybe_zero(find_maximum, tsizes, num_hs)
 
   # leading upper
   old_rows_ub = 1:0
@@ -581,8 +612,8 @@ function set_WYWeight_transform_params!(
     trange = dᵣ ∪ᵣ last(old_rows_ub, old_rank)
     tsize = length(trange)
 
-    if !isa(sizes, Nothing)
-      expand_or_set!(find_maximum, sizes, ub_count, tsize)
+    if !isa(tsizes, Nothing)
+      expand_or_set!(find_maximum, tsizes, ub_count, tsize)
     end
 
     if !isa(num_hs, Nothing)
@@ -621,7 +652,7 @@ function set_WYWeight_transform_params!(
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::IndexList{<:AbstractBlockData} = nothing,
   upper_ranks::Union{AbstractVector{Int},Int} = nothing,
-  sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+  tsizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   offsets::Union{AbstractVector{Int},Nothing} = nothing,
   find_maximum::Bool = false,
@@ -629,7 +660,7 @@ function set_WYWeight_transform_params!(
 
   urank(k) = getindex_or_scalar(upper_ranks, k)
 
-  maybe_zero(find_maximum, sizes, num_hs)
+  maybe_zero(find_maximum, tsizes, num_hs)
 
   # trailing upper
   old_cols_ub = 1:0
@@ -641,8 +672,8 @@ function set_WYWeight_transform_params!(
     trange = dᵣ ∪ᵣ first(old_cols_ub, old_rank)
     tsize = length(trange)
   
-    if !isa(sizes, Nothing)
-      expand_or_set!(find_maximum, sizes, ub_count, tsize)
+    if !isa(tsizes, Nothing)
+      expand_or_set!(find_maximum, tsizes, ub_count, tsize)
     end
   
     if !isa(num_hs, Nothing)
@@ -682,7 +713,7 @@ function set_WYWeight_transform_params!(
   lower_ranks::Union{AbstractVector{Int},Int} = nothing,
   upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
   upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
-  sizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
+  tsizes::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   num_hs::Union{AbstractVector{Int},Ref{Int},Nothing} = nothing,
   offsets::Union{AbstractVector{Int},Nothing} = nothing,
   find_maximum::Bool = false,
@@ -690,7 +721,7 @@ function set_WYWeight_transform_params!(
 
   lrank(k) = getindex_or_scalar(lower_ranks, k)
 
-  maybe_zero(find_maximum, sizes, num_hs)
+  maybe_zero(find_maximum, tsizes, num_hs)
 
   # trailing lower
   old_rows_lb = 1:0
@@ -702,8 +733,8 @@ function set_WYWeight_transform_params!(
     trange = dᵣ ∪ᵣ first(old_rows_lb, old_rank)
     tsize = length(trange)
   
-    if !isa(sizes, Nothing)
-      expand_or_set!(find_maximum, sizes, lb_count, tsize)
+    if !isa(tsizes, Nothing)
+      expand_or_set!(find_maximum, tsizes, lb_count, tsize)
     end
   
     if !isa(num_hs, Nothing)
@@ -739,14 +770,14 @@ end
       step::Union{Step, Tuple{Vararg{Step}}},
       m::Int,
       n::Int,
-      params::Vararg{Union{Sizes,Num_hs,Offsets}};
+      params::Vararg{Union{TransformSizes,Num_hs,Offsets}};
       lower_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
       lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
       upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
       upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
     )
 
-Compute `sizes`, `num_hs`, `offsets` values, depending on which
+Compute `tsizes`, `num_hs`, `offsets` values, depending on which
 selectors are provided as `Vararg` parameters.
 """
 function get_WYWeight_transform_params(
@@ -755,7 +786,7 @@ function get_WYWeight_transform_params(
   step::Union{Step,Tuple{Vararg{Step}}},
   m::Int,
   n::Int,
-  params::Vararg{Union{Sizes,Num_hs,Offsets}};
+  params::Vararg{Union{TransformSizes,Num_hs,Offsets}};
   lower_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
@@ -764,12 +795,12 @@ function get_WYWeight_transform_params(
 
   num_blocks = length(something(lower_blocks, upper_blocks))
 
-  sizes = nothing
+  tsizes = nothing
   offsets = nothing
   num_hs = nothing
 
   for p ∈ params
-    p == Sizes() && (sizes = zeros(Int, num_blocks))
+    p == TransformSizes() && (tsizes = zeros(Int, num_blocks))
     p == Num_hs() && (num_hs = zeros(Int, num_blocks))
     p == Offsets() && (offsets = zeros(Int, num_blocks))
   end
@@ -784,7 +815,7 @@ function get_WYWeight_transform_params(
     lower_ranks = lower_ranks,
     upper_blocks = upper_blocks,
     upper_ranks = upper_ranks,
-    sizes = sizes,
+    tsizes = tsizes,
     num_hs = num_hs,
     offsets = offsets,
     find_maximum = false,
@@ -793,7 +824,7 @@ function get_WYWeight_transform_params(
   result::Vector{Vector{Int}} = []
 
   for p ∈ params
-    p == Sizes() && push!(result, sizes)
+    p == TransformSizes() && push!(result, tsizes)
     p == Num_hs() && push!(result, num_hs)
     p == Offsets() && push!(result, offsets)
   end
@@ -808,14 +839,14 @@ end
       step::Union{Step, Tuple{Vararg{Step}}},
       m::Int,
       n::Int,
-      params::Vararg{Union{Sizes,Num_hs}};
+      params::Vararg{Union{TransformSizes,Num_hs}};
       lower_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
       lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
       upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
       upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
     )
 
-Compute requested maxima for `sizes` and `num_hs` for the type(s) of
+Compute requested maxima for `tsizes` and `num_hs` for the type(s) of
 decompositions/transforms specified.
 """
 function get_WYWeight_max_transform_params(
@@ -824,18 +855,18 @@ function get_WYWeight_max_transform_params(
   step::Union{Step,Tuple{Vararg{Step}}},
   m::Int,
   n::Int,
-  params::Vararg{Union{Sizes,Num_hs}};
+  params::Vararg{Union{TransformSizes,Num_hs}};
   lower_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
   lower_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
   upper_blocks::Union{IndexList{<:AbstractBlockData},Nothing} = nothing,
   upper_ranks::Union{AbstractVector{Int},Int,Nothing} = nothing,
 )
 
-  sizes = nothing
+  tsizes = nothing
   num_hs = nothing
 
   for p ∈ params
-    p == Sizes() && (sizes = Ref(0))
+    p == TransformSizes() && (tsizes = Ref(0))
     p == Num_hs() && (num_hs = Ref(0))
   end
 
@@ -849,7 +880,7 @@ function get_WYWeight_max_transform_params(
     lower_ranks = lower_ranks,
     upper_blocks = upper_blocks,
     upper_ranks = upper_ranks,
-    sizes = sizes,
+    tsizes = tsizes,
     num_hs = num_hs,
     find_maximum = false,
   )
@@ -857,7 +888,7 @@ function get_WYWeight_max_transform_params(
   result::Vector{Int} = []
 
   for p ∈ params
-    p == Sizes() && push!(result, sizes[])
+    p == TransformSizes() && push!(result, tsizes[])
     p == Num_hs() && push!(result, num_hs[])
   end
   length(result) == 1 ? result[1] : tuple(result...)
@@ -880,7 +911,6 @@ function LinearAlgebra.Matrix(::Type{LeadingDecomp}, wyw::WYWeight)
   for l ∈ filter_compressed(Iterators.Reverse(wyw.b.lower_blocks))
     rows, _ = lower_block_ranges(bbc, l)
     wy_ind = (wyw.b.lower_blocks[l]).wy_index
-    # Main.@infiltrate
     apply_inv!(view(a, rows, :), (lwy, wy_ind))
   end
   uwy = wyw.upperWY

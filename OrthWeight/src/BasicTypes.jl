@@ -12,7 +12,7 @@ export OrthWeightDecomp,
   UpLow,
   Upper,
   Lower,
-  Sizes,
+  TransformSizes,
   Num_hs,
   NumRots,
   Offsets,
@@ -29,8 +29,8 @@ function to_block_data_index_list(
   blocks::Union{
     AbstractVector{<:AbstractBlockData},
     IndexList{<:AbstractBlockData},
-  };
-  B = BlockSize,
+  },
+  B;
   max_length::Union{Int,Nothing} = nothing,
 )
   if blocks isa IndexList
@@ -115,9 +115,9 @@ struct Lower <: UpLow end
 Base.iterate(t::Lower) = (t, nothing)
 Base.iterate(::Lower, ::Any) = nothing
 
-struct Sizes end
-Base.iterate(t::Sizes) = (t, nothing)
-Base.iterate(::Sizes, ::Any) = nothing
+struct TransformSizes end
+Base.iterate(t::TransformSizes) = (t, nothing)
+Base.iterate(::TransformSizes, ::Any) = nothing
 
 struct Num_hs end
 Base.iterate(t::Num_hs) = (t, nothing)
@@ -157,7 +157,7 @@ end
 
 function Base.length(lc::LowerCompressed{<:OrthWeightDecomp})
   len = 0
-  for i ∈ lc
+  for _ ∈ lc
     len += 1
   end
   len

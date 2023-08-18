@@ -8,6 +8,9 @@ include("BasicTypes.jl")
 include("WYWeightMatrices.jl")
 @reexport using .WYWeightMatrices
 
+include("Precompile.jl")
+using .Precompile
+
 # include("WeightConvert.jl")
 # @reexport using .WeightConvert
 
