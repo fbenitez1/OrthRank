@@ -46,7 +46,7 @@ end
 
 BlockSize(; mb=0, nb=0) = BlockSize(mb, nb)
 
-function block_sizes(a::AbstractMatrix; bd=BlockSize)
+function block_sizes(a::AbstractMatrix, bd)
   [bd(;mb=a[1, j], nb=a[2, j]) for j ∈ axes(a, 2)]
 end
 
