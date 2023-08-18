@@ -80,12 +80,16 @@ function IndexList(
   max_length = max(max_length, n)
   v1 = Vector{E}(undef, max_length)
   if v isa IndexList
-    for (j, li) ∈ zip(1:n, v)
+    j = 1
+    for li ∈ v
       v1[j] = copy ? deepcopy(v[li]) : v[li]
+      j += 1
     end
   else
-    for (j, x) ∈ zip(1:n, v)
+    j = 1
+    for x ∈ v
       v1[j] = copy ? deepcopy(x) : x
+      j += 1
     end
   end
   indices = zeros(Int, 2, max_length)
@@ -112,8 +116,8 @@ function IndexList(
   )
 end
 
-function IndexList(E::DataType; max_length::Int)
-  v=E[]
+function IndexList(::Type{E}; max_length::Int) where {E}
+  v=Vector{E}(undef, 0)
   IndexList(v; max_length = max_length)
 end
 
