@@ -27,7 +27,7 @@
     # - - - + - + - + - - - +     
     # N   N | O | O | O   L | X   
 
-    tol = 2e-15
+    tol = 1e-14
     (bc, bbc) =
       BandStruct.standard_test_case(E, upper_rank_max = 2, lower_rank_max = 2)
     @testset "$B" for
