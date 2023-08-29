@@ -4,7 +4,7 @@ using OrthWeight
 using OrthWeight.GivensWeightMatrices
 using JET
 
-functions = [(:run_all, :(()))]
+functions = [(:run_all, :(())), (:run_matrix, :(())), (:run_convert, :(()))]
 
 # OrthWeight.Precompile.run_all(:opt)
 # OrthWeight.Precompile.run_all(:call)

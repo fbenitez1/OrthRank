@@ -39,11 +39,44 @@ function make_givens_weight(
   lower_ranks =
     constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = lower_ranks)
 
-  Matrix(gw)
+  return gw
+  
+end     
+
+function run_convert()
+  m = 60
+  n = 50
+
+  lower_blocks = givens_block_sizes([
+    10 20 30 40
+    10 20 25 37
+  ])
+
+  upper_blocks = givens_block_sizes([
+    10 20 30 40
+    10 20 25 37
+  ])
+  upper_ranks = [10, 5, 7, 8]
+  lower_ranks = [10, 5, 7, 8]
+
+  gw = make_givens_weight(
+    Float64,
+    l_or_t = TrailingDecomp(),
+    m = m,
+    n = n,
+    upper_blocks = upper_blocks,
+    lower_blocks = lower_blocks,
+    upper_ranks = upper_ranks,
+    lower_ranks = lower_ranks,
+  )
+
+  UpperPartition(gw)
+  LowerPartition(gw)
+  to_leading_lower(gw)
   
 end
 
-function run_all()
+function run_matrix()
 
   m = 60
   n = 50
@@ -60,7 +93,7 @@ function run_all()
   upper_ranks = [10, 5, 7, 8]
   lower_ranks = [10, 5, 7, 8]
 
-  make_givens_weight(
+  gw = make_givens_weight(
     Float64,
     l_or_t = TrailingDecomp(),
     m = m,
@@ -70,8 +103,9 @@ function run_all()
     upper_ranks = upper_ranks,
     lower_ranks = lower_ranks,
   )
+  Matrix(gw)
 
-  make_givens_weight(
+  gw = make_givens_weight(
     Complex{Float64},
     l_or_t = TrailingDecomp(),
     m = m,
@@ -81,8 +115,9 @@ function run_all()
     upper_ranks = upper_ranks,
     lower_ranks = lower_ranks,
   )
+  Matrix(gw)
 
-  make_givens_weight(
+  gw = make_givens_weight(
     Float64,
     l_or_t = LeadingDecomp(),
     m = m,
@@ -92,8 +127,9 @@ function run_all()
     upper_ranks = upper_ranks,
     lower_ranks = lower_ranks,
   )
+  Matrix(gw)
 
-  make_givens_weight(
+  gw = make_givens_weight(
     Complex{Float64},
     l_or_t = LeadingDecomp(),
     m = m,
@@ -103,8 +139,14 @@ function run_all()
     upper_ranks = upper_ranks,
     lower_ranks = lower_ranks,
   )
+  Matrix(gw)
 
   return nothing
+end
+
+function run_all()
+  run_matrix()
+  run_convert()
 end
 
 end

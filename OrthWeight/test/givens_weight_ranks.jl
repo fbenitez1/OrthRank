@@ -120,6 +120,8 @@ function run_givens_weight_rank_tests()
   m = 60
   n = 50
 
+  E = Float64
+
   lower_blocks = givens_block_sizes([
     10 20 30 40
     10 20 25 37
@@ -153,9 +155,28 @@ function run_givens_weight_rank_tests()
   lower_ranks =
     constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = lower_ranks)
 
+  l_or_t = TrailingDecomp()
+
+  gw = GivensWeight(
+    E,
+    l_or_t,
+    MersenneTwister(),
+    m,
+    n;
+    upper_rank_max = maximum(upper_ranks),
+    lower_rank_max = maximum(lower_ranks),
+    upper_ranks = upper_ranks,
+    lower_ranks = lower_ranks,
+    upper_blocks = upper_blocks,
+    max_num_upper_blocks = 2 * length(upper_blocks),
+    lower_blocks = lower_blocks,
+    max_num_lower_blocks = 2 * length(lower_blocks),
+  )
+
+
   test_validate_ranks(
-    Float64,
-    l_or_t = TrailingDecomp(),
+    E,
+    l_or_t = l_or_t,
     m = m,
     n = n,
     upper_blocks = upper_blocks,
@@ -164,9 +185,11 @@ function run_givens_weight_rank_tests()
     lower_ranks = lower_ranks,
   )
 
+  l_or_t = LeadingDecomp()
+
   test_validate_ranks(
-    Float64,
-    l_or_t = LeadingDecomp(),
+    E,
+    l_or_t = l_or_t,
     m = m,
     n = n,
     upper_blocks = upper_blocks,
