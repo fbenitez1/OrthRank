@@ -1,7 +1,6 @@
 module BandRotations
 
 using LinearAlgebra
-using Base: @propagate_inbounds
 using LoopVectorization
 
 using Rotations.Givens
@@ -20,7 +19,7 @@ macro real_tturbo(t, ex)
              end)
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
@@ -49,10 +48,10 @@ end
     bc_els[j - st_offs_k, k + col_offs] = b0 * c - b1 * conj(s)
     bc_els[j - st_offs_k1, k + 1 + col_offs] = b0 * s + b1 * conj(c)
   end
-  nothing
+  return nothing
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   ::Type{RightProduct},
   ::Type{Band{E}},
   bc::AbstractBandColumn{S,E},
@@ -81,10 +80,10 @@ end
     bc_els[j - st_offs_k, k + col_offs] = b0 * conj(c) + b1 * conj(s)
     bc_els[j - st_offs_k1, k + 1 + col_offs] = -b0 * s + b1 * c
   end
-  nothing
+  return nothing
 end
 
-@propagate_inbounds function InPlace.apply!(
+Base.@propagate_inbounds function InPlace.apply!(
   ::Type{LeftProduct},
   ::Type{Band{E}},
   r::AdjRot{TC,TS},
@@ -117,10 +116,10 @@ end
     bc_els[j - st_offs_k, k + col_offs] = c*b0 + s*b1
     bc_els[j + 1 - st_offs_k, k + col_offs] = -conj(s)*b0 + conj(c)*b1
   end
-  nothing
+  return nothing
 end
 
-@propagate_inbounds function InPlace.apply_inv!(
+Base.@propagate_inbounds function InPlace.apply_inv!(
   ::Type{LeftProduct},
   ::Type{Band{E}},
   r::AdjRot{TS,TC},
@@ -153,7 +152,7 @@ end
     bc_els[j - st_offs_k, k + col_offs] = conj(c)*b0 - s*b1
     bc_els[j + 1 - st_offs_k, k + col_offs] = conj(s)*b0 + c*b1
   end
-  nothing
+  return nothing
 end
 
 end # module
