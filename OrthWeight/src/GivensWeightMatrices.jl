@@ -40,7 +40,7 @@ end
       compressed::Bool
       givens_index::Int
       num_rots::Int
-      size::Int
+      tsize::Int
     end
 
 Data associated with matrix off-diagonal blocks and corresponding
@@ -63,7 +63,7 @@ rotations that compress a block.
 
 - `num_rots::Int`: The number of rotations associated with the block.
 
-- `size::Int`: The size of the combined transformation, that is the number of
+- `tsize::Int`: The size of the combined transformation, that is the number of
   rows or columns it acts on.
 
 The actual storage for the rotations is elsewhere.
