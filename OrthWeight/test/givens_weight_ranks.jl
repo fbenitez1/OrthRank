@@ -33,6 +33,8 @@ function test_validate_ranks(
     max_num_upper_blocks = 2 * length(upper_blocks),
     lower_blocks = lower_blocks,
     max_num_lower_blocks = 2 * length(lower_blocks),
+    max_num_upper_rots=4, 
+    max_num_lower_rots=4, 
   )
   
   upper_ranks =
@@ -171,6 +173,8 @@ function run_givens_weight_rank_tests()
     max_num_upper_blocks = 2 * length(upper_blocks),
     lower_blocks = lower_blocks,
     max_num_lower_blocks = 2 * length(lower_blocks),
+    max_num_upper_rots=4, 
+    max_num_lower_rots=4, 
   )
 
 

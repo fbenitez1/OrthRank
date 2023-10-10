@@ -204,6 +204,8 @@ function GivensWeight(
     IndexList{<:AbstractBlockData},
   },
   max_num_lower_blocks = length(lower_blocks),
+  max_num_upper_rots::Int = 0,
+  max_num_lower_rots::Int = 0,
 ) where {R<:Real, E <: Union{R, Complex{R}}}
 
   num_upper_blocks = length(upper_blocks)
@@ -230,7 +232,7 @@ function GivensWeight(
     upper_rank_max = upper_rank_max,
   )
 
-  (lower_max_num_rots,) = get_givens_weight_max_transform_params(
+  (max_num_lower_rots1,) = get_givens_weight_max_transform_params(
     Lower(),
     (LeadingDecomp(), TrailingDecomp()),
     m,
@@ -241,8 +243,9 @@ function GivensWeight(
     lower_blocks = lower_blocks,
     lower_ranks = Consts(num_lower_blocks, lower_rank_max),
   )
+  max_num_lower_rots = max(max_num_lower_rots, max_num_lower_rots1)
 
-  lowerRots = Matrix{Rot{R,E,Int}}(undef, lower_max_num_rots, max_num_blocks)
+  lowerRots = Matrix{Rot{R,E,Int}}(undef, max_num_lower_rots, max_num_blocks)
   lowerRots .= Rot(zero(R), zero(E), 0)
 
   j=1
@@ -253,7 +256,7 @@ function GivensWeight(
     j += 1
   end
 
-  (upper_max_num_rots,) = get_givens_weight_max_transform_params(
+  (max_num_upper_rots1,) = get_givens_weight_max_transform_params(
     Upper(),
     (LeadingDecomp(), TrailingDecomp()),
     m,
@@ -265,8 +268,9 @@ function GivensWeight(
     lower_blocks = lower_blocks,
     lower_ranks = Consts(num_lower_blocks, lower_rank_max),
   )
-  
-  upperRots = Matrix{Rot{R,E,Int}}(undef, upper_max_num_rots, max_num_blocks)
+  max_num_upper_rots = max(max_num_upper_rots, max_num_upper_rots1)
+
+  upperRots = Matrix{Rot{R,E,Int}}(undef, max_num_upper_rots, max_num_blocks)
   upperRots .= Rot(zero(R), zero(E), 0)
 
   j = 1
@@ -340,6 +344,8 @@ function GivensWeight(
     IndexList{<:AbstractBlockData},
   },
   max_num_lower_blocks = length(lower_blocks),
+  max_num_upper_rots::Int = 0,
+  max_num_lower_rots::Int = 0,
 ) where {R<:Real, E <: Union{R, Complex{R}}}
 
   num_upper_blocks = length(upper_blocks)
@@ -394,7 +400,7 @@ function GivensWeight(
 
   # Get an overall maximum number of rotations for lower blocks for
   # either leading or trailing decompositions.
-  (lower_max_num_rots,) = get_givens_weight_max_transform_params(
+  (max_num_lower_rots1,) = get_givens_weight_max_transform_params(
     Lower(),
     (LeadingDecomp(), TrailingDecomp()),
     m,
@@ -403,8 +409,9 @@ function GivensWeight(
     lower_blocks = lower_blocks,
     lower_ranks = Consts(num_lower_blocks, lower_rank_max),
   )
+  max_num_lower_rots = max(max_num_lower_rots, max_num_lower_rots1)
 
-  lowerRots = Matrix{Rot{R,E,Int}}(undef, lower_max_num_rots, max_num_blocks)
+  lowerRots = Matrix{Rot{R,E,Int}}(undef, max_num_lower_rots, max_num_blocks)
   lowerRots .= Rot(zero(R), zero(E), 0)
   
   # Storage for transform sizes and num_rots.
@@ -437,7 +444,7 @@ function GivensWeight(
 
   # Get an overall maximum number of rotations for upper blocks for
   # either leading or trailing decompositions.
-  (upper_max_num_rots,) = get_givens_weight_max_transform_params(
+  (max_num_upper_rots1,) = get_givens_weight_max_transform_params(
     Upper(),
     (LeadingDecomp(), TrailingDecomp()),
     m,
@@ -446,8 +453,9 @@ function GivensWeight(
     upper_blocks = upper_blocks,
     upper_ranks = Consts(num_upper_blocks, upper_rank_max),
   )
+  max_num_upper_rots = max(max_num_upper_rots, max_num_upper_rots1)
 
-  upperRots = Matrix{Rot{R,E,Int}}(undef, upper_max_num_rots, max_num_blocks)
+  upperRots = Matrix{Rot{R,E,Int}}(undef, max_num_upper_rots, max_num_blocks)
   upperRots .= Rot(zero(R), zero(E), 0)
   
   # Fill in the actual transform sizes and num_rots for a decmposition of

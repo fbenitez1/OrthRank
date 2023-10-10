@@ -8,12 +8,12 @@ using Random
 m=8
 n=7
 
-lower_blocks = block_sizes([
+lower_blocks = givens_block_sizes([
  2 4 5 7
  2 3 4 6
 ])
 
-upper_blocks = block_sizes([
+upper_blocks = givens_block_sizes([
  1 3 4 6
  3 4 6 7
 ])
