@@ -1296,25 +1296,29 @@ end
   for i ∈ bbc.lower_blocks
     jl = bbc.lower_blocks[i].mb
     kl = bbc.lower_blocks[i].nb
-    fill!(a[(2 * jl + 1):(2 * m - 1), 2 * kl], '|')
-    a[2 * jl, 2 * kl] = '+'
-    fill!(a[2 * jl, 1:(2 * kl - 1)], '-')
-    for kk = 1:(2 * n)
-      if a[2 * jl, kk] == '-' && a[2 * jl - 1, kk] == '|'
-        a[2 * jl, kk] = '+'
+    if jl > 0 && kl > 0
+      fill!(a[(2 * jl + 1):(2 * m - 1), 2 * kl], '|')
+      a[2 * jl, 2 * kl] = '+'
+      fill!(a[2 * jl, 1:(2 * kl - 1)], '-')
+      for kk = 1:(2 * n)
+        if a[2 * jl, kk] == '-' && a[2 * jl - 1, kk] == '|'
+          a[2 * jl, kk] = '+'
+        end
       end
     end
   end
   for i = bbc.upper_blocks
     ju = bbc.upper_blocks[i].mb
     ku = bbc.upper_blocks[i].nb
-    # fill!(a[(2 * ju + 1):(2 * m), 2 * ku], '|')
-    fill!(a[1:(2 * ju - 1), 2 * ku], '|')
-    a[2 * ju, 2 * ku] = '+'
-    fill!(a[2 * ju, (2 * ku + 1):2*n], '-')
-    for jj = 1:(2 * m)
-      if a[jj, 2 * ku] == '|' && a[jj, 2 * ku - 1] == '-'
-        a[jj, 2 * ku] = '+'
+    if ju > 0 && ku > 0
+      # fill!(a[(2 * ju + 1):(2 * m), 2 * ku], '|')
+      fill!(a[1:(2 * ju - 1), 2 * ku], '|')
+      a[2 * ju, 2 * ku] = '+'
+      fill!(a[2 * ju, (2 * ku + 1):2*n], '-')
+      for jj = 1:(2 * m)
+        if a[jj, 2 * ku] == '|' && a[jj, 2 * ku - 1] == '-'
+          a[jj, 2 * ku] = '+'
+        end
       end
     end
   end
