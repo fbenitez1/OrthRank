@@ -2577,7 +2577,7 @@ end
 
 @inline function Base.setindex!(
   bc::AbstractBandColumn{S,E},
-  x::E,
+  x,
   j::Int,
   k::Int,
 ) where {S,E<:Number}
@@ -2588,14 +2588,15 @@ end
   @inbounds begin
     bulge_maybe_upper!(bc, j, k)
     bulge_maybe_lower!(bc, j, k)
-    band_elements(bc)[j - storage_offset(bc, k), k + col_offset(bc)] = x
+    band_elements(bc)[j - storage_offset(bc, k), k + col_offset(bc)] = 
+      x isa E ? x : (convert(E,x)::E)
   end
 end
 
 @inline function Base.setindex!(
   ::Type{NonSub},
   bc::AbstractBandColumn{S,E},
-  x::E,
+  x,
   j::Int,
   k::Int,
 ) where {S,E<:Number}
@@ -2606,7 +2607,8 @@ end
   @inbounds begin
     bulge_maybe_upper!(NonSub, bc, j, k)
     bulge_maybe_lower!(NonSub, bc, j, k)
-    band_elements(bc)[j - storage_offset(NonSub, bc, k), k] = x
+    band_elements(bc)[j - storage_offset(NonSub, bc, k), k] = 
+      x isa E ? x : (convert(E,x)::E)
   end
 end
 
