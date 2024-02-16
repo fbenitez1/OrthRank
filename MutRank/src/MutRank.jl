@@ -1,4 +1,5 @@
 module MutRank
+
 using Random, OrthWeight, BandStruct, Householder, InPlace, Rotations, LinearAlgebra
 
 export random_blocks,
@@ -20,6 +21,14 @@ macro swap(x,y)
      end
 end
 
+function summax(x,y,bound)
+    if x+y <= bound
+        return x+y
+    else 
+        return bound
+    end
+end
+
  function random_blocks(
     n::Int64, #size of matrix
     nb::Int64, #Number of blocks
@@ -36,10 +45,9 @@ end
         upper_cols[1, i] = rand((i-1)*delta+1:(i*delta))
         lower_rows[1, i] = rand((i-1)*delta+1:(i*delta))
         lower_cols[1, i] = rand((i-1)*delta+1:(i*delta))
-        # upper_rows[1, i] > lower_rows[1, i] && lower_cols[1, i] > upper_cols[1, i] ? upper_rows[1, i] = lower_rows[1, i]-1 : nothing
         upper_rows[1, i] <= lower_rows[1, i] || lower_cols[1, i] <= upper_cols[1, i] ? nothing : upper_rows[1, i] = lower_rows[1, i]
-        upper_rows[1, i] <= upper_cols[1,i] ? nothing :  @swap(upper_rows[1, i], upper_cols[1,i])
-        lower_cols[1, i]<=lower_rows[1, i] ? nothing : @swap(lower_cols[1, i], lower_rows[1, i])
+        upper_rows[1, i] <= upper_cols[1, i] ? nothing :  @swap(upper_rows[1, i], upper_cols[1,i])
+        lower_cols[1, i] <= lower_rows[1, i] ? nothing : @swap(lower_cols[1, i], lower_rows[1, i])
     end
     upper_block = givens_block_sizes([
         upper_rows
@@ -72,37 +80,35 @@ function preparative_phase!(
     gw::GivensWeight
     )
     m, n = size(gw.b)
+    ub_g_ind = length(gw.b.upper_blocks)
+    ub_mb = gw.b.upper_blocks[ub_g_ind].mb
     for lb_ind in filter_compressed(Iterators.Reverse(gw.b.lower_blocks))    
         lb_g_ind = gw.b.lower_blocks[lb_ind].givens_index
         num_lb_rots = gw.b.lower_blocks[lb_g_ind].num_rots
         for lb_rot_num in 1:num_lb_rots
             lb_rot = gw.lowerRots[lb_rot_num,lb_g_ind]
-            for ub_ind in filter_compressed(Iterators.Reverse(gw.b.upper_blocks))
-                ub_g_ind = gw.b.upper_blocks[ub_ind].givens_index
-                if lb_rot.inds == gw.b.upper_blocks[ub_g_ind].mb
-                    num_ub_rots = gw.b.upper_blocks[ub_g_ind].num_rots
-                    for ub_rot_num in 1:num_ub_rots
-                        ub_rot = gw.upperRots[ub_rot_num,ub_g_ind]
-                        ub_active_rows = (lb_rot.inds+1):(lb_rot.inds+1)
-                        ub_active_cols = 1:(ub_rot.inds+1)
-                        ub_vb = view(gw.b, ub_active_rows, ub_active_cols)
-                        apply!(ub_vb,ub_rot)
+            lb_rank = gw.b.lower_blocks[lb_g_ind].block_rank
+            while lb_rot.inds <= ub_mb < lb_rot.inds + lb_rank
+                num_ub_rots = gw.b.upper_blocks[ub_g_ind].num_rots
+                ub_active_rows = (ub_mb+1):(lb_rot.inds+lb_rank) 
+                for ub_rot_num in 1:num_ub_rots
+                    ub_rot = gw.upperRots[ub_rot_num,ub_g_ind]
+                    ub_active_cols = 1:(ub_rot.inds+1)
+                    ub_vb = view(gw.b, ub_active_rows, ub_active_cols)
+                    apply!(ub_vb,ub_rot)
+                end
+                #Reduce fillin of expansion.
+                for fillin_row in (ub_mb+1):(lb_rot.inds+lb_rank)
+                    last_column_el = last_inband_index(gw.b,fillin_row,:)
+                    while gw.b[fillin_row,last_column_el]==0
+                        last_column_el -=1
                     end
-                    #Overlap ⇒ rank, mb += 1
-                    gw.b.upper_blocks[ub_g_ind].mb==m ? nothing : gw.b.upper_blocks[ub_g_ind].mb += 1
-                    gw.b.upper_blocks[ub_g_ind].nb + gw.b.upper_blocks[ub_g_ind].block_rank == n ? nothing : gw.b.upper_blocks[ub_ind].block_rank += 1
-                    #Avoid fillin
-                    fillin_row = gw.b.upper_blocks[ub_g_ind].mb
-                    last_fillin_row_el = last_inband_index(gw.b,fillin_row,:)
-                    while gw.b[fillin_row,last_fillin_row_el]==0
-                        last_fillin_row_el -=1
+                    first_column_el = last_inband_index(gw.b,fillin_row-1,:)
+                    while gw.b[fillin_row-1,first_column_el]==0.0
+                        first_column_el -=1
                     end
-                    prev_row_last_el = last_inband_index(gw.b,fillin_row-1,:)
-                    while gw.b[fillin_row-1,prev_row_last_el]==0.0
-                        prev_row_last_el -=1
-                    end
-                    fillin_vb = view(gw.b,fillin_row:fillin_row,:)
-                    for j in  (last_fillin_row_el-1) : -1 : prev_row_last_el+1
+                    fillin_vb = view(gw.b,ub_active_rows,1:last_column_el)
+                    for j in  (last_column_el-1) : -1 : first_column_el+1
                         surv = j
                         kill = j+1
                         fillin_rot = rgivens(gw.b[fillin_row,surv:kill]...,surv)
@@ -112,10 +118,17 @@ function preparative_phase!(
                         new_num_rot = gw.b.upper_blocks[ub_g_ind].num_rots
                         gw.upperRots[new_num_rot,ub_g_ind] = fillin_rot 
                     end
-                    #notch_upper!(gw.b,fillin_row,prev_row_last_el+1)
                 end
+                gw.b.upper_blocks[ub_g_ind].mb = lb_rot.inds+lb_rank
+                col_for_r = last_inband_index(gw.b, lb_rot.inds+lb_rank, :)
+                while gw.b[lb_rot.inds+lb_rank, col_for_r]==0.0
+                    col_for_r -=1
+                end
+                gw.b.upper_blocks[ub_g_ind].block_rank = col_for_r - gw.b.upper_blocks[ub_g_ind].nb 
+                ub_g_ind-=1
+                ub_g_ind==0 ? ub_mb=0 : ub_mb = gw.b.upper_blocks[ub_g_ind].mb
             end
-            #Applying lb_rot where needed in complement of lb_block
+            #Apply lb_rot in the compl. of lb_block
             _, lb_cols = lower_block_ranges(gw.b, lb_g_ind)
             last_col_el = last_inband_index(gw.b,lb_rot.inds+1,:)
             while gw.b[lb_rot.inds+1,last_col_el]==0
@@ -279,4 +292,75 @@ function get_QR(
     return Q, gw
 end
 
+# m=10
+# num_blocks=10
+# upper_rank_max=2
+# lower_rank_max=2
+# n = m
+# upper_blocks, lower_blocks = random_blocks(m,num_blocks)
+# upper_ranks = Consts(num_blocks, upper_rank_max)
+# lower_ranks = Consts(num_blocks, lower_rank_max)
+# upper_ranks = constrain_upper_ranks(m, n, blocks = upper_blocks, ranks = upper_ranks)
+# lower_ranks = constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = lower_ranks)
+# max_num_upper_rots = 2*lower_rank_max * (2*(n÷num_blocks - 1) + upper_rank_max ) + 2*(n÷num_blocks - 1) + upper_rank_max
+# max_num_lower_rots = 2*(n÷num_blocks - 1) + lower_rank_max
+# upper_rank_max = 2*(n÷num_blocks - 1) + upper_rank_max
+# lower_rank_max = 2*lower_rank_max
+# max_num_upper_rots = 2*lower_rank_max * (2*(n÷num_blocks - 1) + upper_rank_max ) + 2*(n÷num_blocks - 1) + upper_rank_max
+# max_num_lower_rots = 2*(n÷num_blocks - 1) + lower_rank_max
+# upper_blocks, lower_blocks = random_blocks(n,num_blocks)
+
+
+# m=6
+# n=6
+# lbl = [
+#   2 4 6
+#   2 4 5
+# ]
+# lower_blocks = [BlockSize(lbl[1,j], lbl[2,j]) for j∈1:3]
+
+# ubl = [
+#   0
+#   0
+# ]
+# upper_blocks = [BlockSize(ubl[1,j], ubl[2,j]) for j∈1:1]
+
+# lower_ranks = [2, 2, 0]
+# upper_ranks = [0]
+# upper_rank_max=3
+# lower_rank_max=3
+# num_blocks=3
+# max_num_upper_rots=20
+# max_num_lower_rots=20
+
+# gw1 = GivensWeight(
+#     Float64,
+#     TrailingDecomp(),
+#     MersenneTwister(),
+#     m,
+#     n;
+#     upper_rank_max = upper_rank_max,
+#     lower_rank_max = lower_rank_max,
+#     upper_ranks = upper_ranks,
+#     lower_ranks = lower_ranks, 
+#     upper_blocks = upper_blocks,
+#     max_num_upper_blocks = num_blocks,
+#     lower_blocks = lower_blocks,
+#     max_num_lower_blocks = num_blocks,
+#     max_num_upper_rots = max_num_upper_rots,
+#     max_num_lower_rots = max_num_lower_rots,
+# )
+# println(wilk(gw1.b))
+# rotaciones = copy(gw1.lowerRots)
+# A=Matrix(gw1) 
+# A_or=copy(A)
+# preparative_phase!(gw1)
+#triang_rot = residual_phase!(gw1)
+# QB = Matrix(1.0I,n,n)
+# QT = Matrix(1.0I,n,n)
+# apply_rotations!(triang_rot,QT)
+# apply_rotations_reverse!(gw1.lowerRots[:,1:3],QB)
+# gw1.lowerRots[:,1:3] .= Rot(one(Float64), zero(Float64), 1)
+# er=norm(QB*A - Matrix(gw1), Inf)
+# print("Norm: $er \n")    
 end #module
