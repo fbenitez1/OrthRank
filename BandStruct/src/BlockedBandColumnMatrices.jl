@@ -1207,7 +1207,7 @@ function BandwidthInit.trailing_lower_ranks_to_cols_first_last!(
     _, cols_lb1 = lower_block_ranges(bbc, lb1)
     dᵣ = setdiffᵣ(cols_lb, cols_lb1)
     if !isempty(dᵣ)
-      rows_lb_first = isempty(rows_lb) ? m : first(rows_lb)
+      rows_lb_first = isempty(rows_lb) ? m+1 : first(rows_lb)
       bbc.cols_first_last[5, dᵣ] .= min(m, rows_lb_first + rs1[lb_count] - 1)
     end
     lb_count -= 1
