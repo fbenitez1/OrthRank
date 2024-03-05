@@ -20,7 +20,10 @@ export AbstractGivensWeight,
   set_givens_weight_transform_params!,
   get_givens_weight_transform_params,
   get_givens_weight_max_transform_params,
-  random_cs
+  random_cs,
+  PrincipalSubmatrixError,
+  UncompressedLowerBlock,
+  UncompressedUpperBlock
 
 struct UncompressedLowerBlock <: Exception
   block::Int
@@ -29,6 +32,19 @@ end
 struct UncompressedUpperBlock <: Exception
   block::Int
 end
+
+struct PrincipalSubmatrixError <: Exception
+  m::Int
+  n::Int
+  mb :: Int
+  nb :: Int
+end
+
+Base.showerror(io::IO, e::PrincipalSubmatrixError) = print(
+  io,
+  "PrincipalSubmatrixError:  Attempt to specify a $(e.mb) × $(e.nb) principal submatrix of a $(e.m) × $(e.n) matrix",
+)
+
 
 """
 # `GivensBlockData`
@@ -86,6 +102,22 @@ function Base.show(io::IO, ::MIME"text/plain", gb::GivensBlockData)
       "compressed = $(gb.compressed), givens_index = $(gb.givens_index), " *
       "num_rots = $(gb.num_rots), tsize = $(gb.tsize))",
     )
+end
+
+
+
+function validate_blocks(
+  m,
+  n,
+  blocks::Union{
+    AbstractVector{<:AbstractBlockData},
+    IndexList{<:AbstractBlockData},
+  },
+)
+  for b in blocks
+    (b.mb >= 0 && b.nb >= 0 && b.mb <= m && b.nb <= n) ||
+      throw(PrincipalSubmatrixError(m, n, b.mb, b.nb))
+  end
 end
 
 
@@ -207,6 +239,10 @@ function GivensWeight(
   max_num_upper_rots::Int = 0,
   max_num_lower_rots::Int = 0,
 ) where {R<:Real, E <: Union{R, Complex{R}}}
+
+  validate_blocks(m, n, upper_blocks)
+  validate_blocks(m, n, lower_blocks)
+
 
   num_upper_blocks = length(upper_blocks)
   num_lower_blocks = length(lower_blocks)
@@ -348,6 +384,8 @@ function GivensWeight(
   max_num_lower_rots::Int = 0,
 ) where {R<:Real, E <: Union{R, Complex{R}}}
 
+  validate_blocks(m, n, upper_blocks)
+  validate_blocks(m, n, lower_blocks)
   num_upper_blocks = length(upper_blocks)
   num_lower_blocks = length(lower_blocks)
 
