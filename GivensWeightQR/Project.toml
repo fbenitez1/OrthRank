@@ -1,4 +1,4 @@
-name = "MutRank"
+name = "GivensWeightQR"
 uuid = "bb44428a-3a7f-4569-bbb2-82086a261f4c"
 authors = ["Felipe Benitez <fbenitez1@gsu.edu>"]
 version = "0.1.0"
