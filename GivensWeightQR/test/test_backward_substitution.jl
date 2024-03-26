@@ -5,29 +5,28 @@ using Householder
 using InPlace
 using Rotations
 using LinearAlgebra
-using MutRank
+using GivensWeightQR
 using Test
 
 function test_backward_substitution(
   m::Int64,
+  n::Int64,
   num_blocks::Int64,
   upper_rank_max::Int64,
-  lower_rank_max::Int64
+  lower_rank_max::Int64,
+  tol::Float64
   )
-  tol = 1e-12
-  n = m
-  upper_blocks, lower_blocks = random_blocks(m,num_blocks)
+  upper_blocks, lower_blocks = random_blocks_generator(m,n,num_blocks)
   upper_ranks = Consts(num_blocks, upper_rank_max)
   lower_ranks = Consts(num_blocks, lower_rank_max)
   upper_ranks = constrain_upper_ranks(m, n, blocks = upper_blocks, ranks = upper_ranks)
   lower_ranks = constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = lower_ranks)
   max_num_upper_rots = 2*lower_rank_max * (2*(n÷num_blocks - 1) + upper_rank_max ) + 2*(n÷num_blocks - 1) + upper_rank_max
   max_num_lower_rots = 2*(n÷num_blocks - 1) + lower_rank_max
-  upper_rank_max = 2*(n÷num_blocks - 1) + upper_rank_max
+  upper_rank_max = 2*(n÷num_blocks - 1) + upper_rank_max + lower_rank_max
   lower_rank_max = 2*lower_rank_max
   max_num_upper_rots = 2*lower_rank_max * (2*(n÷num_blocks - 1) + upper_rank_max ) + 2*(n÷num_blocks - 1) + upper_rank_max
   max_num_lower_rots = 2*(n÷num_blocks - 1) + lower_rank_max
-  upper_blocks, lower_blocks = random_blocks(n,num_blocks)
   gw1 = GivensWeight(
     Float64,
     TrailingDecomp(),
@@ -45,12 +44,16 @@ function test_backward_substitution(
     max_num_upper_rots = max_num_upper_rots,
     max_num_lower_rots = max_num_lower_rots,
     )
-  A=Matrix(gw1)
-  b = randn(n,1)
+  A = Matrix(gw1)
+  x_a = zeros(Float64, n , 1)
+  b = randn(m, 1)
   c = copy(b)
-  x_a = solve(gw1,b)
+  Q = Matrix(1.0I,m , m)
+  #x_a = solve(gw1, b)
+  #solve!(x_a, gw1, b)
+  solve!(x_a, gw1, b, Q)
     @testset "||Ax - b||" begin
-      @test norm(A*x_a - c, Inf) <= tol
+      @test norm((Q[1:m,1:n])'*(A*x_a - c), Inf) <= tol
     end
   end
   
