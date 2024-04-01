@@ -52,8 +52,8 @@ function test_backward_substitution(
   #x_a = solve(gw1, b)
   #solve!(x_a, gw1, b)
   solve!(x_a, gw1, b, Q)
-    @testset "||Ax - b||" begin
-      @test norm((Q[1:m,1:n])'*(A*x_a - c), Inf) <= tol
-    end
+  @testset "||Ax - b||" begin
+    @test norm((Q[1:m,1:n])'*(A*x_a - c), Inf) <= tol
   end
+end
   

@@ -13,7 +13,161 @@ export random_blocks_generator,
     solve, 
     get_QR,
     create_Q!,
-    solve!
+    solve!,
+    QRGivensWeight,
+    QGivensWeight
+    
+struct QGivensWeight{R,E}
+    Qb::Matrix{Rot{R, E, Int}}
+    Qt::Matrix{Rot{R, E, Int}}
+end
+    
+struct QRGivensWeight #<: Factorization
+    Q::QGivensWeight
+    R::AbstractGivensWeight
+end
+
+function LinearAlgebra.qr(
+    gw::GivensWeight
+    )
+    preparative_phase!(gw)
+    triang_rot = residual_phase!(gw)
+    Qb = QGivensWeight(gw.lowerRots,triang_rot)
+    return QRGivensWeight(Qb,gw)
+end
+
+function LinearAlgebra.ldiv!(
+    x::AbstractArray, 
+    A::QRGivensWeight, 
+    b::AbstractArray
+    )
+    solve!(x,A,b)
+end
+
+function LinearAlgebra.ldiv!(
+    A::QRGivensWeight, 
+    b::AbstractArray
+    )
+    solve!(A,b)
+end
+
+function Base.:\(
+    A::GivensWeight,
+    b::AbstractArray
+    )
+    m, n = size(A.b)
+    x = zeros(Float64,n,1)
+    F = qr(A)
+    for i in 1:min(m,n)
+        F.R.b[i,i] == 0 ? throw(SingularException(i)) : nothing
+    end
+    ldiv!(x,F,b)
+    return x
+end
+
+function solve!(
+    x::Matrix{Float64},
+    A::QRGivensWeight,
+    b::AbstractArray,
+    )
+    m, n = size(A.R.b)
+    s = min(m,n)
+    x_copy = zeros(Float64, n, 1)
+    #Apply lower block rotations to b
+    for j in Iterators.reverse(axes(A.Q.Qb, 2))
+        for i in axes(A.Q.Qb, 1) 
+            if A.Q.Qb[i, j].inds != 0
+                apply_inv!(A.Q.Qb[i, j], b)
+            end
+        end
+    end
+    #Apply triangularizing rotations to b
+    for j in axes(A.Q.Qt, 2)
+        for i in axes(A.Q.Qt, 1)
+            if A.Q.Qt[i, j].inds != 0
+                apply_inv!(A.Q.Qt[i, j], b)
+            end
+        end
+    end
+    #Backward substitution
+    x[s, 1] = b[s, 1]/A.R.b[s, s]
+    x_copy[s, 1] = x[s, 1]
+    ub_g_ind = length(A.R.b.upper_blocks)
+    ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
+    for i in s-1:-1:1
+        while i == ub_mb
+            ub_rot_num = A.R.b.upper_blocks[ub_g_ind].num_rots
+            for r in 1:ub_rot_num
+                rot = A.R.upperRots[r, ub_g_ind]
+                apply_inv!(rot, x_copy)
+            end
+            ub_g_ind -= 1
+            if ub_g_ind == 0
+                ub_mb = 0
+            else
+                ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
+            end
+        end
+        last_el_in_row_ind = last_inband_index(A.R.b, i, :)
+        while A.R.b[i, last_el_in_row_ind]==0.0
+            last_el_in_row_ind -=1
+        end
+        x[i, 1] = A.R.b[i, i]\(b[i, 1]-sum(A.R.b[i, i+1:last_el_in_row_ind] .* x_copy[i+1:last_el_in_row_ind, 1]))    
+        x_copy[i, 1] = x[i, 1]
+    end
+end
+
+function solve!(
+    A::QRGivensWeight,
+    b::AbstractArray,
+    )
+    m, n = size(A.R.b)
+    m!=n ? throw(DimensionMismatch("A must be a square matrix")) : nothing
+    m!=size(b,1) ? throw(DimensionMismatch("inputs should have the same number of rows")) : nothing
+    b_copy = zeros(Float64, n, 1)
+    #Apply lower block rotations to b
+    for j in Iterators.reverse(axes(A.Q.Qb, 2))
+        for i in axes(A.Q.Qb, 1) 
+            if A.Q.Qb[i, j].inds != 0
+                apply_inv!(A.Q.Qb[i, j], b)
+            end
+        end
+    end
+    #Apply triangularizing rotations to b
+    for j in axes(A.Q.Qt, 2)
+        for i in axes(A.Q.Qt, 1)
+            if A.Q.Qt[i, j].inds != 0
+                apply_inv!(A.Q.Qt[i, j], b)
+            end
+        end
+    end
+    #Backward substitution
+    b[m, 1] = b[m, 1]/A.R.b[m, m]
+    b_copy[m, 1] = b[m, 1]
+    ub_g_ind = length(A.R.b.upper_blocks)
+    ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
+    for i in m-1:-1:1
+        while i == ub_mb
+            ub_rot_num = A.R.b.upper_blocks[ub_g_ind].num_rots
+            for r in 1:ub_rot_num
+                rot = A.R.upperRots[r, ub_g_ind]
+                apply_inv!(rot, b_copy)
+            end
+            ub_g_ind -= 1
+            if ub_g_ind == 0
+                ub_mb = 0
+            else
+                ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
+            end
+        end
+        last_el_in_row_ind = last_inband_index(A.R.b, i, :)
+        while A.R.b[i, last_el_in_row_ind]==0.0
+            last_el_in_row_ind -=1
+        end
+        b[i, 1] = A.R.b[i, i]\(b[i, 1]-sum(A.R.b[i, i+1:last_el_in_row_ind] .* b_copy[i+1:last_el_in_row_ind, 1]))    
+        b_copy[i, 1] = b[i, 1]
+    end
+end
 
 macro swap(x, y)
     quote
@@ -160,14 +314,16 @@ function preparative_phase!(
             end
             #Apply lb_rot in the compl. of lb_block
             _, lb_cols = lower_block_ranges(gw.b, lb_g_ind)
-            last_col_el = last_inband_index(gw.b, lb_rot.inds+1, :)
-            while gw.b[lb_rot.inds+1, last_col_el]==0
-                last_col_el -=1
+            if lb_cols[end] != n
+                last_col_el = last_inband_index(gw.b, lb_rot.inds+1, :)
+                while gw.b[lb_rot.inds+1, last_col_el]==0
+                    last_col_el -= 1
+                end
+                lb_active_cols = (lb_cols[end]+1):last_col_el 
+                lb_active_rows = 1:(lb_rot.inds+1)
+                lb_vb = view(gw.b, lb_active_rows, lb_active_cols)
+                apply_inv!(lb_rot, lb_vb)
             end
-            lb_active_cols = (lb_cols[end]+1):last_col_el 
-            lb_active_rows = 1:(lb_rot.inds+1)
-            lb_vb = view(gw.b, lb_active_rows, lb_active_cols)
-            apply_inv!(lb_rot, lb_vb)
         end
     end
 end

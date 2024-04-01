@@ -8,7 +8,7 @@ using LinearAlgebra
 using GivensWeightQR
 using Test
 
-function test_QR(
+function test_qr_structure(
     m::Int64,
     n::Int64,
     num_blocks::Int64,
@@ -43,15 +43,15 @@ function test_QR(
       max_num_lower_blocks = num_blocks,
       max_num_upper_rots = max_num_upper_rots,
       max_num_lower_rots = max_num_lower_rots,
-      )
-    A=Matrix(gw1)  
-    preparative_phase!(gw1)
-    triang_rot = residual_phase!(gw1)
-    Q = Matrix(1.0I,m,m)
-    create_Q!(Q, gw1.lowerRots, triang_rot)
-    gw1.lowerRots .= Rot(one(Float64), zero(Float64), 1)
-    @testset "||A - QR||" begin
-      @test norm(A - Q'*Matrix(gw1), Inf) <= tol
+    )
+    A = Matrix(gw1)
+    b = randn(m, 1)
+    c = copy(b)
+    x_a = gw1\b
+    #x_a = solve(gw1, b)
+    #solve!(x_a, gw1, b)
+    @testset "||A'(Ax - b)||" begin
+    @test norm(A'*(A*x_a - c), Inf) <= tol
     end
-  end
+end
   
