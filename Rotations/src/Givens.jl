@@ -431,24 +431,24 @@ check_inplace_rotation_types(
   ::Type{R},
   ::Type{Complex{R}},
   ::Type{Complex{R}},
-) where {R<:Real} = nothing
+) where {R<:Real} = return nothing
 check_inplace_rotation_types(
   ::Type{Complex{R}},
   ::Type{Complex{R}},
   ::Type{Complex{R}},
-) where {R<:Real} = nothing
+) where {R<:Real} = return nothing
 check_inplace_rotation_types(
   ::Type{Complex{R}},
   ::Type{R},
   ::Type{Complex{R}},
-) where {R<:Real} = nothing
+) where {R<:Real} = return nothing
 check_inplace_rotation_types(
   ::Type{R},
   ::Type{R},
   ::Type{Complex{R}},
-) where {R<:Real} = nothing
+) where {R<:Real} = return nothing
 check_inplace_rotation_types(::Type{R}, ::Type{R}, ::Type{R}) where {R<:Real} =
-  nothing
+  return nothing
 
 """
 Apply a rotation, acting in-place to modify a.
@@ -477,8 +477,27 @@ Base.@propagate_inbounds function InPlace.apply!(
     a[j1, k] = c * tmp + s * a[j2, k]
     a[j2, k] = -conj(s) * tmp + conj(c) * a[j2, k]
   end
-  nothing
+  return nothing
 end
+
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{LeftProduct},
+  ::Type{GeneralVector{E}},
+  r::Rot{TC,TS},
+  a::AbstractVector{E};
+  offset = 0,
+) where {TC<:Number,TS<:Number,E<:Number}
+
+  apply!(
+    LeftProduct,
+    GeneralMatrix{E},
+    r,
+    reshape(a, length(a), 1);
+    offset = offset,
+  )
+  return nothing
+end
+
 
 Base.@propagate_inbounds function InPlace.apply!(
   ::Type{RightProduct},
@@ -504,8 +523,27 @@ Base.@propagate_inbounds function InPlace.apply!(
     a[j, k1] = c * tmp - conj(s) * a[j, k2]
     a[j, k2] = s * tmp + conj(c) * a[j, k2]
   end
-  nothing
+  return nothing
 end
+
+Base.@propagate_inbounds function InPlace.apply!(
+  ::Type{RightProduct},
+  ::Type{GeneralVector{E}},
+  a::AbstractVector{E},
+  r::Rot{TC,TS};
+  offset = 0,
+) where {TC<:Number,TS<:Number,E<:Number}
+
+  apply!(
+    RightProduct,
+    GeneralMatrix{E},
+    reshape(a, 1, length(a)),
+    r;
+    offset = offset
+  )
+  return nothing
+end
+
 
 """
 Apply an inverse rotation, acting in-place to modify a.
@@ -534,8 +572,27 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     a[j1, k] = conj(c) * tmp - s * a[j2, k]
     a[j2, k] = conj(s) * tmp + c * a[j2, k]
   end
-  nothing
+  return nothing
 end
+
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{LeftProduct},
+  ::Type{GeneralVector{E}},
+  r::Rot{TC,TS},
+  a::AbstractVector{E};
+  offset = 0,
+) where {TC<:Number,TS<:Number,E<:Number}
+
+  apply_inv!(
+    LeftProduct,
+    GeneralMatrix{E},
+    r,
+    reshape(a, length(a), 1);
+    offset = offset,
+  )
+  return nothing
+end
+
 
 Base.@propagate_inbounds function InPlace.apply_inv!(
   ::Type{RightProduct},
@@ -561,7 +618,26 @@ Base.@propagate_inbounds function InPlace.apply_inv!(
     a[j, k1] = conj(c) * tmp + conj(s) * a[j, k2]
     a[j, k2] = -s * tmp + c * a[j, k2]
   end
-  nothing
+  return nothing
 end
+
+Base.@propagate_inbounds function InPlace.apply_inv!(
+  ::Type{RightProduct},
+  ::Type{GeneralVector{E}},
+  a::AbstractVector{E},
+  r::Rot{TC,TS};
+  offset = 0,
+) where {TC<:Number,TS<:Number,E<:Number}
+
+  apply_inv!(
+    RightProduct,
+    GeneralMatrix{E},
+    reshape(a, 1, length(a)),
+    r;
+    offset = offset,
+  )
+  return nothing
+end
+
 
 end
