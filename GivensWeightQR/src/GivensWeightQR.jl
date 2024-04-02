@@ -17,14 +17,14 @@ export random_blocks_generator,
     QRGivensWeight,
     QGivensWeight
     
-struct QGivensWeight{R,E}
-    Qb::Matrix{Rot{R, E, Int}}
-    Qt::Matrix{Rot{R, E, Int}}
+struct QGivensWeight{M<:AbstractMatrix}
+    Qb::M
+    Qt::M
 end
     
-struct QRGivensWeight #<: Factorization
-    Q::QGivensWeight
-    R::AbstractGivensWeight
+struct QRGivensWeight{S<:QGivensWeight,R<:AbstractGivensWeight} <: Factorization{R}
+    Q::S
+    R::R
 end
 
 function LinearAlgebra.qr(
@@ -37,9 +37,17 @@ function LinearAlgebra.qr(
 end
 
 function LinearAlgebra.ldiv!(
-    x::AbstractArray, 
+    x::AbstractMatrix, 
     A::QRGivensWeight, 
-    b::AbstractArray
+    b::AbstractMatrix
+    )
+    solve!(x,A,b)
+end
+
+function LinearAlgebra.ldiv!(
+    x::AbstractVector, 
+    A::QRGivensWeight, 
+    b::AbstractVector
     )
     solve!(x,A,b)
 end
@@ -56,13 +64,65 @@ function Base.:\(
     b::AbstractArray
     )
     m, n = size(A.b)
-    x = zeros(Float64,n,1)
+    typeof(b) <: AbstractVector ? x = zeros(Float64,n) : x = zeros(Float64,n,1)
     F = qr(A)
     for i in 1:min(m,n)
         F.R.b[i,i] == 0 ? throw(SingularException(i)) : nothing
     end
     ldiv!(x,F,b)
     return x
+end
+
+function solve!(
+    x::Vector{Float64},
+    A::QRGivensWeight,
+    b::AbstractVector,
+    )
+    m, n = size(A.R.b)
+    s = min(m,n)
+    x_copy = zeros(Float64, n, 1)
+    #Apply lower block rotations to b
+    for j in Iterators.reverse(axes(A.Q.Qb, 2))
+        for i in axes(A.Q.Qb, 1) 
+            if A.Q.Qb[i, j].inds != 0
+                apply_inv!(A.Q.Qb[i, j], b)
+            end
+        end
+    end
+    #Apply triangularizing rotations to b
+    for j in axes(A.Q.Qt, 2)
+        for i in axes(A.Q.Qt, 1)
+            if A.Q.Qt[i, j].inds != 0
+                apply_inv!(A.Q.Qt[i, j], b)
+            end
+        end
+    end
+    #Backward substitution
+    x[s, 1] = b[s, 1]/A.R.b[s, s]
+    x_copy[s, 1] = x[s, 1]
+    ub_g_ind = length(A.R.b.upper_blocks)
+    ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
+    for i in s-1:-1:1
+        while i == ub_mb
+            ub_rot_num = A.R.b.upper_blocks[ub_g_ind].num_rots
+            for r in 1:ub_rot_num
+                rot = A.R.upperRots[r, ub_g_ind]
+                apply_inv!(rot, x_copy)
+            end
+            ub_g_ind -= 1
+            if ub_g_ind == 0
+                ub_mb = 0
+            else
+                ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
+            end
+        end
+        last_el_in_row_ind = last_inband_index(A.R.b, i, :)
+        while A.R.b[i, last_el_in_row_ind]==0.0
+            last_el_in_row_ind -=1
+        end
+        x[i, 1] = A.R.b[i, i]\(b[i, 1]-sum(A.R.b[i, i+1:last_el_in_row_ind] .* x_copy[i+1:last_el_in_row_ind, 1]))    
+        x_copy[i, 1] = x[i, 1]
+    end
 end
 
 function solve!(
