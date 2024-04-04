@@ -5,7 +5,11 @@ packages = [
   ("Rotations", ["InPlace"]),
   ("Householder", ["InPlace"]),
   ("BandStruct", ["InPlace", "Rotations",  "Householder"]),
-  ("OrthWeight", ["InPlace", "Rotations",  "Householder", "BandStruct"])
+  ("OrthWeight", ["InPlace", "Rotations",  "Householder", "BandStruct"]),
+  (
+    "GivensWeightQR",
+    ["InPlace", "Rotations", "Householder", "BandStruct", "OrthWeight"]
+  )
 ]
 println("Update dependencies? (Y/n) [n]")
 response = replace(readline(stdin), r" " => "")
