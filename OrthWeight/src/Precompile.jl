@@ -72,7 +72,9 @@ function run_convert()
 
   UpperPartition(gw)
   LowerPartition(gw)
-  to_leading_lower(gw)
+
+  # currently not working.
+  # to_leading_lower(gw)
   
 end
 
@@ -145,8 +147,8 @@ function run_matrix()
 end
 
 function run_all()
-  run_matrix()
   run_convert()
+  run_matrix()
 end
 
 end
