@@ -45,12 +45,18 @@ function test_ldiv_inplace(
       max_num_lower_rots = max_num_lower_rots,
     )
     A = Matrix(gw1)
-    b = randn(m, 1)
-    c = copy(b)
+    bv = randn(Float64,m)
+    bm = randn(Float64,m,1)
+    cv = copy(bv)
+    cm = copy(bm)
     F = qr(gw1)
-    ldiv!(F, b)
-    @testset "||A'(Ax - b)||" begin
-    @test norm(A*b - c, Inf) <= tol
+    ldiv!(F, bv)
+    ldiv!(F, bm)
+    @testset "||A'(Ax - b)|| b is Vector" begin
+    @test norm(A*bv - cv, Inf) <= tol
+    end
+    @testset "||A'(Ax - b)|| b is column matrix" begin
+    @test norm(A*bm - cm, Inf) <= tol
     end
 end
   

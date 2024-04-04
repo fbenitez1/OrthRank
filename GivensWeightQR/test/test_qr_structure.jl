@@ -45,13 +45,9 @@ function test_qr_structure(
       max_num_lower_rots = max_num_lower_rots,
     )
     A = Matrix(gw1)
-    b = randn(m)
-    println(typeof(b))
+    b = randn(m,1)
     c = copy(b)
     x_a = gw1\b
-    println(typeof(x_a))
-    #x_a = solve(gw1, b)
-    #solve!(x_a, gw1, b)
     @testset "||A'(Ax - b)||" begin
     @test norm(A'*(A*x_a - c), Inf) <= tol
     end

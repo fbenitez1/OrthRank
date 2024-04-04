@@ -45,13 +45,12 @@ function test_QR(
       max_num_lower_rots = max_num_lower_rots,
       )
     A=Matrix(gw1)  
-    preparative_phase!(gw1)
-    triang_rot = residual_phase!(gw1)
     Q = Matrix(1.0I,m,m)
-    create_Q!(Q, gw1.lowerRots, triang_rot)
-    gw1.lowerRots .= Rot(one(Float64), zero(Float64), 1)
+    F=qr(gw1)
+    create_Q!(Q,F)
+    R = create_R(F)
     @testset "||A - QR||" begin
-      @test norm(A - Q'*Matrix(gw1), Inf) <= tol
+      @test norm(A - Q*R, Inf) <= tol
     end
   end
   
