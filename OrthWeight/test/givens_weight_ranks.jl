@@ -92,8 +92,6 @@ function run_givens_weight_rank_tests()
     10 20 25 37
   ])
 
-  println(upper_blocks)
-
   upper_ranks = Consts(length(upper_blocks), 5)
   lower_ranks = Consts(length(lower_blocks), 5)
 
@@ -201,7 +199,7 @@ function run_givens_weight_rank_tests()
     upper_ranks = upper_ranks,
     lower_ranks = lower_ranks,
   )
-
+  return nothing
 end
 
 run_givens_weight_rank_tests()
