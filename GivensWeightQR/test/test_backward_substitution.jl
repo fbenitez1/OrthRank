@@ -8,13 +8,12 @@ using LinearAlgebra
 using GivensWeightQR
 using Test
 
-function test_backward_substitution(
+function run_backward_substitution(
   m::Int64,
   n::Int64,
   num_blocks::Int64,
   upper_rank_max::Int64,
   lower_rank_max::Int64,
-  tol::Float64,
 )
   upper_blocks, lower_blocks = random_blocks_generator(m, n, num_blocks)
   upper_ranks = Consts(num_blocks, upper_rank_max)
@@ -60,6 +59,20 @@ function test_backward_substitution(
   #x_a = solve(gw1, b)
   #solve!(x_a, gw1, b)
   solve!(x_a, gw1, b, Q)
+  return Q, A, x_a, c
+end
+
+function test_backward_substitution(
+  m::Int64,
+  n::Int64,
+  num_blocks::Int64,
+  upper_rank_max::Int64,
+  lower_rank_max::Int64,
+  tol::Float64,
+)
+
+  Q, A, x_a, c =
+    run_backward_substitution(m, n, num_blocks, upper_rank_max, lower_rank_max)
   @testset "||Ax - b||" begin
     @test norm((Q[1:m, 1:n])' * (A * x_a - c), Inf) <= tol
   end

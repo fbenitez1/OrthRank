@@ -7,7 +7,7 @@ export random_blocks_generator,
   get_ranks,
   preparative_phase!,
   residual_phase!,
-  swap,
+  @swap,
   apply_rotations_forward!,
   apply_rotations_backward!,
   create_Q!,
@@ -589,5 +589,16 @@ function create_R(F::QRGivensWeight)
   A = Matrix(F.R)
   return A
 end
+
+using PrecompileTools
+@setup_workload begin
+  include("Precompile.jl")
+  import .Precompile
+  @compile_workload begin
+    Precompile.run_all()
+  end
+end
+
+
 
 end #module

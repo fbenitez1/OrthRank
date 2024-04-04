@@ -32,3 +32,14 @@ end
   tol = 1e-12
   test_ldiv_inplace(m,n,num_blocks,upper_rank_max,lower_rank_max,tol)
 end
+
+# @safetestset "backward substitution" begin
+#   include("test_ldiv_inplace.jl")
+#   m = 100
+#   n = 100
+#   num_blocks = 10
+#   upper_rank_max = 4
+#   lower_rank_max = 4
+#   tol = 1e-12
+#   test_backward_substitution(m,n,num_blocks,upper_rank_max,lower_rank_max,tol)
+# end

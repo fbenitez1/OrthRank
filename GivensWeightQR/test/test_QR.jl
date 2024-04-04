@@ -8,13 +8,12 @@ using LinearAlgebra
 using GivensWeightQR
 using Test
 
-function test_QR(
+function run_QR(
   m::Int64,
   n::Int64,
   num_blocks::Int64,
   upper_rank_max::Int64,
   lower_rank_max::Int64,
-  tol::Float64,
 )
   upper_blocks, lower_blocks = random_blocks_generator(m, n, num_blocks)
   upper_ranks = Consts(num_blocks, upper_rank_max)
@@ -57,6 +56,18 @@ function test_QR(
   F = qr(gw1)
   create_Q!(Q, F)
   R = create_R(F)
+  return A, Q, R
+end
+
+function test_QR(
+  m::Int64,
+  n::Int64,
+  num_blocks::Int64,
+  upper_rank_max::Int64,
+  lower_rank_max::Int64,
+  tol :: Float64
+)
+  A, Q, R = run_QR(m,n,num_blocks, upper_rank_max, lower_rank_max)
   @testset "||A - QR||" begin
     @test norm(A - Q * R, Inf) <= tol
   end
