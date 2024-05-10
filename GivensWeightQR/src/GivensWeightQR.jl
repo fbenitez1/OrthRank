@@ -125,7 +125,7 @@ macro swap(x, y)
      end
 end
 
-random_blocks_generator(rng::AbstractRNG,m::Int64, gap::Int64) = random_blocks_generato(rng,m,m,gap)
+random_blocks_generator(rng::AbstractRNG,m::Int64; gap::Int64) = random_blocks_generato(rng,m,m,gap)
 
 function random_blocks_generator(
   rng::AbstractRNG,
@@ -135,109 +135,33 @@ function random_blocks_generator(
   )
   gap > min(m,n) && throw("Gap between blocks is bigger than the smallest size of the matrix.")
   mn = min(m,n)
-  num_bl = mn+1
-  upper_rows = zeros(Int64, 1, num_bl) #upper_block() needs a row matrix, not a vector
-  upper_cols = zeros(Int64, 1, num_bl)
-  lower_rows = zeros(Int64, 1, num_bl)
-  lower_cols = zeros(Int64, 1, num_bl)
+  δ = (gap+1)/2
+  upper_rows = zeros(Int64, 1, mn) #upper_block doest not work with vectors
+  upper_cols = zeros(Int64, 1, mn)
+  lower_rows = zeros(Int64, 1, mn)
+  lower_cols = zeros(Int64, 1, mn)
   i = 1
-  while max(upper_rows[1, i], upper_cols[1, i], lower_rows[1,i], lower_cols[1,i]) + gap <= mn 
+  while round(Int64, i*δ, RoundDown) <= mn 
+    δ_range = round(Int64, (i-1)*δ, RoundDown)+1 : round(Int64, i*δ, RoundDown)
+    upper_rows[1, i] = rand(rng, δ_range)
+    upper_cols[1, i] = rand(rng, δ_range)
+    lower_rows[1, i] = rand(rng, δ_range)
+    lower_cols[1, i] = rand(rng, δ_range)
+    #upper_rows[1, i] <= lower_rows[1, i] || lower_cols[1, i] <= upper_cols[1, i] ? nothing : upper_rows[1, i] = lower_rows[1, i] #No block overlap
+    upper_rows[1, i] <= upper_cols[1, i] ? nothing : @swap(upper_rows[1, i], upper_cols[1, i]) #No diagonal (i, i) in block
+    lower_cols[1, i] <= lower_rows[1, i] ? nothing : @swap(lower_cols[1, i], lower_rows[1, i]) #No diagonal (i, i) in block
     i += 1
-    upper_rows[1, i] = upper_rows[1, i-1] + rand(rng, 1:gap)
-    upper_cols[1, i] = upper_cols[1, i-1] + rand(rng, 1:gap)
-    upper_rows[1, i] <= upper_cols[1, i] ? nothing : @swap(upper_rows[1, i], upper_cols[1, i]) #No block contains diagonal (i, i) element
-    lower_rows[1, i] = lower_rows[1, i-1] + rand(rng, 1:gap)
-    lower_cols[1, i] = lower_cols[1, i-1] + rand(rng, 1:gap)
-    lower_cols[1, i] <= lower_rows[1, i] ? nothing : @swap(lower_cols[1, i], lower_rows[1, i]) #No block contains diagonal (i, i) element
-    #upper_rows[1, i] <= lower_rows[1, i] || lower_cols[1, i] <= upper_cols[1, i] ? nothing : upper_rows[1, i] = lower_rows[1, i] #No block overlap (implied is blocks do not contain diagonal)
   end
   upper_block = givens_block_sizes([
-      view(upper_rows,1:1, 2:i)
-      view(upper_cols,1:1, 2:i)
+      upper_rows[1:1, 1:i-1]
+      upper_cols[1:1, 1:i-1]
   ])
   lower_block = givens_block_sizes([
-      view(lower_rows,1:1, 2:i)
-      view(lower_cols,1:1, 2:i)
+      lower_rows[1:1, 1:i-1]
+      lower_cols[1:1, 1:i-1]
   ])
   return upper_block, lower_block
 end
-
-#GENERATION PER GAP WITH DIFERENT NUMBER OF RESULTANT BLOCKS, 
-# i.e. there could be more upper blocks than lower blocks, and vicerverse
-# function random_blocks_generator(
-#     rng::AbstractRNG,
-#     m::Int64, 
-#     n::Int64, 
-#     gap::Int64
-#     )
-#     gap > min(m,n) && throw("Gap between blocks is bigger than the smallest size of the matrix.")
-#     mn = min(m,n)
-#     num_bl = mn+1
-#     upper_rows = zeros(Int64, 1, num_bl) #upper_block doest not work with vectors
-#     upper_cols = zeros(Int64, 1, num_bl)
-#     lower_rows = zeros(Int64, 1, num_bl)
-#     lower_cols = zeros(Int64, 1, num_bl)
-#     i = 1
-#     while max(upper_rows[1, i], upper_cols[1, i]) + gap <= mn 
-#       i += 1
-#       upper_rows[1, i] = upper_rows[1, i-1] + rand(rng, 1:gap)
-#       upper_cols[1, i] = upper_cols[1, i-1] + rand(rng, 1:gap)
-#       upper_rows[1, i] <= upper_cols[1, i] ? nothing : @swap(upper_rows[1, i], upper_cols[1, i]) #No block contains diagonal (i, i) element
-#     end
-#     j = 1
-#     while max(lower_rows[1, j], lower_cols[1, j]) + gap <= mn 
-#       j += 1
-#       lower_rows[1, j] = lower_rows[1, j-1] + rand(rng, 1:gap)
-#       lower_cols[1, j] = lower_cols[1, j-1] + rand(rng, 1:gap)
-#       lower_cols[1, j] <= lower_rows[1, j] ? nothing : @swap(lower_cols[1, j], lower_rows[1, j]) #No block contains diagonal (i, i) element
-#       upper_rows[1, j] <= lower_rows[1, j] || lower_cols[1, j] <= upper_cols[1, j] ? nothing : upper_rows[1, j] = lower_rows[1, j] #No block overlap
-#     end
-#     upper_block = givens_block_sizes([
-#         upper_rows[1:1, 2:i]
-#         upper_cols[1:1, 2:i]
-#     ])
-#     lower_block = givens_block_sizes([
-#         lower_rows[1:1, 2:j]
-#         lower_cols[1:1, 2:j]
-#     ])
-#     return upper_block, lower_block
-#   end
-  
-# GENERATION PER NUMBER OF BLOCKS
-# function random_blocks_generator(
-#     rng::AbstractRNG,
-#     m::Int64, 
-#     n::Int64, 
-#     num_bl::Int64
-#     )
-#     num_bl <= m ? nothing : throw("Number of blocks $num_bl exceed the matrix row size $m.")
-#     num_bl <= n ? nothing : throw("Number of blocks $num_bl exceed the matrix column size $n.")
-#     num_bl > 0 ? nothing : throw("Number of blocks $num_bl cannot be zero or negative.")
-#     s=min(m,n)
-#     upper_rows = zeros(Int64, 1, num_bl)
-#     upper_cols = zeros(Int64, 1, num_bl)
-#     lower_rows = zeros(Int64, 1, num_bl)
-#     lower_cols = zeros(Int64, 1, num_bl)
-#     delta = s÷num_bl
-#     for i in 1:num_bl
-#         upper_rows[1, i] = rand(rng, (i-1)*delta+1:(i*delta))
-#         upper_cols[1, i] = rand(rng, (i-1)*delta+1:(i*delta))
-#         lower_rows[1, i] = rand(rng, (i-1)*delta+1:(i*delta))
-#         lower_cols[1, i] = rand(rng, (i-1)*delta+1:(i*delta))
-#         upper_rows[1, i] <= lower_rows[1, i] || lower_cols[1, i] <= upper_cols[1, i] ? nothing : upper_rows[1, i] = lower_rows[1, i] #No block overlap
-#         upper_rows[1, i] <= upper_cols[1, i] ? nothing :  @swap(upper_rows[1, i], upper_cols[1, i]) #No block containing diagonal (i, i) element
-#         lower_cols[1, i] <= lower_rows[1, i] ? nothing : @swap(lower_cols[1, i], lower_rows[1, i]) #No block containing diagonal (i, i) element
-#     end
-#     upper_block = givens_block_sizes([
-#         upper_rows
-#         upper_cols
-#     ])
-#     lower_block = givens_block_sizes([
-#         lower_rows
-#         lower_cols
-#     ])
-#     return upper_block, lower_block
-# end
 
 function get_ranks(
     gw::GivensWeight
@@ -427,5 +351,67 @@ function create_R(
     A = Matrix(F.R)
     return A
 end
+
+# for matrix_size = 50:200
+#   for rank_max = 1:7
+#     for gap = 1:5 #Theorical max is div(k,2,RoundDown)+1
+#       global m = matrix_size
+#       global n = matrix_size
+#       global block_gap = gap
+#       global upper_rank_max = rank_max
+#       global lower_rank_max = rank_max
+#       global tol = 1e-12
+#       global rng = MersenneTwister(1234)
+#       global upper_blocks, lower_blocks = random_blocks_generator(rng, m, n, block_gap)
+#       global num_blocks = max(length(upper_blocks),length(upper_blocks))
+#       global upper_ranks = Consts(length(upper_blocks), upper_rank_max)
+#       global lower_ranks = Consts(length(lower_blocks), lower_rank_max)
+#       global upper_ranks = constrain_upper_ranks(m, n, blocks = upper_blocks, ranks = upper_ranks)
+#       global lower_ranks = constrain_lower_ranks(m, n, blocks = lower_blocks, ranks = lower_ranks)
+#       global max_num_upper_rots = 
+#               div(gap + upper_rank_max,2,RoundUp)^2 +
+#               ((lower_rank_max)*(upper_rank_max + lower_rank_max) + (gap - 1)*div(lower_rank_max*(lower_rank_max + 1),2))
+#               #Rotations needed by structure + rot needed to avoid fill-in (lrm^2 from previous block extended)
+#       global max_num_lower_rots = (block_gap + lower_rank_max - 1) * lower_rank_max
+#       global upper_rank_max = 2*block_gap + upper_rank_max + lower_rank_max 
+#       try 
+#         global gw1 = GivensWeight(
+#         Float64,
+#         TrailingDecomp(),
+#         rng,
+#         m,
+#         n;
+#         upper_rank_max = upper_rank_max,
+#         lower_rank_max = lower_rank_max,
+#         upper_ranks = upper_ranks,
+#         lower_ranks = lower_ranks,
+#         upper_blocks = upper_blocks,
+#         max_num_upper_blocks = num_blocks,
+#         lower_blocks = lower_blocks,
+#         max_num_lower_blocks = num_blocks,
+#         max_num_upper_rots = max_num_upper_rots,
+#         max_num_lower_rots = max_num_lower_rots,
+#         )
+#       catch tt1
+#         println("Skipping size=$matrix_size, rank max = $rank_max, block gap=$gap because of gw1 generation")
+#         continue
+#       end
+#       global AA = Matrix(gw1)
+#       global b = randn(m,10)
+#       global cc = copy(b)
+#       try  
+#       global x_a = gw1\b
+#       catch tt2
+#         println("Skipping size=$matrix_size, rank max = $rank_max, block gap=$gap because of backslash")
+#         continue
+#       end
+#       global err=norm(AA' * (AA * x_a - cc), Inf)/(norm(AA,Inf)norm(x_a,Inf))
+#       if err > 1e-10
+#         println("Fail: $err \n")
+#         break 
+#       end
+#     end
+#   end
+# end
 
 end #module
