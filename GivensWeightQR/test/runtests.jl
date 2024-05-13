@@ -74,9 +74,9 @@ end
 
 @safetestset "Backslash Operator: Overdetermined system" begin
   include("test_backslash_operator_vector.jl")
-  m=150
+  m = 150
   n = 100
-  block_gap = 2
+  block_gap = 1
   upper_rank_max = 4
   lower_rank_max = 4
   tol = 1e-12
