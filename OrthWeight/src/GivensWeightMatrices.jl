@@ -496,7 +496,7 @@ function GivensWeight(
   upperRots = Matrix{Rot{R,E,Int}}(undef, max_num_upper_rots, max_num_blocks)
   upperRots .= Rot(zero(R), zero(E), 0)
   
-  # Fill in the actual transform sizes and num_rots for a decmposition of
+  # Fill in the actual transform sizes and num_rots for a decomposition of
   # the requested type.
   set_givens_weight_transform_params!(
     Upper(),
@@ -864,8 +864,8 @@ function set_givens_weight_transform_params!(
 
     rlb = lower_ranks[lb]
     # This includes enough extra to do a square triangularization.
-    extra_rots = rlb*(rlb-1) ÷ 2
-    # extra_rots = 0
+    # extra_rots = rlb*(rlb-1) ÷ 2
+    extra_rots = 0
     expand_or_set!(
       expand_values,
       num_rots,
@@ -913,7 +913,7 @@ function set_givens_weight_transform_params!(
 
     rub = upper_ranks[ub]
     extra_rots = rub * (rub - 1) ÷ 2
-    #extra_rots = 0
+    # extra_rots = 0
 
     expand_or_set!(
       expand_values,
@@ -962,8 +962,8 @@ function set_givens_weight_transform_params!(
     expand_or_set!(expand_values, tsizes, ub, tsize)
 
     rub = upper_ranks[ub]
-    extra_rots = rub * (rub - 1) ÷ 2
-    #extra_rots = 0
+    # extra_rots = rub * (rub - 1) ÷ 2
+    extra_rots = 0
 
     expand_or_set!(
       expand_values,
@@ -1010,8 +1010,8 @@ function set_givens_weight_transform_params!(
     expand_or_set!(expand_values, tsizes, lb, tsize)
 
     rlb = lower_ranks[lb]
-    extra_rots = rlb * (rlb - 1) ÷ 2
-    # extra_rots = 0
+    # extra_rots = rlb * (rlb - 1) ÷ 2
+    extra_rots = 0
 
     expand_or_set!(
       expand_values,
