@@ -1,45 +1,85 @@
 using SafeTestsets
 
-@safetestset "QR Factorization" begin
+@safetestset "QR Factorization: Square case" begin
   include("test_QR.jl")
   m = 100
   n = 100
-  num_blocks=10
-  upper_rank_max=4
-  lower_rank_max=4
-  tol = 1e-12
-  test_QR(m,n,num_blocks,upper_rank_max,lower_rank_max,tol)
-end
-
-@safetestset "QR Factorization structure" begin
-  include("test_qr_structure.jl")
-  m=100
-  n = 100
-  num_blocks = 10
+  block_gap = 1
   upper_rank_max = 4
   lower_rank_max = 4
   tol = 1e-12
-  test_qr_structure(m,n,num_blocks,upper_rank_max,lower_rank_max,tol)
+  rng = MersenneTwister(1234)
+  test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
 end
 
-@safetestset "ldiv! in place" begin
-  include("test_ldiv_inplace.jl")
+@safetestset "QR Factorization: Tall case" begin
+  include("test_QR.jl")
+  m = 150
+  n = 100
+  block_gap = 1
+  upper_rank_max = 4
+  lower_rank_max = 4
+  tol = 1e-12
+  rng = MersenneTwister(1234)
+  test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+end
+
+@safetestset "QR Factorization: Wide case" begin
+  include("test_QR.jl")
+  m = 100
+  n = 150
+  block_gap = 2
+  upper_rank_max = 4
+  lower_rank_max = 4
+  tol = 1e-12
+  rng = MersenneTwister(1234)
+  test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+end
+
+@safetestset "Backslash Operator: Vector case" begin
+  include("test_backslash_operator_vector.jl")
   m = 100
   n = 100
-  num_blocks = 10
+  block_gap = 1
   upper_rank_max = 4
   lower_rank_max = 4
   tol = 1e-12
-  test_ldiv_inplace(m,n,num_blocks,upper_rank_max,lower_rank_max,tol)
+  rng = MersenneTwister(1234)
+  test_backslash_operator_vector(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
 end
 
-# @safetestset "backward substitution" begin
-#   include("test_ldiv_inplace.jl")
-#   m = 100
-#   n = 100
-#   num_blocks = 10
-#   upper_rank_max = 4
-#   lower_rank_max = 4
-#   tol = 1e-12
-#   test_backward_substitution(m,n,num_blocks,upper_rank_max,lower_rank_max,tol)
-# end
+@safetestset "Backslash Operator: Matrix case" begin
+  include("test_backslash_operator_matrix.jl")
+  m=100
+  n = 100
+  block_gap = 1
+  upper_rank_max = 4
+  lower_rank_max = 4
+  tol = 1e-12
+  rng = MersenneTwister(1234)
+  test_backslash_operator_matrix(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+end
+
+@safetestset "Backslash Operator: Underdetermined system" begin
+  include("test_backslash_operator_vector.jl")
+  m=100
+  n = 150
+  block_gap = 1
+  upper_rank_max = 4
+  lower_rank_max = 4
+  tol = 1e-12
+  rng = MersenneTwister(1234)
+  test_backslash_operator_vector(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+end
+
+@safetestset "Backslash Operator: Overdetermined system" begin
+  include("test_backslash_operator_vector.jl")
+  m = 150
+  n = 100
+  block_gap = 1
+  upper_rank_max = 4
+  lower_rank_max = 4
+  tol = 1e-12
+  rng = MersenneTwister(1234)
+  test_backslash_operator_vector(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+end
