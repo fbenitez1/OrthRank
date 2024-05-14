@@ -912,8 +912,8 @@ function set_givens_weight_transform_params!(
     expand_or_set!(expand_values, tsizes, ub, tsize)
 
     rub = upper_ranks[ub]
-    extra_rots = rub * (rub - 1) ÷ 2
-    # extra_rots = 0
+    # extra_rots = rub * (rub - 1) ÷ 2
+    extra_rots = 0
 
     expand_or_set!(
       expand_values,
