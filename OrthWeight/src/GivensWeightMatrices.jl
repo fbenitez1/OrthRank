@@ -1273,4 +1273,6 @@ function Base.show(io::IO, mime::MIME"text/plain", gw::GivensWeight)
   println(io)
 end
 
+include("./GivensWeightMatrices/Multiply.jl")
+
 end
