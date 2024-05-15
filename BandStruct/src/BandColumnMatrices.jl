@@ -1667,9 +1667,11 @@ end
     (m,_)  = size(NonSub, bc)
     j_range = inband_index_range(NonSub, bc, :, k)
     j_first =
-      isempty(j_range) ? min(m, last_upper_index(NonSub, bc, :, k)) : first(j_range)
+      isempty(j_range) ? min(m, last_upper_index(NonSub, bc, :, k)) + 1 :
+      first(j_range)
     k_range = inband_index_range(NonSub, bc, j, :)
-    k_last = isempty(k_range) ? max(1,first_upper_index(NonSub, bc, j, :)) : last(k_range)
+    k_last = isempty(k_range) ? max(1, first_upper_index(NonSub, bc, j, :)) - 1 :
+      last(k_range)
     # Does nothing if (j,k) is not above the diagonal.
     # j >= j_first ⟹ j:(j_first - 1) is empty.
     unsafe_set_last_inband_index!(NonSub, bc, j:(j_first - 1), :, k)
@@ -1723,10 +1725,11 @@ end
     (_, n) = size(NonSub, bc)
     j_range = inband_index_range(NonSub, bc, :, k)
     j_last =
-      isempty(j_range) ? max(1, first_lower_index(NonSub, bc, :, k)) : last(j_range)
+    isempty(j_range) ? max(1, first_lower_index(NonSub, bc, :, k)) - 1 :
+    last(j_range)
     k_range = inband_index_range(NonSub, bc, j, :)
-    k_first =
-      isempty(k_range) ? min(n, last_lower_index(NonSub, bc, j, :)) : first(k_range)
+    k_first = isempty(k_range) ? min(n, last_lower_index(NonSub, bc, j, :)) + 1 :
+      first(k_range)
     # Does nothing if (j,k) is not below the middle.
     # j <= j_last ⟹ (j_last+1):j is empty.
     unsafe_set_first_inband_index!(NonSub, bc, (j_last+1):j, :, k)
