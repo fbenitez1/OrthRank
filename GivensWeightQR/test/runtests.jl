@@ -1,6 +1,6 @@
 using SafeTestsets
 
-@safetestset "QR Factorization: Square case" begin
+@safetestset "QR Factorization, no overlap: Square case" begin
   include("test_QR.jl")
   m = 100
   n = 100
@@ -12,7 +12,7 @@ using SafeTestsets
   test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
 end
 
-@safetestset "QR Factorization: Tall case" begin
+@safetestset "QR Factorization, no overlap: Tall case" begin
   include("test_QR.jl")
   m = 150
   n = 100
@@ -24,7 +24,7 @@ end
   test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
 end
 
-@safetestset "QR Factorization: Wide case" begin
+@safetestset "QR Factorization, no overlap: Wide case" begin
   include("test_QR.jl")
   m = 100
   n = 150

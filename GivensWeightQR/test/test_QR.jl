@@ -16,7 +16,7 @@ function run_QR(
   upper_rank_max::Int64,
   lower_rank_max::Int64,
   )
-  upper_blocks, lower_blocks = random_blocks_generator(rng,m, n, block_gap)
+  upper_blocks, lower_blocks = random_blocks_generator_no_overlap(rng,m, n, block_gap)
   num_blocks = length(upper_blocks)
   upper_ranks = Consts(length(upper_blocks), upper_rank_max)
   lower_ranks = Consts(length(upper_blocks), lower_rank_max)
