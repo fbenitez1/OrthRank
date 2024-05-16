@@ -165,36 +165,35 @@ end
 
 # Givens-weight represenation.
 
-abstract type AbstractGivensWeight <: OrthWeightDecomp end
+abstract type AbstractGivensWeight{E,B,R} <: OrthWeightDecomp end
 
 """
-    GivensWeight{LR,B,UR}
+    GivensWeight{E,B,R}
 
 A GivensWeight matrix with weight matrix of type `B` and lower and upper
-rotations of type `LR` and `UR` respectively.
+rotations of type `Rot{R,E,Int}`.
 
 # Fields
 
-  - `lower_decomp::Base.RefValue{Union{Nothing,Decomp}}`:
+  - `lower_decomp::Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}`:
     Type of decomposition in the lower part.
 
-  - `upper_decomp::Base.RefValue{Union{Nothing,Decomp}}`:
+  - `upper_decomp::Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}`:
     Type of decomposition in the upper part.
 
-
-  - `lowerRot::LR`: Lower rotations for a banded Givens weight decomposition.
+  - `lowerRot::Rot{R,E,Int}`: Lower rotations for a banded Givens weight decomposition.
 
   - `b::B`: Weight matrix.
 
-  - `upperRot::UR`: Upper rotations for a banded Givens weight decomposition.
+  - `upperRot::Rot{R,E,Int}`: Upper rotations for a banded Givens weight decomposition.
 
-  - `upper_ranks::Vector{Int}`: Upper ranks
+  - `lower_rank_max::Int`: Maximum lower rank.
 
-  - `lower_ranks::Vector{Int}`: Lower ranks
+  - `upper_rank_max::Int`: Maximum upper rank.
 
 Note that block data is stored in the band matrix.
 """
-struct GivensWeight{B,E,R} <: AbstractGivensWeight
+struct GivensWeight{E,B,R} <: AbstractGivensWeight{E,B,R}
   lower_decomp::Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}
   upper_decomp::Base.RefValue{Union{Nothing,LeadingDecomp,TrailingDecomp}}
   lowerRots::Matrix{Rot{R, E, Int}}
@@ -203,6 +202,11 @@ struct GivensWeight{B,E,R} <: AbstractGivensWeight
   lower_rank_max::Int
   upper_rank_max::Int
 end
+
+Base.eltype(::GivensWeight{E}) where {E} = E
+Base.size(gw::GivensWeight) = size(gw.b)
+Base.axes(gw::GivensWeight, d) = axes(gw.b, d)
+Base.axes(gw::GivensWeight) = axes(gw.b)
 
 """
     GivensWeight(
@@ -559,7 +563,7 @@ end
 # assume block IndexLists are sorted.
 function insert_random_rotations!(
   rng::AbstractRNG,
-  gw::GivensWeight{B,E,R},
+  gw::GivensWeight{E,B,R},
 ) where {B,R<:Real,E<:Union{R,Complex{R}}}
 
   if gw.lower_decomp[] == LeadingDecomp()
