@@ -411,4 +411,14 @@ function create_R(F::QRGivensWeight)
   return A
 end
 
+using PrecompileTools
+@setup_workload begin
+  include("Precompile.jl")
+  import .Precompile
+  @compile_workload begin
+    Precompile.run_all()
+  end
+end
+
+
 end #module

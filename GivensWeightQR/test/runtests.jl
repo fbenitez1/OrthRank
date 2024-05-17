@@ -33,7 +33,7 @@ end
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+  test_QR(rng, m, n, block_gap, upper_rank_max, lower_rank_max, tol)
 end
 
 @safetestset "Backslash Operator: Vector case" begin
@@ -45,7 +45,15 @@ end
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_backslash_operator_vector(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+  test_backslash_operator_vector(
+    rng,
+    m,
+    n,
+    block_gap,
+    upper_rank_max,
+    lower_rank_max,
+    tol,
+  )
 end
 
 @safetestset "Backslash Operator: Matrix case" begin
@@ -57,7 +65,15 @@ end
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_backslash_operator_matrix(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+  test_backslash_operator_matrix(
+    rng,
+    m,
+    n,
+    block_gap,
+    upper_rank_max,
+    lower_rank_max,
+    tol,
+  )
 end
 
 @safetestset "Backslash Operator: Underdetermined system" begin
@@ -69,7 +85,15 @@ end
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_backslash_operator_vector(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+  test_backslash_operator_vector(
+    rng,
+    m,
+    n,
+    block_gap,
+    upper_rank_max,
+    lower_rank_max,
+    tol,
+  )
 end
 
 @safetestset "Backslash Operator: Overdetermined system" begin
@@ -81,5 +105,13 @@ end
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_backslash_operator_vector(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
+  test_backslash_operator_vector(
+    rng,
+    m,
+    n,
+    block_gap,
+    upper_rank_max,
+    lower_rank_max,
+    tol,
+  )
 end
