@@ -112,7 +112,7 @@ function solve!(A::QRGivensWeight, B::AbstractMatrix)
     end
   end
   #Backward substitution
-  B[s, :] = A.R.b[s, s] \ B[s, :]
+  @. B[s, :] = B[s, :] / A.R.b[s, s]
   B_copy = copy(B)
   ub_g_ind = length(A.R.b.upper_blocks)
   ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
