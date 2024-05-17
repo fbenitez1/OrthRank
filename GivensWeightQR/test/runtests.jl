@@ -1,7 +1,11 @@
 using SafeTestsets
 
-@safetestset "QR Factorization, no overlap: Square case" begin
-  include("test_QR.jl")
+@safetestset "QR Factorization tests" begin
+
+  using Random
+  using GivensWeightQR.Precompile: run_QR
+  using LinearAlgebra
+
   m = 100
   n = 100
   block_gap = 1
@@ -9,35 +13,35 @@ using SafeTestsets
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
-end
+  @testset "||A - QR||, no overlap, square case" begin
+    A, Q, R = run_QR(rng, m, n, block_gap, upper_rank_max, lower_rank_max)
+    @test norm(A - Q * R, Inf) <= tol
+  end
 
-@safetestset "QR Factorization, no overlap: Tall case" begin
-  include("test_QR.jl")
   m = 150
   n = 100
-  block_gap = 1
-  upper_rank_max = 4
-  lower_rank_max = 4
-  tol = 1e-12
-  rng = MersenneTwister(1234)
-  test_QR(rng,m,n,block_gap,upper_rank_max,lower_rank_max,tol)
-end
+  @testset "||A - QR||, no overlap, tall case" begin
+    A, Q, R = run_QR(rng, m, n, block_gap, upper_rank_max, lower_rank_max)
+    @test norm(A - Q * R, Inf) <= tol
+  end
 
-@safetestset "QR Factorization, no overlap: Wide case" begin
-  include("test_QR.jl")
   m = 100
   n = 150
   block_gap = 2
-  upper_rank_max = 4
-  lower_rank_max = 4
-  tol = 1e-12
-  rng = MersenneTwister(1234)
-  test_QR(rng, m, n, block_gap, upper_rank_max, lower_rank_max, tol)
+  @testset "||A - QR||, no overlap, wide case" begin
+    A, Q, R = run_QR(rng, m, n, block_gap, upper_rank_max, lower_rank_max)
+    @test norm(A - Q * R, Inf) <= tol
+  end
+
 end
 
-@safetestset "Backslash Operator: Vector case" begin
-  include("test_backslash_operator_vector.jl")
+@safetestset "Backslash operator tests" begin
+
+  using Random
+  using GivensWeightQR.Precompile:
+    run_backslash_operator_vector, run_backslash_operator_matrix
+  using LinearAlgebra
+
   m = 100
   n = 100
   block_gap = 1
@@ -45,73 +49,100 @@ end
   lower_rank_max = 4
   tol = 1e-12
   rng = MersenneTwister(1234)
-  test_backslash_operator_vector(
+
+  A, x_a, c = run_backslash_operator_vector(
     rng,
     m,
     n,
     block_gap,
     upper_rank_max,
     lower_rank_max,
-    tol,
   )
-end
+  @testset "backslash vector, ||A'(Ax - b)||" begin
+    @test norm(A' * (A * x_a - c), Inf) / (norm(A, Inf) * norm(x_a, Inf)) <= tol
+  end
 
-@safetestset "Backslash Operator: Matrix case" begin
-  include("test_backslash_operator_matrix.jl")
-  m=100
-  n = 100
-  block_gap = 1
-  upper_rank_max = 4
-  lower_rank_max = 4
-  tol = 1e-12
-  rng = MersenneTwister(1234)
-  test_backslash_operator_matrix(
+  A, x_a, c = run_backslash_operator_matrix(
     rng,
     m,
     n,
     block_gap,
     upper_rank_max,
     lower_rank_max,
-    tol,
   )
-end
+  @testset "backslash matrix, ||A'(Ax - b)||" begin
+    @test norm(A' * (A * x_a - c), Inf) / (norm(A, Inf) * norm(x_a, Inf)) <= tol
+  end
 
-@safetestset "Backslash Operator: Underdetermined system" begin
-  include("test_backslash_operator_vector.jl")
   m=100
   n = 150
-  block_gap = 1
-  upper_rank_max = 4
-  lower_rank_max = 4
-  tol = 1e-12
-  rng = MersenneTwister(1234)
-  test_backslash_operator_vector(
+  A, x_a, c = run_backslash_operator_vector(
     rng,
     m,
     n,
     block_gap,
     upper_rank_max,
     lower_rank_max,
-    tol,
   )
+  @testset "backslash vector, underdetermined, ||A'(Ax - b)||" begin
+    @test norm(A' * (A * x_a - c), Inf) / (norm(A, Inf) * norm(x_a, Inf)) <= tol
+  end
+
+  m=150
+  n = 100
+  A, x_a, c = run_backslash_operator_vector(
+    rng,
+    m,
+    n,
+    block_gap,
+    upper_rank_max,
+    lower_rank_max,
+  )
+  @testset "backslash vector, overdetermined, ||A'(Ax - b)||" begin
+    @test norm(A' * (A * x_a - c), Inf) / (norm(A, Inf) * norm(x_a, Inf)) <= tol
+  end
+
 end
 
-@safetestset "Backslash Operator: Overdetermined system" begin
-  include("test_backslash_operator_vector.jl")
-  m = 150
-  n = 100
-  block_gap = 1
-  upper_rank_max = 4
-  lower_rank_max = 4
-  tol = 1e-12
-  rng = MersenneTwister(1234)
-  test_backslash_operator_vector(
-    rng,
-    m,
-    n,
-    block_gap,
-    upper_rank_max,
-    lower_rank_max,
-    tol,
-  )
+
+using Random
+using GivensWeightQR
+using GivensWeightQR.Precompile:
+  run_QR, run_backslash_operator_vector, run_backslash_operator_matrix
+using LinearAlgebra
+using JET: @test_opt, @test_call
+using Test
+
+# @test_opt and @test_call don't seem to work in a safetestset...
+@testset "JET Tests" begin
+
+  @testset "JET runQR opt" begin
+    @test_opt target_modules = (GivensWeightQR,) run_QR(
+      MersenneTwister(1234), 1, 1, 1, 1, 1)
+  end
+
+  @testset "JET runQR call" begin
+    @test_call target_modules = (GivensWeightQR,) run_QR(
+      MersenneTwister(1234), 1, 1, 1, 1, 1)
+  end
+
+  @testset "JET run backslash vector opt" begin
+    @test_opt target_modules = (GivensWeightQR,) run_backslash_operator_vector(
+      MersenneTwister(1234), 1, 1, 1, 1, 1)
+  end
+
+  @testset "JET run backslash vector call" begin
+    @test_call target_modules = (GivensWeightQR,) run_backslash_operator_vector(
+      MersenneTwister(1234), 1, 1, 1, 1, 1)
+  end
+
+  @testset "JET run backslash matrix opt" begin
+    @test_opt target_modules = (GivensWeightQR,) run_backslash_operator_matrix(
+      MersenneTwister(1234), 1, 1, 1, 1, 1)
+  end
+
+  @testset "JET run backslash matrix call" begin
+    @test_call target_modules = (GivensWeightQR,) run_backslash_operator_matrix(
+      MersenneTwister(1234), 1, 1, 1, 1, 1)
+  end
 end

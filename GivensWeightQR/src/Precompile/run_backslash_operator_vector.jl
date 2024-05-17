@@ -6,7 +6,6 @@ using InPlace
 using Rotations
 using LinearAlgebra
 using GivensWeightQR
-using Test
 
 function run_backslash_operator_vector(
   rng::AbstractRNG,
@@ -55,26 +54,4 @@ function run_backslash_operator_vector(
   c = copy(b)
   x_a = gw1 \ b
   return A, x_a, c
-end
-
-function test_backslash_operator_vector(
-  rng::AbstractRNG,
-  m::Int64,
-  n::Int64,
-  block_gap::Int64,
-  upper_rank_max::Int64,
-  lower_rank_max::Int64,
-  tol::Float64,
-)
-  A, x_a, c = run_backslash_operator_vector(
-    rng,
-    m,
-    n,
-    block_gap,
-    upper_rank_max,
-    lower_rank_max,
-  )
-  @testset "||A'(Ax - b)||" begin
-    @test norm(A' * (A * x_a - c), Inf) / (norm(A, Inf) * norm(x_a, Inf)) <= tol
-  end
 end

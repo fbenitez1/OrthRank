@@ -413,7 +413,7 @@ end
 
 using PrecompileTools
 @setup_workload begin
-  include("Precompile.jl")
+  include("Precompile/Precompile.jl")
   import .Precompile
   @compile_workload begin
     Precompile.run_all()

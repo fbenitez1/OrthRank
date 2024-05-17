@@ -6,9 +6,9 @@ using Random
 using OrthWeight
 using BandStruct
 
-include("../test/test_QR.jl")
-include("../test/test_backslash_operator_vector.jl")
-include("../test/test_backslash_operator_matrix.jl")
+include("run_QR.jl")
+include("run_backslash_operator_vector.jl")
+include("run_backslash_operator_matrix.jl")
 
 function run_all()
   m = 100
