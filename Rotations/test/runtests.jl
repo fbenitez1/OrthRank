@@ -416,4 +416,20 @@ using SafeTestsets
 
   end
 end
-nothing
+
+using Rotations
+using Rotations.Precompile: run_all
+using JET: @test_opt, @test_call
+using Test
+
+@testset "JET Tests" begin
+
+  @testset "JET run_all opt" begin
+    @test_opt target_modules = (Rotations,) run_all()
+  end
+
+  @testset "JET run_all call" begin
+    @test_call target_modules = (Rotations,) run_all()
+  end
+end
+
