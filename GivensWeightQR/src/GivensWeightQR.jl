@@ -35,8 +35,10 @@ struct QRGivensWeight{S<:QGivensWeight,R<:AbstractGivensWeight} <:
 end
 
 #Convenience: return only where solution is storage.
-_cut_B(x::AbstractVector, r::UnitRange) = length(x) > length(r) ? x[r] : x
-_cut_B(X::AbstractMatrix, r::UnitRange) = size(X, 1) > length(r) ? X[r, :] : X
+_cut_B(x::AbstractVector, r::UnitRange) = isless(length(r), length(x)) ? 
+  x[r] : x
+_cut_B(X::AbstractMatrix, r::UnitRange) = isless(length(r), size(X, 1)) ? 
+  X[r, :] : X
 
 function last_inband_nonzero_index(
   B::BlockedBandColumn,
@@ -45,19 +47,21 @@ function last_inband_nonzero_index(
 )
   m, n = size(B)
   # ind = max(m,n)
-  if row isa Colon && col < n
+  if isa(row,Colon) && isless(col, n)
     ind = last_inband_index(B, :, col)
-    while ind > 0 && iszero(B[ind, col])
+    while !iszero(ind) && iszero(B[ind, col])
       ind -= 1
       iszero(ind) &&
-        thrown(error("last_inband_nonzero_index: No nonzero element in column $col \n"))
+        thrown(error("last_inband_nonzero_index: 
+          No nonzero element in column $col \n"))
     end
-  elseif col isa Colon && row < m
+  elseif isa(col, Colon) && isless(row, m)
     ind = last_inband_index(B, row, :)
-    while ind > 0 && iszero(B[row, ind])
+    while !iszero(ind) && iszero(B[row, ind])
       ind -= 1
       iszero(ind) &&
-        thrown(error("last_inband_nonzero_index: No nonzero element in row $row \n"))
+        thrown(error("last_inband_nonzero_index: 
+          No nonzero element in row $row \n"))
     end
   elseif col == n
     ind = m
@@ -87,7 +91,7 @@ function ldiv(F::QRGivensWeight, B::AbstractVecOrMat{<:Number})
   end
   B isa Vector ? BB = zeros(Float64, max(m, n)) :
   BB = zeros(Float64, max(m, n), size(B, 2))
-  n > m ? copyto!(view(BB, 1:m, :), B) : copyto!(view(BB, :, :), B)
+  isless(m,n) ? copyto!(view(BB, 1:m, :), B) : copyto!(view(BB, :, :), B)
   ldiv!(F, BB)
   return _cut_B(BB, 1:n)
 end
@@ -116,7 +120,7 @@ function solve!(A::QRGivensWeight, B::AbstractMatrix)
   B_copy = copy(B)
   ub_g_ind = length(A.R.b.upper_blocks)
   ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
-  while ub_mb >= s
+  while s ≤ ub_mb
     ub_g_ind -= 1
     iszero(ub_g_ind) ? ub_mb = 0 : ub_mb = A.R.b.upper_blocks[ub_g_ind].mb
   end
@@ -163,7 +167,7 @@ function random_blocks_generator_no_overlap(
   n::Int64,
   gap::Int64,
 )
-  gap > min(m, n) && throw("Gap between blocks is bigger
+  isless(min(m, n),gap) && throw("Gap between blocks is bigger
     than the smallest size of the matrix.")
   mn = min(m, n)
   δ = (gap + 1) / 2
@@ -172,15 +176,15 @@ function random_blocks_generator_no_overlap(
   lower_rows = zeros(Int64, 1, mn)
   lower_cols = zeros(Int64, 1, mn)
   i = 1
-  while round(Int64, i * δ, RoundDown) <= mn
+  while round(Int64, i * δ, RoundDown) ≤ mn
     δ_range =
       (round(Int64, (i - 1) * δ, RoundDown) + 1):round(Int64, i * δ, RoundDown)
     upper_rows[1, i] = rand(rng, δ_range)
     upper_cols[1, i] = rand(rng, δ_range)
     lower_rows[1, i] = rand(rng, δ_range)
     lower_cols[1, i] = rand(rng, δ_range)
-    while lower_rows[1, i] < upper_rows[1, i] &&
-      upper_cols[1, i] < lower_cols[1, i]
+    while isless(lower_rows[1, i], upper_rows[1, i]) &&
+      isless(upper_cols[1, i], lower_cols[1, i])
       upper_rows[1, i] = rand(rng, δ_range)
       upper_cols[1, i] = rand(rng, δ_range)
       lower_rows[1, i] = rand(rng, δ_range)
@@ -205,7 +209,7 @@ function random_blocks_generator(
   n::Int64,
   gap::Int64,
 )
-  gap > min(m, n) && throw("Gap between blocks is bigger
+  isless(min(m, n),gap) && throw("Gap between blocks is bigger
    than the smallest size of the matrix.")
   mn = min(m, n)
   δ = (gap + 1) / 2
@@ -214,19 +218,17 @@ function random_blocks_generator(
   lower_rows = zeros(Int64, 1, mn)
   lower_cols = zeros(Int64, 1, mn)
   i = 1
-  while round(Int64, i * δ, RoundDown) <= mn
+  while round(Int64, i * δ, RoundDown) ≤ mn
     δ_range =
       (round(Int64, (i - 1) * δ, RoundDown) + 1):round(Int64, i * δ, RoundDown)
     upper_rows[1, i] = rand(rng, δ_range)
     upper_cols[1, i] = rand(rng, δ_range)
     lower_rows[1, i] = rand(rng, δ_range)
     lower_cols[1, i] = rand(rng, δ_range)
-    # upper_rows[1, i] <= lower_rows[1, i] || lower_cols[1, i] <= upper_cols[1, i] ?
-    # nothing : upper_rows[1, i] = lower_rows[1, i] #No block overlap
     #No diagonal (i, i) in block
-    upper_rows[1, i] > upper_cols[1, i] &&
+    isless(upper_cols[1, i],upper_rows[1, i]) &&
       @swap(upper_rows[1, i], upper_cols[1, i])
-    lower_cols[1, i] > lower_rows[1, i] &&
+    isless(lower_rows[1, i], lower_cols[1, i])  &&
       @swap(lower_cols[1, i], lower_rows[1, i])
     i += 1
   end
@@ -258,19 +260,22 @@ end
 function preparative_phase!(gw::GivensWeight)
   m, n = size(gw.b)
   ub_g_ind = length(gw.b.upper_blocks)
-  while gw.b.upper_blocks[ub_g_ind].mb == m && ub_g_ind > 0
+  while gw.b.upper_blocks[ub_g_ind].mb == m && !iszero(ub_g_ind)
     ub_g_ind -= 1
   end
   iszero(ub_g_ind) ? ub_mb = 0 : ub_mb = gw.b.upper_blocks[ub_g_ind].mb
   for lb_ind in filter_compressed(Iterators.Reverse(gw.b.lower_blocks))
     lb_g_ind = gw.b.lower_blocks[lb_ind].givens_index
     lb_rot_num = gw.b.lower_blocks[lb_g_ind].num_rots
-    for lb_rot_ind = 1:lb_rot_num
-      lb_rot = gw.lowerRots[lb_rot_ind, lb_g_ind]
-      lb_rank = gw.b.lower_blocks[lb_g_ind].block_rank
-      while lb_rot.inds <= ub_mb < lb_rot.inds + lb_rank
+    lb_rank = gw.b.lower_blocks[lb_g_ind].block_rank
+    lb_nb = gw.b.lower_blocks[lb_g_ind].nb
+    for lb_rot_nth = 1:lb_rot_num
+      lb_rot = gw.lowerRots[lb_rot_nth, lb_g_ind]
+      lb_rot_inds = lb_rot.inds
+      lb_rot_rank = lb_rot_inds + lb_rank
+      while lb_rot_inds ≤ ub_mb && isless(ub_mb, lb_rot_rank)
         ub_rot_num = gw.b.upper_blocks[ub_g_ind].num_rots
-        ub_active_rows = (ub_mb + 1):(lb_rot.inds + lb_rank)
+        ub_active_rows = (ub_mb + 1):(lb_rot_inds + lb_rank)
         for ub_rot_num = 1:ub_rot_num
           ub_rot = gw.upperRots[ub_rot_num, ub_g_ind]
           ub_active_cols = 1:(ub_rot.inds + 1)
@@ -281,34 +286,34 @@ function preparative_phase!(gw::GivensWeight)
         for ub_fill_up_row in ub_active_rows
           start_column_ind =
             last_inband_nonzero_index(gw.b, ub_fill_up_row - 1, :)
-          finish_column_ind = last_inband_nonzero_index(gw.b, ub_fill_up_row, :)
+          finish_column_ind = last_inband_nonzero_index(gw.b, ub_fill_up_row,:)
           fill_up_vb = view(gw.b, ub_active_rows, 1:finish_column_ind)
           for j = (finish_column_ind - 1):-1:(start_column_ind + 1)
             surv = j
             kill = j + 1
-            fill_up_rot = rgivens(gw.b[ub_fill_up_row, surv:kill]..., surv)
+            fill_up_rot = rgivens(gw.b[ub_fill_up_row, surv], 
+              gw.b[ub_fill_up_row, kill], surv)
             apply!(fill_up_vb, fill_up_rot)
             gw.b[ub_fill_up_row, kill] = zero(eltype(gw.b)) #Fix NaN issue.
             #notch_upper do not notch below diagonal.
-            gw.b.upper_blocks[ub_g_ind].num_rots += 1
-            gw.upperRots[gw.b.upper_blocks[ub_g_ind].num_rots, ub_g_ind] =
+            gw.b.upper_blocks[ub_g_ind].num_rots += 1 
+            gw.upperRots[gw.b.upper_blocks[ub_g_ind].num_rots, ub_g_ind] = 
               fill_up_rot
           end
         end
-        gw.b.upper_blocks[ub_g_ind].mb = lb_rot.inds + lb_rank
+        gw.b.upper_blocks[ub_g_ind].mb = lb_rot_inds + lb_rank
         ub_new_last_col_ind =
-          last_inband_nonzero_index(gw.b, lb_rot.inds + lb_rank, :)
+          last_inband_nonzero_index(gw.b, lb_rot_inds + lb_rank, :)
         gw.b.upper_blocks[ub_g_ind].block_rank =
           ub_new_last_col_ind - gw.b.upper_blocks[ub_g_ind].nb
         ub_g_ind -= 1
         iszero(ub_g_ind) ? ub_mb = 0 : ub_mb = gw.b.upper_blocks[ub_g_ind].mb
       end
       #Apply lb_rot in the compl. of lb_block
-      _, lb_cols = lower_block_ranges(gw.b, lb_g_ind)
-      if lb_cols[end] != n
-        last_col_el = last_inband_nonzero_index(gw.b, lb_rot.inds + 1, :)
-        lb_active_cols = (lb_cols[end] + 1):last_col_el
-        lb_active_rows = 1:(lb_rot.inds + 1)
+      if lb_nb != n
+        last_col_el = last_inband_nonzero_index(gw.b, lb_rot_inds + 1, :)
+        lb_active_cols = (lb_nb + 1):last_col_el
+        lb_active_rows = 1:(lb_rot_inds + 1)
         lb_vb = view(gw.b, lb_active_rows, lb_active_cols)
         apply_inv!(lb_rot, lb_vb)
       end
@@ -330,10 +335,9 @@ function rotations_needed(
       last_el_index = n
     end
     amount = last_el_index - d_index
-    amount > m[1] && setindex!(m, [amount], [1])
+    isless(m[1],amount) && setindex!(m, [amount], [1])
   end
-  matrix_of_rotations = Matrix{Rot{R,E,Int}}(undef, m[1], n)
-  matrix_of_rotations .= Rot(zero(R), zero(E), 0)
+  matrix_of_rotations = fill(Rot(zero(R), zero(E), 0),m[1], n)
   return matrix_of_rotations
 end
 
@@ -344,39 +348,44 @@ function residual_phase!(gw::GivensWeight)
   last_ub_g_ind = length(gw.b.upper_blocks)
   ub_g_ind = 1
   d_ind_inside_ub_block = false
-  while iszero(gw.b.upper_blocks[ub_g_ind].mb) && ub_g_ind <= last_ub_g_ind
+  while iszero(gw.b.upper_blocks[ub_g_ind].mb) && ub_g_ind ≤ last_ub_g_ind
     ub_g_ind += 1
   end
-  ub_g_ind > last_ub_g_ind ? ub_mb = 0 : ub_mb = gw.b.upper_blocks[ub_g_ind].mb
+  isless(last_ub_g_ind, ub_g_ind) ? ub_mb = 0 : 
+    ub_mb = gw.b.upper_blocks[ub_g_ind].mb
   for d_ind = 1:diag_size
     leud = last_inband_nonzero_index(gw.b, :, d_ind) #LastElementUnderDiagonal
     qty_und_diag = leud - d_ind
     leud == m ? virtual_leud = m + 1 : virtual_leud = leud
+    lb_act_rows = 1:leud
     # Regression action
-    ub_g_ind > last_ub_g_ind ? ub_nb = diag_size + 1 :
+    isless(last_ub_g_ind,ub_g_ind) ? ub_nb = diag_size + 1 :
     ub_nb = gw.b.upper_blocks[ub_g_ind].nb
-    if ub_nb <= d_ind
+    if ub_nb ≤ d_ind
       d_ind_inside_ub_block = true
     end
-    while d_ind <= ub_mb < virtual_leud || d_ind_inside_ub_block
+    while (d_ind≤ub_mb && isless(ub_mb,virtual_leud)) || d_ind_inside_ub_block
+      ub_act_rows =  d_ind:ub_mb
       for ub_rot_num = (gw.b.upper_blocks[ub_g_ind].num_rots):-1:1
         ub_rot = gw.upperRots[ub_rot_num, ub_g_ind]
-        ub_vb = view(gw.b, d_ind:ub_mb, 1:(ub_rot.inds + 1))
+        ub_act_cols = 1:(ub_rot.inds + 1)
+        ub_vb = view(gw.b, ub_act_rows, ub_act_cols)
         apply_inv!(ub_vb, ub_rot)
       end
       gw.b.upper_blocks[ub_g_ind].mb = d_ind - 1
       ub_g_ind += 1
-      ub_g_ind > last_ub_g_ind ? ub_mb = 0 :
-      ub_mb = gw.b.upper_blocks[ub_g_ind].mb
+      isless(last_ub_g_ind, ub_g_ind) ? ub_mb = 0 :
+        ub_mb = gw.b.upper_blocks[ub_g_ind].mb
       d_ind_inside_ub_block = false
     end
     #Create zeros under diagonal
     for k = qty_und_diag:-1:1
       surv = d_ind + k - 1
       kill = d_ind + k
-      rot = lgivens(gw.b[surv:kill, d_ind]..., surv)
+      rot = lgivens(gw.b[surv, d_ind], gw.b[kill, d_ind], surv)
       last_el_in_row = last_inband_nonzero_index(gw.b, kill, :)
-      vb = view(gw.b, 1:leud, d_ind:last_el_in_row)
+      lb_act_cols = d_ind:last_el_in_row
+      vb = view(gw.b, lb_act_rows, lb_act_cols)
       apply_inv!(rot, vb)
       triang_rot[1 + qty_und_diag - k, d_ind] = rot
     end
@@ -419,6 +428,5 @@ using PrecompileTools
     Precompile.run_all()
   end
 end
-
 
 end #module
