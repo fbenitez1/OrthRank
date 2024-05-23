@@ -3107,8 +3107,12 @@ function Base.:*(A::AbstractBandColumn,
   return c
 end
 
-
-
+function Base.:*(A::AbstractBandColumn,
+                 B::AbstractMatrix)
+  C = similar(B, size(A,1), size(B,2))
+  mul!(C, A, B)
+  return C
+end
 
 end # module
 

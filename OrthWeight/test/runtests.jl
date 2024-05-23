@@ -15,6 +15,8 @@ end
   run_givens_weight_rank_tests()
 end
 
+include("mul.jl")
+
 using OrthWeight
 using OrthWeight.Precompile: run_all
 using JET: @test_opt, @test_call

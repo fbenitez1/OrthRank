@@ -13,19 +13,6 @@ function test_validate_ranks(E)
 
   tol_r = 1e-12
 
-  # m = 60
-  # n = 50
-
-  # lower_blocks_r = block_sizes([
-  #   10 20 30 40
-  #   10 20 25 37
-  # ])
-
-  # upper_blocks_r = block_sizes([
-  #   10 20 30 40
-  #   10 20 25 37
-  # ])
-
   m = 6
   n = 5
 

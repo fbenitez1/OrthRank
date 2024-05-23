@@ -107,6 +107,10 @@ function run_matrix()
   )
   Matrix(gw)
 
+  C = zeros(60, 3)
+  B = zeros(50, 3)
+  mul!(C, gw, B, 1.0, 1.0)
+
   gw = make_givens_weight(
     Complex{Float64},
     l_or_t = TrailingDecomp(),
@@ -118,6 +122,10 @@ function run_matrix()
     lower_ranks = lower_ranks,
   )
   Matrix(gw)
+
+  C = zeros(Complex{Float64}, 60, 3)
+  B = zeros(Complex{Float64}, 50, 3)
+  mul!(C, gw, B, 1.0 + 0.0im, 1.0 + 0.0im)
 
   gw = make_givens_weight(
     Float64,
