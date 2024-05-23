@@ -35,10 +35,8 @@ struct QRGivensWeight{S<:QGivensWeight,R<:AbstractGivensWeight} <:
 end
 
 #Convenience: return only where solution is storage.
-_cut_B(x::AbstractVector, r::UnitRange) = isless(length(r), length(x)) ? 
-  x[r] : x
-_cut_B(X::AbstractMatrix, r::UnitRange) = isless(length(r), size(X, 1)) ? 
-  X[r, :] : X
+_cut_B(x::AbstractVector, r::UnitRange) = length(r) < length(x) ? x[r] : x
+_cut_B(X::AbstractMatrix, r::UnitRange) = length(r) < size(X, 1) ? X[r, :] : X
 
 function last_inband_nonzero_index(
   B::BlockedBandColumn,
@@ -47,7 +45,7 @@ function last_inband_nonzero_index(
 )
   m, n = size(B)
   # ind = max(m,n)
-  if isa(row,Colon) && isless(col, n)
+  if isa(row,Colon) && col < n
     ind = last_inband_index(B, :, col)
     while !iszero(ind) && iszero(B[ind, col])
       ind -= 1
@@ -55,7 +53,7 @@ function last_inband_nonzero_index(
         thrown(error("last_inband_nonzero_index: 
           No nonzero element in column $col \n"))
     end
-  elseif isa(col, Colon) && isless(row, m)
+  elseif isa(col, Colon) && row < m
     ind = last_inband_index(B, row, :)
     while !iszero(ind) && iszero(B[row, ind])
       ind -= 1
@@ -91,7 +89,7 @@ function ldiv(F::QRGivensWeight, B::AbstractVecOrMat{<:Number})
   end
   B isa Vector ? BB = zeros(Float64, max(m, n)) :
   BB = zeros(Float64, max(m, n), size(B, 2))
-  isless(m,n) ? copyto!(view(BB, 1:m, :), B) : copyto!(view(BB, :, :), B)
+  m < n ? copyto!(view(BB, 1:m, :), B) : copyto!(view(BB, :, :), B)
   ldiv!(F, BB)
   return _cut_B(BB, 1:n)
 end
@@ -167,7 +165,7 @@ function random_blocks_generator_no_overlap(
   n::Int64,
   gap::Int64,
 )
-  isless(min(m, n),gap) && throw("Gap between blocks is bigger
+  min(m, n) < gap && throw("Gap between blocks is bigger
     than the smallest size of the matrix.")
   mn = min(m, n)
   δ = (gap + 1) / 2
@@ -183,8 +181,8 @@ function random_blocks_generator_no_overlap(
     upper_cols[1, i] = rand(rng, δ_range)
     lower_rows[1, i] = rand(rng, δ_range)
     lower_cols[1, i] = rand(rng, δ_range)
-    while isless(lower_rows[1, i], upper_rows[1, i]) &&
-      isless(upper_cols[1, i], lower_cols[1, i])
+    while lower_rows[1, i] < upper_rows[1, i] &&
+    upper_cols[1, i] < lower_cols[1, i]
       upper_rows[1, i] = rand(rng, δ_range)
       upper_cols[1, i] = rand(rng, δ_range)
       lower_rows[1, i] = rand(rng, δ_range)
@@ -209,7 +207,7 @@ function random_blocks_generator(
   n::Int64,
   gap::Int64,
 )
-  isless(min(m, n),gap) && throw("Gap between blocks is bigger
+  min(m, n) < gap && throw("Gap between blocks is bigger
    than the smallest size of the matrix.")
   mn = min(m, n)
   δ = (gap + 1) / 2
@@ -226,9 +224,9 @@ function random_blocks_generator(
     lower_rows[1, i] = rand(rng, δ_range)
     lower_cols[1, i] = rand(rng, δ_range)
     #No diagonal (i, i) in block
-    isless(upper_cols[1, i],upper_rows[1, i]) &&
+    upper_cols[1, i] < upper_rows[1, i] &&
       @swap(upper_rows[1, i], upper_cols[1, i])
-    isless(lower_rows[1, i], lower_cols[1, i])  &&
+    lower_rows[1, i] < lower_cols[1, i]  &&
       @swap(lower_cols[1, i], lower_rows[1, i])
     i += 1
   end
@@ -273,7 +271,7 @@ function preparative_phase!(gw::GivensWeight)
       lb_rot = gw.lowerRots[lb_rot_nth, lb_g_ind]
       lb_rot_inds = lb_rot.inds
       lb_rot_rank = lb_rot_inds + lb_rank
-      while lb_rot_inds ≤ ub_mb && isless(ub_mb, lb_rot_rank)
+      while lb_rot_inds ≤ ub_mb && ub_mb < lb_rot_rank
         ub_rot_num = gw.b.upper_blocks[ub_g_ind].num_rots
         ub_active_rows = (ub_mb + 1):(lb_rot_inds + lb_rank)
         for ub_rot_num = 1:ub_rot_num
@@ -335,7 +333,7 @@ function rotations_needed(
       last_el_index = n
     end
     amount = last_el_index - d_index
-    isless(m[1],amount) && setindex!(m, [amount], [1])
+    m[1] < amount && setindex!(m, [amount], [1])
   end
   matrix_of_rotations = fill(Rot(zero(R), zero(E), 0),m[1], n)
   return matrix_of_rotations
@@ -351,7 +349,7 @@ function residual_phase!(gw::GivensWeight)
   while iszero(gw.b.upper_blocks[ub_g_ind].mb) && ub_g_ind ≤ last_ub_g_ind
     ub_g_ind += 1
   end
-  isless(last_ub_g_ind, ub_g_ind) ? ub_mb = 0 : 
+  last_ub_g_ind < ub_g_ind ? ub_mb = 0 : 
     ub_mb = gw.b.upper_blocks[ub_g_ind].mb
   for d_ind = 1:diag_size
     leud = last_inband_nonzero_index(gw.b, :, d_ind) #LastElementUnderDiagonal
@@ -359,12 +357,12 @@ function residual_phase!(gw::GivensWeight)
     leud == m ? virtual_leud = m + 1 : virtual_leud = leud
     lb_act_rows = 1:leud
     # Regression action
-    isless(last_ub_g_ind,ub_g_ind) ? ub_nb = diag_size + 1 :
+    last_ub_g_ind < ub_g_ind ? ub_nb = diag_size + 1 :
     ub_nb = gw.b.upper_blocks[ub_g_ind].nb
     if ub_nb ≤ d_ind
       d_ind_inside_ub_block = true
     end
-    while (d_ind≤ub_mb && isless(ub_mb,virtual_leud)) || d_ind_inside_ub_block
+    while (d_ind ≤ ub_mb < virtual_leud)   || d_ind_inside_ub_block
       ub_act_rows =  d_ind:ub_mb
       for ub_rot_num = (gw.b.upper_blocks[ub_g_ind].num_rots):-1:1
         ub_rot = gw.upperRots[ub_rot_num, ub_g_ind]
@@ -374,7 +372,7 @@ function residual_phase!(gw::GivensWeight)
       end
       gw.b.upper_blocks[ub_g_ind].mb = d_ind - 1
       ub_g_ind += 1
-      isless(last_ub_g_ind, ub_g_ind) ? ub_mb = 0 :
+      last_ub_g_ind < ub_g_ind ? ub_mb = 0 :
         ub_mb = gw.b.upper_blocks[ub_g_ind].mb
       d_ind_inside_ub_block = false
     end
