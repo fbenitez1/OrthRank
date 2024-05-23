@@ -25,6 +25,11 @@ export AbstractGivensWeight,
   UncompressedLowerBlock,
   UncompressedUpperBlock
 
+struct NeitherLeadingNorTrailing <: Exception
+  msg::AbstractString
+end
+NeitherLeadingNorTrailing() = NeitherLeadingNorTrailing("")
+
 struct UncompressedLowerBlock <: Exception
   block::Int
 end
@@ -204,7 +209,7 @@ struct GivensWeight{E,B,R} <: AbstractGivensWeight{E,B,R}
 end
 
 Base.eltype(::GivensWeight{E}) where {E} = E
-Base.size(gw::GivensWeight) = size(gw.b)
+Base.size(gw::GivensWeight, args...) = size(gw.b, args...)
 Base.axes(gw::GivensWeight, d) = axes(gw.b, d)
 Base.axes(gw::GivensWeight) = axes(gw.b)
 
@@ -1272,5 +1277,7 @@ function Base.show(io::IO, mime::MIME"text/plain", gw::GivensWeight)
   println(io)
   println(io)
 end
+
+include("./GivensWeightMatrices/Multiply.jl")
 
 end

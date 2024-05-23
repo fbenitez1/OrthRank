@@ -3028,5 +3028,91 @@ Generate a Wilkinson diagram for bc.
   Wilk(a)
 end
 
+# C ← α A B + β C 
+function LinearAlgebra.mul!(
+  C::AbstractMatrix,
+  A::AbstractBandColumn,
+  B::AbstractVecOrMat,
+  α::Number,
+  β::Number,
+)
+
+  Base.require_one_based_indexing(C, B)
+  B0 = B
+  
+  B = (B isa AbstractVector) ? reshape(B, length(B), 1) : B
+  
+  ma, na = size(A)
+  mb, nb = size(B)
+  mc, nc = size(C)
+
+  na != mb &&
+    throw(DimensionMismatch(
+      lazy"A has dimensions ($ma,$na) but B has dimensions ($mb,$nb)"))
+
+  (mc != ma || nc != nb) &&
+    throw(DimensionMismatch(lazy"C has dimensions $(size(C)), should have ($ma,$nb)"))
+
+  @. C = β * C
+  
+  for l in 1:nc
+    for k in 1:na
+      αb = α*B[k,l]
+      for j in inband_index_range(A, :, k)
+        C[j,l] = C[j,l] + A[j,k] * αb
+      end
+    end
+  end
+
+  return C
+end
+
+function LinearAlgebra.mul!(
+  c::AbstractVector,
+  A::AbstractBandColumn,
+  b::AbstractVector,
+  α::Number,
+  β::Number,
+)
+  mul!(reshape(c, length(c), 1), A, reshape(b, length(b), 1), α, β)
+  return c
+end
+
+function LinearAlgebra.mul!(
+  C::AbstractMatrix{E},
+  A::AbstractBandColumn,
+  B::AbstractVecOrMat,
+) where {E <: Number}
+
+  mul!(C, A, B, one(E), zero(E))
+  return C
+  
+end
+
+function LinearAlgebra.mul!(
+  C::AbstractVector{E},
+  A::AbstractBandColumn,
+  B::AbstractVecOrMat,
+) where {E <: Number}
+
+  mul!(C, A, B, one(E), zero(E))
+  return C
+  
+end
+
+function Base.:*(A::AbstractBandColumn,
+                 b::AbstractVector)
+  c = similar(b, size(A,1))
+  mul!(c, A, b)
+  return c
+end
+
+function Base.:*(A::AbstractBandColumn,
+                 B::AbstractMatrix)
+  C = similar(B, size(A,1), size(B,2))
+  mul!(C, A, B)
+  return C
+end
+
 end # module
 
