@@ -3114,5 +3114,43 @@ function Base.:*(A::AbstractBandColumn,
   return C
 end
 
+function Base.iterate(A::AbstractBandColumn)
+  m, n = size(A)
+  (iszero(m) || iszero(n)) && (return nothing)
+  k = 1
+  jrange = inband_index_range(A, :, k)
+    while isempty(jrange) && k < n
+      k += 1
+      jrange = inband_index_range(A, :, k)
+    end
+  if k == n && isempty(jrange)
+    return nothing
+  else
+    j = first(jrange)
+    return (A[j,k], (j, k, m, n, jrange))
+  end
+end
+
+function Base.iterate(A::AbstractBandColumn, (j, k, m, n, jrange))
+  if (j+1) in jrange
+    return (A[j+1, k], (j + 1, k, m, n, jrange))
+  elseif k >= n
+    return nothing
+  else
+    k += 1
+    next_jrange = inband_index_range(A, :, k)
+    while isempty(next_jrange) && k < n
+      k += 1
+      next_jrange = inband_index_range(A, :, k)
+    end
+    if k == n && isempty(next_jrange)
+      return nothing
+    else
+      j = first(next_jrange)
+      return (A[j,k], (j, k, m, n, next_jrange))
+    end
+  end
+end
+
 end # module
 

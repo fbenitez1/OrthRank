@@ -35,6 +35,13 @@
       @test Matrix(bc) == mx_bc
       @test Matrix(bbc) == mx_bc
     end
+    @testset "Iteration" begin
+      els = E[]
+      for e in bc0
+        push!(els, e)
+      end
+      @test collect(get_elements(bc0)) == els
+    end
   end
 end
 nothing
