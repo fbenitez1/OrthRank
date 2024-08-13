@@ -3038,7 +3038,6 @@ function LinearAlgebra.mul!(
 )
 
   Base.require_one_based_indexing(C, B)
-  B0 = B
   
   B = (B isa AbstractVector) ? reshape(B, length(B), 1) : B
   
@@ -3083,20 +3082,44 @@ function LinearAlgebra.mul!(
   A::AbstractBandColumn,
   B::AbstractVecOrMat,
 ) where {E <: Number}
+  
+  Base.require_one_based_indexing(C, B)
+  
+  B = (B isa AbstractVector) ? reshape(B, length(B), 1) : B
+  
+  ma, na = size(A)
+  mb, nb = size(B)
+  mc, nc = size(C)
 
-  mul!(C, A, B, one(E), zero(E))
+  na != mb &&
+    throw(DimensionMismatch(
+      lazy"A has dimensions ($ma,$na) but B has dimensions ($mb,$nb)"))
+
+  (mc != ma || nc != nb) &&
+    throw(DimensionMismatch(lazy"C has dimensions $(size(C)), should have ($ma,$nb)"))
+
+  for l in 1:nc
+    C[:,l] .= zero(eltype(C))
+    for k in 1:na
+      b = B[k,l]
+      for j in inband_index_range(A, :, k)
+        C[j,l] = C[j,l] + A[j,k] * b
+      end
+    end
+  end
+
   return C
   
 end
 
 function LinearAlgebra.mul!(
-  C::AbstractVector{E},
+  c::AbstractVector{E},
   A::AbstractBandColumn,
   B::AbstractVecOrMat,
 ) where {E <: Number}
 
-  mul!(C, A, B, one(E), zero(E))
-  return C
+  mul!(reshape(c, length(c), 1), A, B)
+  return c
   
 end
 
