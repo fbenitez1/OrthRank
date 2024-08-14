@@ -112,56 +112,56 @@ product_side(_, ::Type{Linear{A}}) where A = RightProduct
 # First find the product side for apply! and apply_inv!.
 # These calls will later find the structure_type of the
 # transformed matrix.
-@noinline apply!(a::A, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply!(a::A, b::B; offset = 0) where {A,B} =
   apply!(product_side(A, B), a, b, offset = offset)
 
-@noinline ⊛(a::A, b::B) where {A,B} = apply!(product_side(A, B), a, b)
+Base.@propagate_inbounds ⊛(a::A, b::B) where {A,B} = apply!(product_side(A, B), a, b)
 
-@noinline apply_inv!(a::A, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_inv!(a::A, b::B; offset = 0) where {A,B} =
   apply_inv!(product_side(A, B), a, b, offset = offset)
 
-@noinline ⊘(a::A, b::B) where {A,B} = apply_inv!(product_side(A, B), a, b)
+Base.@propagate_inbounds ⊘(a::A, b::B) where {A,B} = apply_inv!(product_side(A, B), a, b)
 
 # For calls that specify the side, compute the structure type of the
 # transformed matrix.
 
-@noinline apply_left!(a::A, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_left!(a::A, b::B; offset = 0) where {A,B} =
   apply!(LeftProduct, structure_type(B), a, b, offset = offset)
 
-@noinline apply_right!(a::A, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_right!(a::A, b::B; offset = 0) where {A,B} =
   apply!(RightProduct, structure_type(A), a, b, offset = offset)
 
-@noinline apply_left_inv!(a::A, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_left_inv!(a::A, b::B; offset = 0) where {A,B} =
   apply_inv!(LeftProduct, structure_type(B), a, b, offset = offset)
 
 
-@noinline apply_right_inv!(a::A, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_right_inv!(a::A, b::B; offset = 0) where {A,B} =
   apply_inv!(RightProduct, structure_type(A), a, b, offset = offset)
 
 # Side can also be identified by marking which parameter is the transformation.
 
-@noinline apply!(t::Linear{A}, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply!(t::Linear{A}, b::B; offset = 0) where {A,B} =
   apply!(LeftProduct, structure_type(B), t.trans, b, offset = offset)
 
-@noinline ⊛(t::Linear{A}, b::B) where {A,B} =
+Base.@propagate_inbounds ⊛(t::Linear{A}, b::B) where {A,B} =
   apply!(LeftProduct, structure_type(B), t.trans, b)
 
-@noinline apply!(b::B, t::Linear{A}; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply!(b::B, t::Linear{A}; offset = 0) where {A,B} =
   apply!(RightProduct, structure_type(B), b, t.trans, offset = offset)
 
-@noinline ⊛(b::B, t::Linear{A}) where {A,B} =
+Base.@propagate_inbounds ⊛(b::B, t::Linear{A}) where {A,B} =
   apply!(RightProduct, structure_type(B), b, t.trans)
 
-@noinline apply_inv!(t::Linear{A}, b::B; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_inv!(t::Linear{A}, b::B; offset = 0) where {A,B} =
   apply_inv!(LeftProduct, structure_type(B), t.trans, b, offset = offset)
 
-@noinline ⊘(t::Linear{A}, b::B) where {A,B} =
+Base.@propagate_inbounds ⊘(t::Linear{A}, b::B) where {A,B} =
   apply_inv!(LeftProduct, structure_type(B), t.trans, b)
 
-@noinline apply_inv!(b::B, t::Linear{A}; offset = 0) where {A,B} =
+Base.@propagate_inbounds apply_inv!(b::B, t::Linear{A}; offset = 0) where {A,B} =
   apply_inv!(RightProduct, structure_type(B), b, t.trans, offset = offset)
 
-@noinline ⊘(b::B, t::Linear{A}) where {A,B} =
+Base.@propagate_inbounds ⊘(b::B, t::Linear{A}) where {A,B} =
   apply_inv!(RightProduct, structure_type(B), b, t.trans)
 
 # Product side is computed.  Make an appropriate call to apply_left!,
