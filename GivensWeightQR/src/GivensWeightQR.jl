@@ -9,7 +9,7 @@ export random_blocks_generator,
   _cut_B,
   preparative_phase!,
   residual_phase!,
-  swap,
+  @swap,
   apply_rotations_forward!,
   apply_rotations_backward!,
   create_Q!,
@@ -40,29 +40,32 @@ _cut_B(X::AbstractMatrix, r::UnitRange) = length(r) < size(X, 1) ? X[r, :] : X
 
 function last_inband_nonzero_index(
   B::BlockedBandColumn,
-  row::Union{Int,Colon},
-  col::Union{Int,Colon},
+  ::Colon,
+  col::Int,
 )
   m, n = size(B)
-  # ind = max(m,n)
-  if isa(row,Colon) && col < n
+  @inbounds if col < n
     ind = last_inband_index(B, :, col)
     while !iszero(ind) && iszero(B[ind, col])
       ind -= 1
-      iszero(ind) &&
-        thrown(error("last_inband_nonzero_index: 
-          No nonzero element in column $col \n"))
-    end
-  elseif isa(col, Colon) && row < m
-    ind = last_inband_index(B, row, :)
-    while !iszero(ind) && iszero(B[row, ind])
-      ind -= 1
-      iszero(ind) &&
-        thrown(error("last_inband_nonzero_index: 
-          No nonzero element in row $row \n"))
     end
   elseif col == n
     ind = m
+  end
+  return ind
+end
+
+function last_inband_nonzero_index(
+  B::BlockedBandColumn,
+  row::Int,
+  ::Colon
+)
+  m, n = size(B)
+  @inbounds if row < m
+    ind = last_inband_index(B, row, :)
+    while !iszero(ind) && iszero(B[row, ind])
+      ind -= 1
+    end
   elseif row == m
     ind = n
   end
@@ -157,7 +160,7 @@ macro swap(x, y)
 end
 
 random_blocks_generator(rng::AbstractRNG, m::Int64; gap::Int64) =
-  random_blocks_generato(rng, m, m, gap)
+  random_blocks_generator(rng, m, m, gap)
 
 function random_blocks_generator_no_overlap(
   rng::AbstractRNG,
@@ -262,7 +265,7 @@ function preparative_phase!(gw::GivensWeight)
     ub_g_ind -= 1
   end
   iszero(ub_g_ind) ? ub_mb = 0 : ub_mb = gw.b.upper_blocks[ub_g_ind].mb
-  for lb_ind in filter_compressed(Iterators.Reverse(gw.b.lower_blocks))
+  @inbounds for lb_ind in filter_compressed(Iterators.Reverse(gw.b.lower_blocks))
     lb_g_ind = gw.b.lower_blocks[lb_ind].givens_index
     lb_rot_num = gw.b.lower_blocks[lb_g_ind].num_rots
     lb_rank = gw.b.lower_blocks[lb_g_ind].block_rank
@@ -329,7 +332,7 @@ function rotations_needed(
   for d_index = 1:n
     try
       last_el_index = last_inband_nonzero_index(B, :, d_index)
-    catch tt
+    catch _
       last_el_index = n
     end
     amount = last_el_index - d_index
