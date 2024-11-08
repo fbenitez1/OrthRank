@@ -1833,7 +1833,7 @@ end
 Given ``ks`` extend the band so that every column in ``ks`` has the
 minimum first index and maximum last index of any column in the range.
 """
-Base.@propagate_inbounds function bulge!(
+@inline Base.@propagate_inbounds function bulge!(
   bc::AbstractBandColumn,
   ::Colon,
   ks::AbstractUnitRange{Int},
@@ -2551,7 +2551,7 @@ Index operations
 
 =#
 
-@inline function Base.getindex(
+Base.@propagate_inbounds function Base.getindex(
   bc::AbstractBandColumn{S,E},
   j::Int,
   k::Int,
@@ -2564,7 +2564,13 @@ Index operations
   @inbounds band_elements(bc)[j - storage_offset(bc, k), k + col_offset(bc)]
 end
 
-@inline function Base.getindex(
+Base.@propagate_inbounds Base.getindex(
+  bc::AbstractBandColumn{NonSub, E},
+  j::Int,
+  k::Int,
+) where {E <: Number} = getindex(NonSub, bc, j, k)
+
+Base.@propagate_inbounds function Base.getindex(
   ::Type{NonSub},
   bc::AbstractBandColumn{S,E},
   j::Int,
@@ -2578,7 +2584,7 @@ end
   @inbounds band_elements(bc)[j - storage_offset(NonSub, bc, k), k]
 end
 
-@inline function Base.setindex!(
+Base.@propagate_inbounds function Base.setindex!(
   bc::AbstractBandColumn{S,E},
   x,
   j::Int,
@@ -2596,7 +2602,7 @@ end
   end
 end
 
-@inline function Base.setindex!(
+Base.@propagate_inbounds function Base.setindex!(
   ::Type{NonSub},
   bc::AbstractBandColumn{S,E},
   x,
@@ -2627,7 +2633,7 @@ A version of `setindex!` that does not extend bandwidth.  This is
 useful in loops where the bandwidth extension can be done outside
 the loop for efficiency.
 """
-@inline function setindex_no_bulge!(
+Base.@propagate_inbounds function setindex_no_bulge!(
   bc::AbstractBandColumn{S, E},
   x::E,
   j::Int,
@@ -2640,7 +2646,7 @@ the loop for efficiency.
   @inbounds band_elements(bc)[j - storage_offset(bc, k), k + col_offset(bc)] = x
 end
 
-@inline function setindex_no_bulge!(
+Base.@propagate_inbounds function setindex_no_bulge!(
   ::Type{NonSub},
   bc::AbstractBandColumn{S, E},
   x::E,
@@ -2668,7 +2674,7 @@ end
 Return a bandcolumn submatrix with views of the relevant arrays
 wrapped into a BandColumn.
 """
-@inline function viewbc(
+Base.@propagate_inbounds function viewbc(
   bc::BandColumn,
   i::Tuple{<:AbstractUnitRange{Int},<:AbstractUnitRange{Int}},
 )
@@ -2701,7 +2707,7 @@ wrapped into a BandColumn.
   )
 end
 
-@inline function Base.getindex(
+Base.@propagate_inbounds function Base.getindex(
   bc::BandColumn,
   rows::AbstractUnitRange{Int},
   cols::AbstractUnitRange{Int},
@@ -3038,7 +3044,6 @@ function LinearAlgebra.mul!(
 )
 
   Base.require_one_based_indexing(C, B)
-  B0 = B
   
   B = (B isa AbstractVector) ? reshape(B, length(B), 1) : B
   
@@ -3083,20 +3088,44 @@ function LinearAlgebra.mul!(
   A::AbstractBandColumn,
   B::AbstractVecOrMat,
 ) where {E <: Number}
+  
+  Base.require_one_based_indexing(C, B)
+  
+  B = (B isa AbstractVector) ? reshape(B, length(B), 1) : B
+  
+  ma, na = size(A)
+  mb, nb = size(B)
+  mc, nc = size(C)
 
-  mul!(C, A, B, one(E), zero(E))
+  na != mb &&
+    throw(DimensionMismatch(
+      lazy"A has dimensions ($ma,$na) but B has dimensions ($mb,$nb)"))
+
+  (mc != ma || nc != nb) &&
+    throw(DimensionMismatch(lazy"C has dimensions $(size(C)), should have ($ma,$nb)"))
+
+  for l in 1:nc
+    C[:,l] .= zero(eltype(C))
+    for k in 1:na
+      b = B[k,l]
+      for j in inband_index_range(A, :, k)
+        C[j,l] = C[j,l] + A[j,k] * b
+      end
+    end
+  end
+
   return C
   
 end
 
 function LinearAlgebra.mul!(
-  C::AbstractVector{E},
+  c::AbstractVector{E},
   A::AbstractBandColumn,
   B::AbstractVecOrMat,
 ) where {E <: Number}
 
-  mul!(C, A, B, one(E), zero(E))
-  return C
+  mul!(reshape(c, length(c), 1), A, B)
+  return c
   
 end
 
